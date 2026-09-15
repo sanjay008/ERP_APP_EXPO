@@ -1,0 +1,12 @@
+MYAPP_UPLOAD_STORE_FILE=erp-portaalkeystor
+MYAPP_UPLOAD_KEY_ALIAS=key0
+MYAPP_UPLOAD_STORE_PASSWORD=123456
+MYAPP_UPLOAD_KEY_PASSWORD=123456
+
+
+OTA Auto Update RN-CLI Stallion Login:-
+Email:-erpportaal@gmail.com
+Password:-K@bouter2020..
+
+Google_API_KEY_USE = erp_google_maps_api_key
+

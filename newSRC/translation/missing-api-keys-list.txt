@@ -1,0 +1,295 @@
++ Absence
++ Leave
+-
+About App
+Absence created successfully
+Add Note
+Add Qty.....
+Add extra stop
+Add gallery images
+Add images
+Add price...
+Add title.....
+Already Scanned
+Already have an account? Log in
+Apply Filter
+Are you sure you want to cancel this booking?
+Are you sure you want to complete this booking?
+Are you sure you want to delete this file?
+Are you sure you want to delete?
+Arrival
+BTW
+Back
+Begin & Einde
+Birth Date
+Birth Place
+Booking
+Booking Details
+Booking Id
+Booking List
+Booking Summary
+Booking cancelled
+Booking completed
+Booking confirmed
+Breake
+Brog
+Burgerservicenummer (BSN) 
+Business
+Business tags
+Camera permission is required
+Change Email
+Change WhatsApp Number
+Change photo
+Check In & Out
+Child Contract
+Child Time
+Choose image
+Clear
+Client
+Close day
+Closed Date
+Comment added
+Company
+Company Name
+Company created successfully!
+Company details
+Complete Profile
+Connections Details
+Country Code
+Country code
+Create Account
+Create Booking
+Create New Ticket
+Curr..
+Daycare Contract
+Delete File
+Departure
+Description is required.
+Destination
+Destination Address
+Destination address
+Display Name
+Document nr (ID/Paspoort)
+Driver
+Easy check-in & check-out
+Email Adres
+Employer
+End Datum
+Enter Naam
+Enter a valid company name
+Enter a valid phone number
+Enter address
+Enter birth place
+Enter comment
+Enter description
+Enter destination address
+Enter first name
+Enter middle name
+Enter pickup address
+Enter stop address
+Enter task name
+Enter ticket title
+Enter whatsapp number
+Enter your email and address
+Enter your personal information
+Executor
+Extra Stop
+Filter By Status
+Financieel
+Flight Schedule
+Function Title
+Geen Standby
+Go back
+Goedkeuren
+Google maps
+Grant permission
+Guest List
+How much did you receive?
+Huurder
+ID Ascending
+ID Descending
+Id
+Install
+Invalid Number
+KVK
+Kind
+Kind Name
+Leave created successfully
+Location unavailable
+Luggage
+Max persons
+Menu
+Middle Name
+Mobile No.
+My Booking
+Name
+New Note
+New Note Add
+No Comments Yet
+No Connections Found.
+No Contracts Found.
+No Events Found
+No Request Found.
+No Tickets Found
+No Work Orders Found.
+No countries found
+No data found
+No file chosen
+No internet connection
+None
+OTP resent successfully
+Opmerking
+Opnieuw
+Optional
+Order Created By
+Outstading
+Parent 1
+Parent 2
+Past Events
+Pay Job
+Pay Now
+Pay order
+Payment saved
+Permission required to access photos
+Personal Details
+Personalia
+Phone country code
+Pickup Address
+Please Enter Ammount!
+Please Enter Comments!
+Please Enter Note
+Please check your internet and try again.
+Please complete your profile to continue
+Please enter address
+Please enter comment
+Please enter company name
+Please enter signature
+Please enter task name
+Please fill all required fields
+Please fill required fields
+Please select contract and schedule
+Please select country code
+Please select customer
+Please select language
+Please select priority
+Please select salutation
+Please select start and destination
+Please select subcategory
+Pricing
+Private Comment
+Product created successfully
+Product list server error
+Profile updated successfully
+Project Check In
+Project Check Out
+Project Name is required
+Project Type
+Project Type is required
+Projects
+Rebuild the app after installing image picker. Run: npx expo run:android
+Register with your WhatsApp number
+Relaties
+Save Note
+Scan event QR code
+Scanner
+Schedule
+Schedule found
+School
+Search connection
+Search country
+Search customer
+Search priority
+Search project
+Search tasks, complaints
+Search tenant contracts
+Search ticket, name, id
+Search works orders
+Search.......
+Select Priority
+Select Relatie...
+Select Tax
+Select Template
+Select action
+Select birth date
+Select category
+Select contract
+Select country code
+Select customer
+Select date
+Select priority
+Select profile photo
+Select project
+Select project name
+Select project type
+Select salutation
+Select saved address
+Select subcategory
+Select template
+Server error, please try again
+Service Time
+Session expired, please login again
+Smart solutions for modern businesses
+Social
+Sort By ID
+Start Datum
+Start address
+Start point
+Status Updated
+Step
+Subcategory
+Submitted
+Suitcase
+Tap to upload profile photo
+Tasks/Complaints
+Tasks/Complaints Details
+Template
+Tenant Contracts Details
+The WhatsApp number is not valid.
+This field is required
+Ticket Details
+Ticket Fetch Failed
+Ticket created successfully
+Ticket name is required
+Ticket updated successfully
+Tickets
+TikTok
+Title is required.
+To - Do
+Tour
+Travel cost
+Trip Type
+Trolly
+Try again
+Undo
+Update Now
+Update failed
+Updated
+Updated successfully
+Use custom destination address
+Use custom pickup address
+Vehicle Category
+Vehicle price
+Vendor Detail
+Verify Email Address
+Wait
+Waiting for connection...
+We
+Week
+Welcome to
+WhatsApp Not Available
+WhatsApp Number
+WhatsApp country code
+WhatsApp is not installed on your device. Would you like to install it?
+Whatsapp No.
+Work Order
+Work Orders
+Work Orders Details
+YES
+Yes, Delete
+YouTube
+Your Address
+Your app version is outdated. Please update to the latest version.
+deadline
+select Project
+select project
+uur

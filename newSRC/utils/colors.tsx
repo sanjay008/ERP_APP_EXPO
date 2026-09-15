@@ -1,0 +1,36 @@
+export const Colors = {
+  primary: "#5A8DEE",
+  border: "#E0E5EA",
+  SquareBtnBG: "#F7F9FB",
+  white: "#FFFFFF",
+  black: "#000000",
+  placeholder: "#7A8794",
+  SearchBorder: "#CACFD4",
+  gray: "#F7F9FB",
+  green: "#06AC14",
+  litegreen: "#E7F7E8",
+  neworder: "#FF005EF2",
+  neworderlite: "#FFE6EF",
+  plan: "#7C00FFF2",
+  planlite: "#F2E6FF",
+  finished: "#0037FFFC",
+  finishedlite: "#E6EBFF",
+  postponed: "#00D0FFF2",
+  postponedlite: "#E6FBFF",
+  hold: "#00FF22F2",
+  holdlite: "#E6FFE9",
+  approve: "#FF6200F2",
+  approvelite: "#FFF0E6",
+  dicline: "#FF0000F2",
+  diclinelite: "#FFE6E6",
+  invoice: "#FFEB3BF2",
+  invoicelite: "#FFFDEC",
+  iconbg: "#CADAF8",
+  lightprimary: "#4E83E750",
+  lightprimary1: "#DCE6FA",
+  vibrantblue: "#007bff",
+
+
+  // Status
+  conceptStatus:"#797979"
+};

@@ -1,0 +1,1477 @@
+{
+  "+ Absence": {
+    "en": "+ Absence",
+    "nl": "+ Afwezigheid",
+    "ar": "+ غياب"
+  },
+  "+ Leave": {
+    "en": "+ Leave",
+    "nl": "+ Verlof",
+    "ar": "+ إجازة"
+  },
+  "-": {
+    "en": "-",
+    "nl": "-",
+    "ar": "-"
+  },
+  "About App": {
+    "en": "About App",
+    "nl": "Over de app",
+    "ar": "حول التطبيق"
+  },
+  "Absence created successfully": {
+    "en": "Absence created successfully",
+    "nl": "Afwezigheid succesvol aangemaakt",
+    "ar": "تم إنشاء الغياب بنجاح"
+  },
+  "Add Note": {
+    "en": "Add Note",
+    "nl": "Notitie toevoegen",
+    "ar": "إضافة ملاحظة"
+  },
+  "Add Qty.....": {
+    "en": "Add Qty.....",
+    "nl": "Aantal toevoegen.....",
+    "ar": "إضافة الكمية....."
+  },
+  "Add extra stop": {
+    "en": "Add extra stop",
+    "nl": "Extra stop toevoegen",
+    "ar": "إضافة محطة إضافية"
+  },
+  "Add gallery images": {
+    "en": "Add gallery images",
+    "nl": "Galerijafbeeldingen toevoegen",
+    "ar": "إضافة صور المعرض"
+  },
+  "Add images": {
+    "en": "Add images",
+    "nl": "Afbeeldingen toevoegen",
+    "ar": "إضافة صور"
+  },
+  "Add price...": {
+    "en": "Add price...",
+    "nl": "Prijs toevoegen...",
+    "ar": "إضافة السعر..."
+  },
+  "Add title.....": {
+    "en": "Add title.....",
+    "nl": "Titel toevoegen.....",
+    "ar": "إضافة العنوان....."
+  },
+  "Already Scanned": {
+    "en": "Already Scanned",
+    "nl": "Al gescand",
+    "ar": "تم المسح مسبقاً"
+  },
+  "Already have an account? Log in": {
+    "en": "Already have an account? Log in",
+    "nl": "Heb je al een account? Log in",
+    "ar": "هل لديك حساب؟ تسجيل الدخول"
+  },
+  "Apply Filter": {
+    "en": "Apply Filter",
+    "nl": "Filter toepassen",
+    "ar": "تطبيق الفلتر"
+  },
+  "Are you sure you want to cancel this booking?": {
+    "en": "Are you sure you want to cancel this booking?",
+    "nl": "Weet u zeker dat u deze boeking wilt annuleren?",
+    "ar": "هل أنت متأكد أنك تريد إلغاء هذا الحجز؟"
+  },
+  "Are you sure you want to complete this booking?": {
+    "en": "Are you sure you want to complete this booking?",
+    "nl": "Weet u zeker dat u deze boeking wilt afronden?",
+    "ar": "هل أنت متأكد أنك تريد إكمال هذا الحجز؟"
+  },
+  "Are you sure you want to delete this file?": {
+    "en": "Are you sure you want to delete this file?",
+    "nl": "Weet u zeker dat u dit bestand wilt verwijderen?",
+    "ar": "هل أنت متأكد أنك تريد حذف هذا الملف؟"
+  },
+  "Are you sure you want to delete?": {
+    "en": "Are you sure you want to delete?",
+    "nl": "Weet u zeker dat u wilt verwijderen?",
+    "ar": "هل أنت متأكد أنك تريد الحذف؟"
+  },
+  "Arrival": {
+    "en": "Arrival",
+    "nl": "Aankomst",
+    "ar": "الوصول"
+  },
+  "BTW": {
+    "en": "BTW",
+    "nl": "BTW",
+    "ar": "ضريبة القيمة المضافة"
+  },
+  "Back": {
+    "en": "Back",
+    "nl": "Terug",
+    "ar": "رجوع"
+  },
+  "Begin & Einde": {
+    "en": "Begin & Einde",
+    "nl": "Begin & Einde",
+    "ar": "البداية والنهاية"
+  },
+  "Birth Date": {
+    "en": "Birth Date",
+    "nl": "Geboortedatum",
+    "ar": "تاريخ الميلاد"
+  },
+  "Birth Place": {
+    "en": "Birth Place",
+    "nl": "Geboorteplaats",
+    "ar": "مكان الميلاد"
+  },
+  "Booking": {
+    "en": "Booking",
+    "nl": "Boeking",
+    "ar": "حجز"
+  },
+  "Booking Details": {
+    "en": "Booking Details",
+    "nl": "Boekingsdetails",
+    "ar": "تفاصيل الحجز"
+  },
+  "Booking Id": {
+    "en": "Booking Id",
+    "nl": "Boekings-ID",
+    "ar": "رقم الحجز"
+  },
+  "Booking List": {
+    "en": "Booking List",
+    "nl": "Boekingslijst",
+    "ar": "قائمة الحجوزات"
+  },
+  "Booking Summary": {
+    "en": "Booking Summary",
+    "nl": "Boekingssamenvatting",
+    "ar": "ملخص الحجز"
+  },
+  "Booking cancelled": {
+    "en": "Booking cancelled",
+    "nl": "Boeking geannuleerd",
+    "ar": "تم إلغاء الحجز"
+  },
+  "Booking completed": {
+    "en": "Booking completed",
+    "nl": "Boeking voltooid",
+    "ar": "تم إكمال الحجز"
+  },
+  "Booking confirmed": {
+    "en": "Booking confirmed",
+    "nl": "Boeking bevestigd",
+    "ar": "تم تأكيد الحجز"
+  },
+  "Breake": {
+    "en": "Breake",
+    "nl": "Pauze",
+    "ar": "استراحة"
+  },
+  "Brog": {
+    "en": "Brog",
+    "nl": "Brok",
+    "ar": "قطعة"
+  },
+  "Burgerservicenummer (BSN) ": {
+    "en": "Burgerservicenummer (BSN) ",
+    "nl": "Burgerservicenummer (BSN)",
+    "ar": "رقم الخدمة المدنية (BSN)"
+  },
+  "Business": {
+    "en": "Business",
+    "nl": "Bedrijf",
+    "ar": "الأعمال"
+  },
+  "Business tags": {
+    "en": "Business tags",
+    "nl": "Bedrijfstags",
+    "ar": "وسوم الأعمال"
+  },
+  "Camera permission is required": {
+    "en": "Camera permission is required",
+    "nl": "Cameratoestemming is vereist",
+    "ar": "إذن الكاميرا مطلوب"
+  },
+  "Change Email": {
+    "en": "Change Email",
+    "nl": "E-mail wijzigen",
+    "ar": "تغيير البريد الإلكتروني"
+  },
+  "Change WhatsApp Number": {
+    "en": "Change WhatsApp Number",
+    "nl": "WhatsApp nummer wijzigen",
+    "ar": "تغيير رقم واتساب"
+  },
+  "Change photo": {
+    "en": "Change photo",
+    "nl": "Foto wijzigen",
+    "ar": "تغيير الصورة"
+  },
+  "Check In & Out": {
+    "en": "Check In & Out",
+    "nl": "In- & uitchecken",
+    "ar": "تسجيل الدخول / الخروج"
+  },
+  "Child Contract": {
+    "en": "Child Contract",
+    "nl": "Kindercontract",
+    "ar": "عقد الطفل"
+  },
+  "Child Time": {
+    "en": "Child Time",
+    "nl": "Kindtijd",
+    "ar": "وقت الطفل"
+  },
+  "Choose image": {
+    "en": "Choose image",
+    "nl": "Kies afbeelding",
+    "ar": "اختر صورة"
+  },
+  "Clear": {
+    "en": "Clear",
+    "nl": "Wissen",
+    "ar": "مسح"
+  },
+  "Client": {
+    "en": "Client",
+    "nl": "Klant",
+    "ar": "العميل"
+  },
+  "Close day": {
+    "en": "Close day",
+    "nl": "Dag sluiten",
+    "ar": "إغلاق اليوم"
+  },
+  "Closed Date": {
+    "en": "Closed Date",
+    "nl": "Sluitingsdatum",
+    "ar": "تاريخ الإغلاق"
+  },
+  "Comment added": {
+    "en": "Comment added",
+    "nl": "Opmerking toegevoegd",
+    "ar": "تمت إضافة التعليق"
+  },
+  "Company": {
+    "en": "Company",
+    "nl": "Bedrijf",
+    "ar": "الشركة"
+  },
+  "Company Name": {
+    "en": "Company Name",
+    "nl": "Bedrijfsnaam",
+    "ar": "اسم الشركة"
+  },
+  "Company created successfully!": {
+    "en": "Company created successfully!",
+    "nl": "Bedrijf succesvol aangemaakt!",
+    "ar": "تم إنشاء الشركة بنجاح!"
+  },
+  "Company details": {
+    "en": "Company details",
+    "nl": "Bedrijfsgegevens",
+    "ar": "تفاصيل الشركة"
+  },
+  "Complete Profile": {
+    "en": "Complete Profile",
+    "nl": "Profiel voltooien",
+    "ar": "إكمال الملف الشخصي"
+  },
+  "Connections Details": {
+    "en": "Connections Details",
+    "nl": "Verbindingsdetails",
+    "ar": "تفاصيل الاتصالات"
+  },
+  "Country Code": {
+    "en": "Country Code",
+    "nl": "Landcode",
+    "ar": "رمز الدولة"
+  },
+  "Country code": {
+    "en": "Country code",
+    "nl": "Landcode",
+    "ar": "رمز الدولة"
+  },
+  "Create Account": {
+    "en": "Create Account",
+    "nl": "Account aanmaken",
+    "ar": "إنشاء حساب"
+  },
+  "Create Booking": {
+    "en": "Create Booking",
+    "nl": "Boeking aanmaken",
+    "ar": "إنشاء حجز"
+  },
+  "Create New Ticket": {
+    "en": "Create New Ticket",
+    "nl": "Nieuw ticket aanmaken",
+    "ar": "إنشاء تذكرة جديدة"
+  },
+  "Curr..": {
+    "en": "Curr..",
+    "nl": "Valuta..",
+    "ar": "العملة.."
+  },
+  "Daycare Contract": {
+    "en": "Daycare Contract",
+    "nl": "Kinderopvangcontract",
+    "ar": "عقد رعاية الأطفال"
+  },
+  "Delete File": {
+    "en": "Delete File",
+    "nl": "Bestand verwijderen",
+    "ar": "حذف الملف"
+  },
+  "Departure": {
+    "en": "Departure",
+    "nl": "Vertrek",
+    "ar": "المغادرة"
+  },
+  "Description is required.": {
+    "en": "Description is required.",
+    "nl": "Beschrijving is verplicht.",
+    "ar": "الوصف مطلوب."
+  },
+  "Destination": {
+    "en": "Destination",
+    "nl": "Bestemming",
+    "ar": "الوجهة"
+  },
+  "Destination Address": {
+    "en": "Destination Address",
+    "nl": "Bestemmingsadres",
+    "ar": "عنوان الوجهة"
+  },
+  "Destination address": {
+    "en": "Destination address",
+    "nl": "Bestemmingsadres",
+    "ar": "عنوان الوجهة"
+  },
+  "Display Name": {
+    "en": "Display Name",
+    "nl": "Weergavenaam",
+    "ar": "اسم العرض"
+  },
+  "Document nr (ID/Paspoort)": {
+    "en": "Document nr (ID/Paspoort)",
+    "nl": "Documentnr. (ID/Paspoort)",
+    "ar": "رقم الوثيقة (الهوية/جواز السفر)"
+  },
+  "Driver": {
+    "en": "Driver",
+    "nl": "Chauffeur",
+    "ar": "السائق"
+  },
+  "Easy check-in & check-out": {
+    "en": "Easy check-in & check-out",
+    "nl": "Eenvoudig in- en uitchecken",
+    "ar": "تسجيل دخول وخروج سهل"
+  },
+  "Email Adres": {
+    "en": "Email Adres",
+    "nl": "E-mailadres",
+    "ar": "عنوان البريد الإلكتروني"
+  },
+  "Employer": {
+    "en": "Employer",
+    "nl": "Werkgever",
+    "ar": "صاحب العمل"
+  },
+  "End Datum": {
+    "en": "End Datum",
+    "nl": "Einddatum",
+    "ar": "تاريخ الانتهاء"
+  },
+  "Enter Naam": {
+    "en": "Enter Naam",
+    "nl": "Voer naam in",
+    "ar": "أدخل الاسم"
+  },
+  "Enter a valid company name": {
+    "en": "Enter a valid company name",
+    "nl": "Voer een geldige bedrijfsnaam in",
+    "ar": "أدخل اسم شركة صالح"
+  },
+  "Enter a valid phone number": {
+    "en": "Enter a valid phone number",
+    "nl": "Voer een geldig telefoonnummer in",
+    "ar": "أدخل رقم هاتف صالح"
+  },
+  "Enter address": {
+    "en": "Enter address",
+    "nl": "Voer adres in",
+    "ar": "أدخل العنوان"
+  },
+  "Enter birth place": {
+    "en": "Enter birth place",
+    "nl": "Voer geboorteplaats in",
+    "ar": "أدخل مكان الميلاد"
+  },
+  "Enter comment": {
+    "en": "Enter comment",
+    "nl": "Voer opmerking in",
+    "ar": "أدخل التعليق"
+  },
+  "Enter description": {
+    "en": "Enter description",
+    "nl": "Voer beschrijving in",
+    "ar": "أدخل الوصف"
+  },
+  "Enter destination address": {
+    "en": "Enter destination address",
+    "nl": "Voer bestemmingsadres in",
+    "ar": "أدخل عنوان الوجهة"
+  },
+  "Enter first name": {
+    "en": "Enter first name",
+    "nl": "Voer voornaam in",
+    "ar": "أدخل الاسم الأول"
+  },
+  "Enter middle name": {
+    "en": "Enter middle name",
+    "nl": "Voer voorvoegsel in",
+    "ar": "أدخل الاسم الأوسط"
+  },
+  "Enter pickup address": {
+    "en": "Enter pickup address",
+    "nl": "Voer ophaaladres in",
+    "ar": "أدخل عنوان الاستلام"
+  },
+  "Enter stop address": {
+    "en": "Enter stop address",
+    "nl": "Voer stopadres in",
+    "ar": "أدخل عنوان المحطة"
+  },
+  "Enter task name": {
+    "en": "Enter task name",
+    "nl": "Voer taaknaam in",
+    "ar": "أدخل اسم المهمة"
+  },
+  "Enter ticket title": {
+    "en": "Enter ticket title",
+    "nl": "Voer tickettitel in",
+    "ar": "أدخل عنوان التذكرة"
+  },
+  "Enter whatsapp number": {
+    "en": "Enter whatsapp number",
+    "nl": "Voer whatsapp nummer in",
+    "ar": "أدخل رقم واتساب"
+  },
+  "Enter your email and address": {
+    "en": "Enter your email and address",
+    "nl": "Voer je e-mailadres en adres in",
+    "ar": "أدخل بريدك الإلكتروني وعنوانك"
+  },
+  "Enter your personal information": {
+    "en": "Enter your personal information",
+    "nl": "Voer je persoonlijke gegevens in",
+    "ar": "أدخل معلوماتك الشخصية"
+  },
+  "Executor": {
+    "en": "Executor",
+    "nl": "Uitvoerder",
+    "ar": "المنفذ"
+  },
+  "Extra Stop": {
+    "en": "Extra Stop",
+    "nl": "Extra stop",
+    "ar": "محطة إضافية"
+  },
+  "Filter By Status": {
+    "en": "Filter By Status",
+    "nl": "Filteren op status",
+    "ar": "تصفية حسب الحالة"
+  },
+  "Financieel": {
+    "en": "Financial",
+    "nl": "Financieel",
+    "ar": "المالية"
+  },
+  "Flight Schedule": {
+    "en": "Flight Schedule",
+    "nl": "Vluchtschema",
+    "ar": "جدول الرحلات"
+  },
+  "Function Title": {
+    "en": "Function Title",
+    "nl": "Functietitel",
+    "ar": "المسمى الوظيفي"
+  },
+  "Geen Standby": {
+    "en": "Geen Standby",
+    "nl": "Geen standby",
+    "ar": "لا يوجد احتياط"
+  },
+  "Go back": {
+    "en": "Go back",
+    "nl": "Ga terug",
+    "ar": "العودة"
+  },
+  "Goedkeuren": {
+    "en": "Goedkeuren",
+    "nl": "Goedkeuren",
+    "ar": "الموافقة"
+  },
+  "Google maps": {
+    "en": "Google maps",
+    "nl": "Google Maps",
+    "ar": "خرائط جوجل"
+  },
+  "Grant permission": {
+    "en": "Grant permission",
+    "nl": "Toestemming verlenen",
+    "ar": "منح الإذن"
+  },
+  "Guest List": {
+    "en": "Guest List",
+    "nl": "Gastenlijst",
+    "ar": "قائمة الضيوف"
+  },
+  "How much did you receive?": {
+    "en": "How much did you receive?",
+    "nl": "Hoeveel heeft u ontvangen?",
+    "ar": "كم استلمت؟"
+  },
+  "Huurder": {
+    "en": "Huurder",
+    "nl": "Huurder",
+    "ar": "المستأجر"
+  },
+  "ID Ascending": {
+    "en": "ID Ascending",
+    "nl": "ID oplopend",
+    "ar": "المعرف تصاعدي"
+  },
+  "ID Descending": {
+    "en": "ID Descending",
+    "nl": "ID aflopend",
+    "ar": "المعرف تنازلي"
+  },
+  "Id": {
+    "en": "Id",
+    "nl": "ID",
+    "ar": "المعرف"
+  },
+  "Install": {
+    "en": "Install",
+    "nl": "Installeren",
+    "ar": "تثبيت"
+  },
+  "Invalid Number": {
+    "en": "Invalid Number",
+    "nl": "Ongeldig nummer",
+    "ar": "رقم غير صالح"
+  },
+  "KVK": {
+    "en": "KVK",
+    "nl": "KVK",
+    "ar": "KVK"
+  },
+  "Kind": {
+    "en": "Kind",
+    "nl": "Kind",
+    "ar": "الطفل"
+  },
+  "Kind Name": {
+    "en": "Kind Name",
+    "nl": "Kindnaam",
+    "ar": "اسم الطفل"
+  },
+  "Leave created successfully": {
+    "en": "Leave created successfully",
+    "nl": "Verlof succesvol aangemaakt",
+    "ar": "تم إنشاء الإجازة بنجاح"
+  },
+  "Location unavailable": {
+    "en": "Location unavailable",
+    "nl": "Locatie niet beschikbaar",
+    "ar": "الموقع غير متاح"
+  },
+  "Luggage": {
+    "en": "Luggage",
+    "nl": "Bagage",
+    "ar": "الأمتعة"
+  },
+  "Max persons": {
+    "en": "Max persons",
+    "nl": "Max. personen",
+    "ar": "الحد الأقصى للأشخاص"
+  },
+  "Menu": {
+    "en": "Menu",
+    "nl": "Menu",
+    "ar": "القائمة"
+  },
+  "Middle Name": {
+    "en": "Middle Name",
+    "nl": "Voorvoegsel",
+    "ar": "الاسم الأوسط"
+  },
+  "Mobile No.": {
+    "en": "Mobile No.",
+    "nl": "Mobiel nr.",
+    "ar": "رقم الجوال"
+  },
+  "My Booking": {
+    "en": "My Booking",
+    "nl": "Mijn boeking",
+    "ar": "حجزي"
+  },
+  "Name": {
+    "en": "Name",
+    "nl": "Naam",
+    "ar": "الاسم"
+  },
+  "New Note": {
+    "en": "New Note",
+    "nl": "Nieuwe notitie",
+    "ar": "ملاحظة جديدة"
+  },
+  "New Note Add": {
+    "en": "New Note Add",
+    "nl": "Nieuwe notitie toevoegen",
+    "ar": "إضافة ملاحظة جديدة"
+  },
+  "No Comments Yet": {
+    "en": "No Comments Yet",
+    "nl": "Nog geen opmerkingen",
+    "ar": "لا توجد تعليقات بعد"
+  },
+  "No Connections Found.": {
+    "en": "No Connections Found.",
+    "nl": "Geen verbindingen gevonden.",
+    "ar": "لم يتم العثور على اتصالات."
+  },
+  "No Contracts Found.": {
+    "en": "No Contracts Found.",
+    "nl": "Geen contracten gevonden.",
+    "ar": "لم يتم العثور على عقود."
+  },
+  "No Events Found": {
+    "en": "No Events Found",
+    "nl": "Geen evenementen gevonden",
+    "ar": "لم يتم العثور على أحداث"
+  },
+  "No Request Found.": {
+    "en": "No Request Found.",
+    "nl": "Geen verzoek gevonden.",
+    "ar": "لم يتم العثور على طلب."
+  },
+  "No Tickets Found": {
+    "en": "No Tickets Found",
+    "nl": "Geen tickets gevonden",
+    "ar": "لم يتم العثور على تذاكر"
+  },
+  "No Work Orders Found.": {
+    "en": "No Work Orders Found.",
+    "nl": "Geen werkorders gevonden.",
+    "ar": "لم يتم العثور على أوامر عمل."
+  },
+  "No countries found": {
+    "en": "No countries found",
+    "nl": "Geen landen gevonden",
+    "ar": "لم يتم العثور على دول"
+  },
+  "No data found": {
+    "en": "No data found",
+    "nl": "Geen gegevens gevonden",
+    "ar": "لم يتم العثور على بيانات"
+  },
+  "No file chosen": {
+    "en": "No file chosen",
+    "nl": "Geen bestand gekozen",
+    "ar": "لم يتم اختيار ملف"
+  },
+  "No internet connection": {
+    "en": "No internet connection",
+    "nl": "Geen internetverbinding",
+    "ar": "لا يوجد اتصال بالإنترنت"
+  },
+  "None": {
+    "en": "None",
+    "nl": "Geen",
+    "ar": "لا شيء"
+  },
+  "OTP resent successfully": {
+    "en": "OTP resent successfully",
+    "nl": "OTP opnieuw verzonden",
+    "ar": "تم إعادة إرسال OTP بنجاح"
+  },
+  "Opmerking": {
+    "en": "Opmerking",
+    "nl": "Opmerking",
+    "ar": "ملاحظة"
+  },
+  "Opnieuw": {
+    "en": "Reset",
+    "nl": "Opnieuw",
+    "ar": "إعادة تعيين"
+  },
+  "Optional": {
+    "en": "Optional",
+    "nl": "Optioneel",
+    "ar": "اختياري"
+  },
+  "Order Created By": {
+    "en": "Order Created By",
+    "nl": "Bestelling aangemaakt door",
+    "ar": "تم إنشاء الطلب بواسطة"
+  },
+  "Outstading": {
+    "en": "Outstading",
+    "nl": "Openstaand",
+    "ar": "المستحق"
+  },
+  "Parent 1": {
+    "en": "Parent 1",
+    "nl": "Ouder 1",
+    "ar": "الوالد 1"
+  },
+  "Parent 2": {
+    "en": "Parent 2",
+    "nl": "Ouder 2",
+    "ar": "الوالد 2"
+  },
+  "Past Events": {
+    "en": "Past Events",
+    "nl": "Afgelopen evenementen",
+    "ar": "الأحداث السابقة"
+  },
+  "Pay Job": {
+    "en": "Pay Job",
+    "nl": "Betaal klus",
+    "ar": "دفع المهمة"
+  },
+  "Pay Now": {
+    "en": "Pay Now",
+    "nl": "Nu betalen",
+    "ar": "ادفع الآن"
+  },
+  "Pay order": {
+    "en": "Pay order",
+    "nl": "Bestelling betalen",
+    "ar": "دفع الطلب"
+  },
+  "Payment saved": {
+    "en": "Payment saved",
+    "nl": "Betaling opgeslagen",
+    "ar": "تم حفظ الدفع"
+  },
+  "Permission required to access photos": {
+    "en": "Permission required to access photos",
+    "nl": "Toestemming vereist voor foto's",
+    "ar": "الإذن مطلوب للوصول إلى الصور"
+  },
+  "Personal Details": {
+    "en": "Personal Details",
+    "nl": "Persoonlijke gegevens",
+    "ar": "التفاصيل الشخصية"
+  },
+  "Personalia": {
+    "en": "Personalia",
+    "nl": "Personalia",
+    "ar": "البيانات الشخصية"
+  },
+  "Phone country code": {
+    "en": "Phone country code",
+    "nl": "Telefoon landcode",
+    "ar": "رمز دولة الهاتف"
+  },
+  "Pickup Address": {
+    "en": "Pickup Address",
+    "nl": "Ophaaladres",
+    "ar": "عنوان الاستلام"
+  },
+  "Please Enter Ammount!": {
+    "en": "Please Enter Ammount!",
+    "nl": "Voer bedrag in!",
+    "ar": "يرجى إدخال المبلغ!"
+  },
+  "Please Enter Comments!": {
+    "en": "Please Enter Comments!",
+    "nl": "Voer opmerkingen in!",
+    "ar": "يرجى إدخال التعليقات!"
+  },
+  "Please Enter Note": {
+    "en": "Please Enter Note",
+    "nl": "Voer notitie in",
+    "ar": "يرجى إدخال الملاحظة"
+  },
+  "Please check your internet and try again.": {
+    "en": "Please check your internet and try again.",
+    "nl": "Controleer je internetverbinding en probeer opnieuw.",
+    "ar": "يرجى التحقق من الإنترنت والمحاولة مرة أخرى."
+  },
+  "Please complete your profile to continue": {
+    "en": "Please complete your profile to continue",
+    "nl": "Voltooi je profiel om door te gaan",
+    "ar": "يرجى إكمال ملفك الشخصي للمتابعة"
+  },
+  "Please enter address": {
+    "en": "Please enter address",
+    "nl": "Voer adres in",
+    "ar": "يرجى إدخال العنوان"
+  },
+  "Please enter comment": {
+    "en": "Please enter comment",
+    "nl": "Voer opmerking in",
+    "ar": "يرجى إدخال التعليق"
+  },
+  "Please enter company name": {
+    "en": "Please enter company name",
+    "nl": "Voer bedrijfsnaam in",
+    "ar": "يرجى إدخال اسم الشركة"
+  },
+  "Please enter signature": {
+    "en": "Please enter signature",
+    "nl": "Voer handtekening in",
+    "ar": "يرجى إدخال التوقيع"
+  },
+  "Please enter task name": {
+    "en": "Please enter task name",
+    "nl": "Voer taaknaam in",
+    "ar": "يرجى إدخال اسم المهمة"
+  },
+  "Please fill all required fields": {
+    "en": "Please fill all required fields",
+    "nl": "Vul alle verplichte velden in",
+    "ar": "يرجى ملء جميع الحقول المطلوبة"
+  },
+  "Please fill required fields": {
+    "en": "Please fill required fields",
+    "nl": "Vul verplichte velden in",
+    "ar": "يرجى ملء الحقول المطلوبة"
+  },
+  "Please select contract and schedule": {
+    "en": "Please select contract and schedule",
+    "nl": "Selecteer contract en planning",
+    "ar": "يرجى اختيار العقد والجدول"
+  },
+  "Please select country code": {
+    "en": "Please select country code",
+    "nl": "Selecteer een landcode",
+    "ar": "يرجى اختيار رمز الدولة"
+  },
+  "Please select customer": {
+    "en": "Please select customer",
+    "nl": "Selecteer klant",
+    "ar": "يرجى اختيار العميل"
+  },
+  "Please select language": {
+    "en": "Please select language",
+    "nl": "Selecteer een taal",
+    "ar": "يرجى اختيار اللغة"
+  },
+  "Please select priority": {
+    "en": "Please select priority",
+    "nl": "Selecteer prioriteit",
+    "ar": "يرجى اختيار الأولوية"
+  },
+  "Please select salutation": {
+    "en": "Please select salutation",
+    "nl": "Selecteer alstublieft aanhef",
+    "ar": "يرجى اختيار اللقب"
+  },
+  "Please select start and destination": {
+    "en": "Please select start and destination",
+    "nl": "Selecteer start en bestemming",
+    "ar": "يرجى اختيار نقطة البداية والوجهة"
+  },
+  "Please select subcategory": {
+    "en": "Please select subcategory",
+    "nl": "Selecteer subcategorie",
+    "ar": "يرجى اختيار الفئة الفرعية"
+  },
+  "Pricing": {
+    "en": "Pricing",
+    "nl": "Prijzen",
+    "ar": "التسعير"
+  },
+  "Private Comment": {
+    "en": "Private Comment",
+    "nl": "Privé opmerking",
+    "ar": "تعليق خاص"
+  },
+  "Product created successfully": {
+    "en": "Product created successfully",
+    "nl": "Product succesvol aangemaakt",
+    "ar": "تم إنشاء المنتج بنجاح"
+  },
+  "Product list server error": {
+    "en": "Product list failed on the server (invalid product price data). Please ask your administrator to fix the backend.",
+    "nl": "Productlijst mislukt op de server (ongeldige productprijsgegevens). Vraag uw beheerder om de backend te repareren.",
+    "ar": "فشلت قائمة المنتجات على الخادم (بيانات سعر المنتج غير صالحة). يرجى مطالبة المسؤول بإصلاح الخادم."
+  },
+  "Profile updated successfully": {
+    "en": "Profile updated successfully",
+    "nl": "Profiel succesvol bijgewerkt",
+    "ar": "تم تحديث الملف الشخصي بنجاح"
+  },
+  "Project Check In": {
+    "en": "Project Check In",
+    "nl": "Project inchecken",
+    "ar": "تسجيل دخول المشروع"
+  },
+  "Project Check Out": {
+    "en": "Project Check Out",
+    "nl": "Project uitchecken",
+    "ar": "تسجيل خروج المشروع"
+  },
+  "Project Name is required": {
+    "en": "Project Name is required",
+    "nl": "Project Name is required",
+    "ar": "اسم المشروع مطلوب"
+  },
+  "Project Type": {
+    "en": "Project Type",
+    "nl": "Project Type",
+    "ar": "نوع المشروع"
+  },
+  "Project Type is required": {
+    "en": "Project Type is required",
+    "nl": "Project Type is required",
+    "ar": "نوع المشروع مطلوب"
+  },
+  "Projects": {
+    "en": "Projects",
+    "nl": "Projecten",
+    "ar": "المشاريع"
+  },
+  "Rebuild the app after installing image picker. Run: npx expo run:android": {
+    "en": "Please rebuild the app: npx expo run:android",
+    "nl": "Herbouw de app na installatie van image picker. Voer uit: npx expo run:android",
+    "ar": "يرجى إعادة بناء التطبيق: npx expo run:android"
+  },
+  "Register with your WhatsApp number": {
+    "en": "Register with your WhatsApp number",
+    "nl": "Registreer met je WhatsApp-nummer",
+    "ar": "سجل برقم واتساب"
+  },
+  "Relaties": {
+    "en": "Relaties",
+    "nl": "Relaties",
+    "ar": "العلاقات"
+  },
+  "Save Note": {
+    "en": "Save Note",
+    "nl": "Notitie opslaan",
+    "ar": "حفظ الملاحظة"
+  },
+  "Scan event QR code": {
+    "en": "Scan event QR code",
+    "nl": "Scan evenement QR-code",
+    "ar": "مسح رمز QR للحدث"
+  },
+  "Scanner": {
+    "en": "Scanner",
+    "nl": "Scanner",
+    "ar": "الماسح"
+  },
+  "Schedule": {
+    "en": "Schedule",
+    "nl": "Planning",
+    "ar": "الجدول"
+  },
+  "Schedule found": {
+    "en": "Schedule found",
+    "nl": "Planning gevonden",
+    "ar": "تم العثور على الجدول"
+  },
+  "School": {
+    "en": "School",
+    "nl": "School",
+    "ar": "المدرسة"
+  },
+  "Search connection": {
+    "en": "Search connection",
+    "nl": "Zoek verbinding",
+    "ar": "بحث عن اتصال"
+  },
+  "Search country": {
+    "en": "Search country",
+    "nl": "Zoek land",
+    "ar": "بحث عن دولة"
+  },
+  "Search customer": {
+    "en": "Search customer",
+    "nl": "Zoek klant",
+    "ar": "بحث عن عميل"
+  },
+  "Search priority": {
+    "en": "Search priority",
+    "nl": "Zoek prioriteit",
+    "ar": "بحث عن الأولوية"
+  },
+  "Search project": {
+    "en": "Search project",
+    "nl": "Zoek project",
+    "ar": "بحث عن مشروع"
+  },
+  "Search tasks, complaints": {
+    "en": "Search tasks, complaints",
+    "nl": "Zoek taken, klachten",
+    "ar": "بحث عن مهام، شكاوى"
+  },
+  "Search tenant contracts": {
+    "en": "Search tenant contracts",
+    "nl": "Zoek huurcontracten",
+    "ar": "بحث عن عقود الإيجار"
+  },
+  "Search ticket, name, id": {
+    "en": "Search ticket, name, id",
+    "nl": "Zoek ticket, naam, id",
+    "ar": "بحث عن تذكرة، اسم، معرف"
+  },
+  "Search works orders": {
+    "en": "Search works orders",
+    "nl": "Zoek werkorders",
+    "ar": "بحث عن أوامر العمل"
+  },
+  "Search.......": {
+    "en": "Search.......",
+    "nl": "Zoeken.......",
+    "ar": "بحث......."
+  },
+  "Select Priority": {
+    "en": "Select Priority",
+    "nl": "Selecteer prioriteit",
+    "ar": "اختر الأولوية"
+  },
+  "Select Relatie...": {
+    "en": "Select Relatie...",
+    "nl": "Selecteer relatie...",
+    "ar": "اختر العلاقة..."
+  },
+  "Select Tax": {
+    "en": "Select Tax",
+    "nl": "Selecteer belasting",
+    "ar": "اختر الضريبة"
+  },
+  "Select Template": {
+    "en": "Select Template",
+    "nl": "Selecteer sjabloon",
+    "ar": "اختر القالب"
+  },
+  "Select action": {
+    "en": "Select action",
+    "nl": "Selecteer actie",
+    "ar": "اختر الإجراء"
+  },
+  "Select birth date": {
+    "en": "Select birth date",
+    "nl": "Selecteer geboortedatum",
+    "ar": "اختر تاريخ الميلاد"
+  },
+  "Select category": {
+    "en": "Select category",
+    "nl": "Selecteer categorie",
+    "ar": "اختر الفئة"
+  },
+  "Select contract": {
+    "en": "Select contract",
+    "nl": "Selecteer contract",
+    "ar": "اختر العقد"
+  },
+  "Select country code": {
+    "en": "Select country code",
+    "nl": "Selecteer landcode",
+    "ar": "اختر رمز الدولة"
+  },
+  "Select customer": {
+    "en": "Select customer",
+    "nl": "Selecteer klant",
+    "ar": "اختر العميل"
+  },
+  "Select date": {
+    "en": "Select date",
+    "nl": "Selecteer datum",
+    "ar": "اختر التاريخ"
+  },
+  "Select priority": {
+    "en": "Select priority",
+    "nl": "Selecteer prioriteit",
+    "ar": "اختر الأولوية"
+  },
+  "Select profile photo": {
+    "en": "Select profile photo",
+    "nl": "Selecteer profielfoto",
+    "ar": "اختر صورة الملف الشخصي"
+  },
+  "Select project": {
+    "en": "Select project",
+    "nl": "Selecteer project",
+    "ar": "اختر المشروع"
+  },
+  "Select project name": {
+    "en": "Select project name",
+    "nl": "Selecteer projectnaam",
+    "ar": "اختر اسم المشروع"
+  },
+  "Select project type": {
+    "en": "Select project type",
+    "nl": "Selecteer projecttype",
+    "ar": "اختر نوع المشروع"
+  },
+  "Select salutation": {
+    "en": "Select salutation",
+    "nl": "Selecteer aanhef",
+    "ar": "اختر اللقب"
+  },
+  "Select saved address": {
+    "en": "Select saved address",
+    "nl": "Selecteer opgeslagen adres",
+    "ar": "اختر العنوان المحفوظ"
+  },
+  "Select subcategory": {
+    "en": "Select subcategory",
+    "nl": "Select subcategory",
+    "ar": "اختر الفئة الفرعية"
+  },
+  "Select template": {
+    "en": "Select template",
+    "nl": "Selecteer sjabloon",
+    "ar": "اختر القالب"
+  },
+  "Server error, please try again": {
+    "en": "Server error, please try again",
+    "nl": "Serverfout, probeer opnieuw",
+    "ar": "خطأ في الخادم، يرجى المحاولة مرة أخرى"
+  },
+  "Service Time": {
+    "en": "Service Time",
+    "nl": "Servicetijd",
+    "ar": "وقت الخدمة"
+  },
+  "Session expired, please login again": {
+    "en": "Session expired, please login again",
+    "nl": "Sessie verlopen, log opnieuw in",
+    "ar": "انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى"
+  },
+  "Smart solutions for modern businesses": {
+    "en": "Smart solutions for modern businesses",
+    "nl": "Slimme oplossingen voor moderne bedrijven",
+    "ar": "حلول ذكية للأعمال الحديثة"
+  },
+  "Social": {
+    "en": "Social",
+    "nl": "Social",
+    "ar": "التواصل الاجتماعي"
+  },
+  "Sort By ID": {
+    "en": "Sort By ID",
+    "nl": "Sorteer op ID",
+    "ar": "ترتيب حسب المعرف"
+  },
+  "Start Datum": {
+    "en": "Start Datum",
+    "nl": "Startdatum",
+    "ar": "تاريخ البداية"
+  },
+  "Start address": {
+    "en": "Start address",
+    "nl": "Startadres",
+    "ar": "عنوان البداية"
+  },
+  "Start point": {
+    "en": "Start point",
+    "nl": "Startpunt",
+    "ar": "نقطة البداية"
+  },
+  "Status Updated": {
+    "en": "Status Updated",
+    "nl": "Status bijgewerkt",
+    "ar": "تم تحديث الحالة"
+  },
+  "Step": {
+    "en": "Step",
+    "nl": "Stap",
+    "ar": "خطوة"
+  },
+  "Subcategory": {
+    "en": "Subcategory",
+    "nl": "Subcategorie",
+    "ar": "الفئة الفرعية"
+  },
+  "Submitted": {
+    "en": "Submitted",
+    "nl": "Ingediend",
+    "ar": "تم الإرسال"
+  },
+  "Suitcase": {
+    "en": "Suitcase",
+    "nl": "Koffer",
+    "ar": "حقيبة سفر"
+  },
+  "Tap to upload profile photo": {
+    "en": "Tap to upload profile photo",
+    "nl": "Tik om profielfoto te uploaden",
+    "ar": "اضغط لرفع صورة الملف الشخصي"
+  },
+  "Tasks/Complaints": {
+    "en": "Tasks/Complaints",
+    "nl": "Taken/Klachten",
+    "ar": "المهام/الشكاوى"
+  },
+  "Tasks/Complaints Details": {
+    "en": "Tasks/Complaints Details",
+    "nl": "Taken/Klachten details",
+    "ar": "تفاصيل المهام/الشكاوى"
+  },
+  "Template": {
+    "en": "Template",
+    "nl": "Sjabloon",
+    "ar": "القالب"
+  },
+  "Tenant Contracts Details": {
+    "en": "Tenant Contracts Details",
+    "nl": "Huurcontractdetails",
+    "ar": "تفاصيل عقود الإيجار"
+  },
+  "The WhatsApp number is not valid.": {
+    "en": "The WhatsApp number is not valid.",
+    "nl": "Het WhatsApp-nummer is niet geldig.",
+    "ar": "رقم واتساب غير صالح."
+  },
+  "This field is required": {
+    "en": "This field is required",
+    "nl": "Dit veld is verplicht",
+    "ar": "هذا الحقل مطلوب"
+  },
+  "Ticket Details": {
+    "en": "Ticket Details",
+    "nl": "Ticketdetails",
+    "ar": "تفاصيل التذكرة"
+  },
+  "Ticket Fetch Failed": {
+    "en": "Ticket Fetch Failed",
+    "nl": "Ticket ophalen mislukt",
+    "ar": "فشل جلب التذكرة"
+  },
+  "Ticket created successfully": {
+    "en": "Ticket created successfully",
+    "nl": "Ticket succesvol aangemaakt",
+    "ar": "تم إنشاء التذكرة بنجاح"
+  },
+  "Ticket name is required": {
+    "en": "Ticket name is required",
+    "nl": "Ticketnaam is verplicht",
+    "ar": "اسم التذكرة مطلوب"
+  },
+  "Ticket updated successfully": {
+    "en": "Ticket updated successfully",
+    "nl": "Ticket succesvol bijgewerkt",
+    "ar": "تم تحديث التذكرة بنجاح"
+  },
+  "Tickets": {
+    "en": "Tickets",
+    "nl": "Tickets",
+    "ar": "التذاكر"
+  },
+  "TikTok": {
+    "en": "TikTok",
+    "nl": "TikTok",
+    "ar": "تيك توك"
+  },
+  "Title is required.": {
+    "en": "Title is required.",
+    "nl": "Titel is verplicht.",
+    "ar": "العنوان مطلوب."
+  },
+  "To - Do": {
+    "en": "To - Do",
+    "nl": "Te doen",
+    "ar": "المهام"
+  },
+  "Tour": {
+    "en": "Tour",
+    "nl": "Tour",
+    "ar": "جولة"
+  },
+  "Travel cost": {
+    "en": "Travel cost",
+    "nl": "Reiskosten",
+    "ar": "تكلفة السفر"
+  },
+  "Trip Type": {
+    "en": "Trip Type",
+    "nl": "Reistype",
+    "ar": "نوع الرحلة"
+  },
+  "Trolly": {
+    "en": "Trolly",
+    "nl": "Trolley",
+    "ar": "عربة"
+  },
+  "Try again": {
+    "en": "Try again",
+    "nl": "Opnieuw proberen",
+    "ar": "حاول مرة أخرى"
+  },
+  "Undo": {
+    "en": "Undo",
+    "nl": "Ongedaan maken",
+    "ar": "تراجع"
+  },
+  "Update Now": {
+    "en": "Update Now",
+    "nl": "Nu updaten",
+    "ar": "تحديث الآن"
+  },
+  "Update failed": {
+    "en": "Update failed",
+    "nl": "Bijwerken mislukt",
+    "ar": "فشل التحديث"
+  },
+  "Updated": {
+    "en": "Updated",
+    "nl": "Bijgewerkt",
+    "ar": "تم التحديث"
+  },
+  "Updated successfully": {
+    "en": "Updated successfully",
+    "nl": "Succesvol bijgewerkt",
+    "ar": "تم التحديث بنجاح"
+  },
+  "Use custom destination address": {
+    "en": "Use custom destination address",
+    "nl": "Aangepast bestemmingsadres gebruiken",
+    "ar": "استخدام عنوان وجهة مخصص"
+  },
+  "Use custom pickup address": {
+    "en": "Use custom pickup address",
+    "nl": "Aangepast ophaaladres gebruiken",
+    "ar": "استخدام عنوان استلام مخصص"
+  },
+  "Vehicle Category": {
+    "en": "Vehicle Category",
+    "nl": "Voertuigcategorie",
+    "ar": "فئة المركبة"
+  },
+  "Vehicle price": {
+    "en": "Vehicle price",
+    "nl": "Voertuigprijs",
+    "ar": "سعر المركبة"
+  },
+  "Vendor Detail": {
+    "en": "Vendor Detail",
+    "nl": "Leveranciersdetail",
+    "ar": "تفاصيل المورد"
+  },
+  "Verify Email Address": {
+    "en": "Verify Email Address",
+    "nl": "E-mailadres verifiëren",
+    "ar": "تحقق من عنوان البريد الإلكتروني"
+  },
+  "Wait": {
+    "en": "Wait",
+    "nl": "Wachten",
+    "ar": "انتظر"
+  },
+  "Waiting for connection...": {
+    "en": "Waiting for connection...",
+    "nl": "Wachten op verbinding...",
+    "ar": "في انتظار الاتصال..."
+  },
+  "We": {
+    "en": "We",
+    "nl": "Wij",
+    "ar": "نحن"
+  },
+  "Week": {
+    "en": "Week",
+    "nl": "Week",
+    "ar": "أسبوع"
+  },
+  "Welcome to": {
+    "en": "Welcome to",
+    "nl": "Welkom bij",
+    "ar": "مرحباً بك في"
+  },
+  "WhatsApp Not Available": {
+    "en": "WhatsApp Not Available",
+    "nl": "WhatsApp niet beschikbaar",
+    "ar": "واتساب غير متاح"
+  },
+  "WhatsApp Number": {
+    "en": "WhatsApp Number",
+    "nl": "WhatsApp nummer",
+    "ar": "رقم واتساب"
+  },
+  "WhatsApp country code": {
+    "en": "WhatsApp country code",
+    "nl": "WhatsApp landcode",
+    "ar": "رمز دولة واتساب"
+  },
+  "WhatsApp is not installed on your device. Would you like to install it?": {
+    "en": "WhatsApp is not installed on your device. Would you like to install it?",
+    "nl": "WhatsApp is niet geïnstalleerd op uw apparaat. Wilt u het installeren?",
+    "ar": "واتساب غير مثبت على جهازك. هل تريد تثبيته؟"
+  },
+  "Whatsapp No.": {
+    "en": "Whatsapp No.",
+    "nl": "WhatsApp nr.",
+    "ar": "رقم واتساب"
+  },
+  "Work Order": {
+    "en": "Work Order",
+    "nl": "Werkorder",
+    "ar": "أمر العمل"
+  },
+  "Work Orders": {
+    "en": "Work Orders",
+    "nl": "Werkorders",
+    "ar": "أوامر العمل"
+  },
+  "Work Orders Details": {
+    "en": "Work Orders Details",
+    "nl": "Werkorderdetails",
+    "ar": "تفاصيل أوامر العمل"
+  },
+  "YES": {
+    "en": "YES",
+    "nl": "JA",
+    "ar": "نعم"
+  },
+  "Yes, Delete": {
+    "en": "Yes, Delete",
+    "nl": "Ja, verwijderen",
+    "ar": "نعم، احذف"
+  },
+  "YouTube": {
+    "en": "YouTube",
+    "nl": "YouTube",
+    "ar": "يوتيوب"
+  },
+  "Your Address": {
+    "en": "Your Address",
+    "nl": "Uw adres",
+    "ar": "عنوانك"
+  },
+  "Your app version is outdated. Please update to the latest version.": {
+    "en": "Your app version is outdated. Please update to the latest version.",
+    "nl": "Uw appversie is verouderd. Update naar de nieuwste versie.",
+    "ar": "إصدار التطبيق قديم. يرجى التحديث إلى أحدث إصدار."
+  },
+  "deadline": {
+    "en": "deadline",
+    "nl": "deadline",
+    "ar": "الموعد النهائي"
+  },
+  "select Project": {
+    "en": "select Project",
+    "nl": "selecteer project",
+    "ar": "اختر المشروع"
+  },
+  "select project": {
+    "en": "select project",
+    "nl": "selecteer project",
+    "ar": "اختر المشروع"
+  },
+  "uur": {
+    "en": "uur",
+    "nl": "uur",
+    "ar": "ساعة"
+  }
+}
