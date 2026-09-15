@@ -33,7 +33,10 @@ const clearAllData = async (): Promise<void> => {
     console.log(e);
   }
 };
-export const { width, height } = Dimensions.get('window')
+export const { width, height } =
+  typeof window !== "undefined"
+    ? Dimensions.get("window")
+    : { width: 0, height: 0 };
 export const useAppInsets = useSafeAreaInsets;
 export { storeData, getData, clearAllData };
 

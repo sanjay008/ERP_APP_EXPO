@@ -2,7 +2,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "i18next";
 import "intl-pluralrules";
 import { initReactI18next } from "react-i18next";
-import ApiService from "../utils/Apiservice";
 import apiConstants from "../utils/apiConstants";
 import { fallbackResources } from "./fallbacks";
 
@@ -11,9 +10,19 @@ type LanguageResource = {
   data: Record<string, string>;
 };
 
+const isClient = typeof window !== "undefined";
+
 const loadLanguage = async (): Promise<string> => {
-  const storedLanguage = await AsyncStorage.getItem("userLanguage");
-  return storedLanguage || "en";
+  if (!isClient) {
+    return "en";
+  }
+
+  try {
+    const storedLanguage = await AsyncStorage.getItem("userLanguage");
+    return storedLanguage || "en";
+  } catch {
+    return "en";
+  }
 };
 
 const initI18n = async (lng: string) => {
@@ -36,7 +45,12 @@ export const languagedata = async (): Promise<void> => {
   const lng = await loadLanguage();
   await initI18n(lng);
 
+  if (!isClient) {
+    return;
+  }
+
   try {
+    const { default: ApiService } = await import("../utils/Apiservice");
     const data = await ApiService<LanguageResource[]>(apiConstants.langauge, {});
 
     if (data.status && Array.isArray(data.data)) {
@@ -70,6 +84,20 @@ export const languagedata = async (): Promise<void> => {
   }
 };
 
-languagedata();
+if (!i18n.isInitialized) {
+  void i18n.use(initReactI18next).init({
+    lng: "en",
+    fallbackLng: "en",
+    resources: fallbackResources,
+    interpolation: {
+      escapeValue: false,
+    },
+    initImmediate: false,
+  });
+}
+
+if (isClient) {
+  void languagedata();
+}
 
 export default i18n;

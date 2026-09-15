@@ -9,7 +9,9 @@ import OtaAutoReload from "../Components/OtaAutoReload";
 import { NetworkProvider } from "../context/NetworkContext";
 import i18n from "../translation/i18n";
 
-ExpoSplashScreen.preventAutoHideAsync();
+if (typeof window !== "undefined") {
+  void ExpoSplashScreen.preventAutoHideAsync();
+}
 
 export const unstable_settings = {
   initialRouteName: "index",
