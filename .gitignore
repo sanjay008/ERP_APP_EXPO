@@ -27,6 +27,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# secrets / credentials — never commit service accounts or signing keys
+*firebase-adminsdk*.json
+AuthKey_*.p8
+*.p8
 
 # typescript
 *.tsbuildinfo
