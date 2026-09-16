@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
 import FallBackImage from "../../Components/FallBackImage";
 import { getData } from "../../utils/storeData";
 import { useScreenInsets } from "../../utils/screenInsets";
@@ -124,14 +125,6 @@ function buildDetailRows(
       icon: Images.ConnectionMail,
       iconBg: "#FFF8E6",
       iconColor: "#F5A623",
-    },
-    {
-      key: "password",
-      label: t("Wachtwoord"),
-      value: "***********",
-      icon: Images.userVector,
-      iconBg: "#F3F4F6",
-      iconColor: "#6B7280",
     },
     {
       key: "whatsapp",
@@ -287,12 +280,20 @@ export default function ProfileScreen() {
           {t("My Profile")}
         </Text>
 
-        <Pressable
-          style={styles.headerBtn}
-          onPress={() => router.push("/(app)/profile/edit")}
-        >
-          <Image source={Images.EditVector} style={styles.editIcon} resizeMode="contain" />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            style={styles.headerBtn}
+            onPress={() => router.push("/(app)/profile/settings")}
+          >
+            <Ionicons name="settings-outline" size={18} color={AppColors.black} />
+          </Pressable>
+          <Pressable
+            style={styles.headerBtn}
+            onPress={() => router.push("/(app)/profile/edit")}
+          >
+            <Image source={Images.EditVector} style={styles.editIcon} resizeMode="contain" />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -402,6 +403,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: AppColors.black,
     marginHorizontal: 8,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   content: {
     paddingHorizontal: LIST_UI.screenPadding,

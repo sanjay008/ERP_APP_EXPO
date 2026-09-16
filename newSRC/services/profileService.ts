@@ -36,7 +36,6 @@ export type EditProfilePayload = {
   lastName?: string;
   email?: string;
   privateEmail?: string;
-  password?: string;
   whatsappNumber?: string;
   countryCode?: string;
   phoneNumber?: string;
@@ -68,7 +67,6 @@ export async function updateProfileDetails(payload: EditProfilePayload) {
       achternaam: payload.lastName || "",
       email: payload.email || "",
       email_adres_private: payload.privateEmail || "",
-      password: payload.password || "",
       whatsapp_number: payload.whatsappNumber || "",
       country_code: payload.countryCode || "",
       contact_telefoon: payload.phoneNumber || "",

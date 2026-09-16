@@ -121,6 +121,12 @@ export const apiConstants = {
   getBookingDetails: `${baseUrlnew}glambyger/getBookingDetails`,
   update_relaties_profile: `${baseUrlnew}update_relaties_profile`,
   login_new: `${baseUrlnew}login_new`,
+  get_profile_settings: `${baseUrlnew}get_profile_settings`,
+  change_password: `${baseUrlnew}change_password`,
+  update_user_language: `${baseUrlnew}update_user_language`,
+  update_user_timezone: `${baseUrlnew}update_user_timezone`,
+  update_password_settings: `${baseUrlnew}update_password_settings`,
+  get_timezones: `${baseUrlnew}get_timezones`,
 };
 
 export default apiConstants;

@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -8,76 +9,73 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import ApiService from "../utils/Apiservice";
-import { apiConstants } from "../utils/apiConstants";
+import { fetchLanguages, type LanguageItem } from "../services/authService";
+import { applyUserLanguage } from "../utils/languageSync";
+import { getApiErrorMessage } from "../utils/validation";
+import { RegisterBackContext } from "../constants/GoBackContext";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import i18n from "../translation/i18n";
 
-type LanguageItem = {
-  language_name: string;
-  language_shortname: string;
-};
-
 export default function LanguageChange() {
   const { t } = useTranslation();
+  const { setToast } = useContext(RegisterBackContext);
   const [selected, setSelected] = useState<LanguageItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [languages, setLanguages] = useState<LanguageItem[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const fetchLanguages = useCallback(async () => {
+  const selectByCode = useCallback((code: string, langs: LanguageItem[]) => {
+    const found = langs.find((item) => item.language_shortname === code);
+    if (found) setSelected(found);
+  }, []);
+
+  const loadLanguages = useCallback(async () => {
     try {
-      const res = await ApiService<LanguageItem[]>(apiConstants.langauge, {});
+      const res = await fetchLanguages();
       if (res?.status && Array.isArray(res.data)) {
         setLanguages(res.data);
+        selectByCode(i18n.language || "en", res.data);
       }
     } catch (err) {
       console.log("Language API Error:", err);
     }
-  }, []);
-
-  const loadSavedLanguage = useCallback(async (langs: LanguageItem[]) => {
-    try {
-      const saved = await AsyncStorage.getItem("userLanguage");
-
-      if (saved && langs.length) {
-        const found = langs.find((l) => l.language_shortname === saved);
-        if (found) {
-          setSelected(found);
-          await i18n.changeLanguage(found.language_shortname);
-          return;
-        }
-      }
-
-      if (langs.length) {
-        setSelected(langs[0]);
-      }
-    } catch (err) {
-      console.log("Load Language Error:", err);
-    }
-  }, []);
+  }, [selectByCode]);
 
   useEffect(() => {
-    fetchLanguages();
-  }, [fetchLanguages]);
+    loadLanguages();
+  }, [loadLanguages]);
 
   useEffect(() => {
-    if (languages.length) {
-      loadSavedLanguage(languages);
-    }
-  }, [languages, loadSavedLanguage]);
+    const onChanged = (lng: string) => selectByCode(lng, languages);
+    i18n.on("languageChanged", onChanged);
+    return () => {
+      i18n.off("languageChanged", onChanged);
+    };
+  }, [languages, selectByCode]);
 
   const changeLanguage = async (item: LanguageItem) => {
+    if (saving || item.language_shortname === selected?.language_shortname) {
+      setModalVisible(false);
+      return;
+    }
+
+    setSaving(true);
     try {
-      await AsyncStorage.setItem("userLanguage", item.language_shortname);
-      await i18n.changeLanguage(item.language_shortname);
+      await applyUserLanguage(item.language_shortname);
       setSelected(item);
       setModalVisible(false);
-    } catch (err) {
-      console.log("Change Language Error:", err);
+    } catch (error) {
+      setToast({
+        top: 45,
+        text: getApiErrorMessage(error, t("Something went wrong")),
+        type: "error",
+        visible: true,
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -94,23 +92,30 @@ export default function LanguageChange() {
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <Pressable style={styles.backdrop} onPress={() => setModalVisible(false)}>
+        <Pressable style={styles.backdrop} onPress={() => !saving && setModalVisible(false)}>
           <View style={styles.sheet}>
-            <FlatList
-              data={languages}
-              keyExtractor={(item) => item.language_shortname}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.option,
-                    selected?.language_shortname === item.language_shortname && styles.optionActive,
-                  ]}
-                  onPress={() => changeLanguage(item)}
-                >
-                  <Text style={styles.optionText}>{item.language_name}</Text>
-                </TouchableOpacity>
-              )}
-            />
+            {saving ? (
+              <View style={styles.savingWrap}>
+                <ActivityIndicator color={AppColors.primary} />
+              </View>
+            ) : (
+              <FlatList
+                data={languages}
+                keyExtractor={(item) => item.language_shortname}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.option,
+                      selected?.language_shortname === item.language_shortname &&
+                        styles.optionActive,
+                    ]}
+                    onPress={() => changeLanguage(item)}
+                  >
+                    <Text style={styles.optionText}>{item.language_name}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
         </Pressable>
       </Modal>
@@ -147,6 +152,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     maxHeight: 280,
     overflow: "hidden",
+  },
+  savingWrap: {
+    paddingVertical: 28,
+    alignItems: "center",
   },
   option: {
     paddingVertical: 14,

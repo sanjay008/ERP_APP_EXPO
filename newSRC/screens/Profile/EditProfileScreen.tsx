@@ -71,7 +71,6 @@ export default function EditProfileScreen() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [privateEmail, setPrivateEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [countryCode, setCountryCode] = useState("31");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -217,7 +216,6 @@ export default function EditProfileScreen() {
         lastName,
         email,
         privateEmail,
-        password,
         whatsappNumber,
         countryCode,
         phoneNumber,
@@ -336,13 +334,6 @@ export default function EditProfileScreen() {
           onChangeText={setPrivateEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-        />
-        <AuthInput
-          label={t("Wachtwoord")}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholder="********"
         />
         <AuthInput
           label={t("WhatsApp-nummer")}

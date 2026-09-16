@@ -110,6 +110,11 @@ function AppStack() {
       <Stack.Screen name="child-contracts/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="profile/index" options={{ headerShown: false }} />
       <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/settings" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/change-password" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/change-language" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/change-timezone" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/password-settings" options={{ headerShown: false }} />
       <Stack.Screen name="pay-job/index" options={{ headerShown: false }} />
       <Stack.Screen name="pay-order/index" options={{ headerShown: false }} />
       <Stack.Screen name="about/index" options={{ headerShown: false }} />
