@@ -7,6 +7,9 @@
     "icon": "./newSRC/assets/Images/appicon.png",
     "scheme": "erpportaal",
     "userInterfaceStyle": "light",
+    "androidNavigationBar": {
+      "barStyle": "dark-content"
+    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -34,6 +37,7 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./newSRC/assets/Images/appicon.png"
       },
+      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",

@@ -6,6 +6,7 @@ import DateTimePicker, {
 import { useTranslation } from "react-i18next";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
+import { useScreenInsets } from "../utils/screenInsets";
 
 type Props = {
   visible: boolean;
@@ -25,6 +26,7 @@ export default function AppDatePickerSheet({
   maximumDate,
 }: Props) {
   const { t } = useTranslation();
+  const { modalPadding } = useScreenInsets();
   const [draftDate, setDraftDate] = useState(value);
 
   useEffect(() => {
@@ -51,10 +53,17 @@ export default function AppDatePickerSheet({
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: modalPadding }]}>
           <View style={styles.sheetHeader}>
             <Pressable onPress={onClose} hitSlop={8}>
               <Text style={styles.cancelText}>{t("Cancel")}</Text>

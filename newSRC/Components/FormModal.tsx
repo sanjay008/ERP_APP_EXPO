@@ -40,6 +40,8 @@ export default function FormModal({
       transparent={transparent}
       animationType={animationType}
       onRequestClose={onClose}
+      statusBarTranslucent
+      navigationBarTranslucent
       {...rest}
     >
       <KeyboardAvoidingView

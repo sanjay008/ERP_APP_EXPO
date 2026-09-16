@@ -110,6 +110,27 @@ export function filterTimelineByRange(
   });
 }
 
+export function getEndpointType(item: TimelineItem, isCheckIn: boolean) {
+  return (
+    (isCheckIn ? item.check_in_end_point_type : item.check_out_end_point_type) ||
+    ""
+  );
+}
+
+export function getEndpointIdLabel(item: TimelineItem, isCheckIn: boolean) {
+  const endPointType = getEndpointType(item, isCheckIn);
+  if (!["Task", "Workoder", "Project"].includes(String(endPointType))) return "";
+
+  const endpointData =
+    (item[`${isCheckIn ? "check_in" : "check_out"}_end_point_${endPointType}_data`] as
+      | { id?: number | string }
+      | undefined) ?? {};
+
+  return endpointData.id != null && String(endpointData.id) !== ""
+    ? `#${endpointData.id}`
+    : "";
+}
+
 export function getEndpointTitle(item: TimelineItem, isCheckIn: boolean): string {
   const endPointType = isCheckIn
     ? item.check_in_end_point_type

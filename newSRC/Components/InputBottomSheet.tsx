@@ -106,12 +106,12 @@ function InputBottomSheet({
       Animated.parallel([
         Animated.timing(slideY, {
           toValue: 0,
-          duration: 260,
+          duration: 160,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 260,
+          duration: 160,
           useNativeDriver: true,
         }),
       ]).start();
@@ -119,19 +119,19 @@ function InputBottomSheet({
     }
 
     Animated.parallel([
-      Animated.timing(slideY, {
-        toValue: SHEET_SLIDE_DISTANCE,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(keyboardShift, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 220,
+        Animated.timing(slideY, {
+          toValue: SHEET_SLIDE_DISTANCE,
+          duration: 140,
+          useNativeDriver: true,
+        }),
+        Animated.timing(keyboardShift, {
+          toValue: 0,
+          duration: 140,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 140,
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
@@ -162,6 +162,7 @@ function InputBottomSheet({
       transparent
       animationType="none"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={handleClose}
     >
       <View style={styles.modalRoot}>

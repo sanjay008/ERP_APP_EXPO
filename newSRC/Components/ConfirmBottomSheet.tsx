@@ -51,12 +51,12 @@ function ConfirmBottomSheet({
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: 0,
-          duration: 260,
+          duration: 160,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 260,
+          duration: 160,
           useNativeDriver: true,
         }),
       ]).start();
@@ -66,16 +66,16 @@ function ConfirmBottomSheet({
     if (!mounted) return;
 
     Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: SHEET_HEIGHT,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
+        Animated.timing(translateY, {
+          toValue: SHEET_HEIGHT,
+          duration: 140,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 140,
+          useNativeDriver: true,
+        }),
     ]).start(({ finished }) => {
       if (finished) {
         setMounted(false);
@@ -88,7 +88,14 @@ function ConfirmBottomSheet({
   }
 
   return (
-    <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose}>
+    <Modal
+      transparent
+      visible={mounted}
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay} pointerEvents="box-none">
         <Pressable style={StyleSheet.absoluteFill} onPress={loading ? undefined : onClose}>
           <Animated.View

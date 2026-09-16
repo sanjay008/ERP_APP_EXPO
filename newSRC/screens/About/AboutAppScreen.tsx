@@ -11,11 +11,11 @@ import { LIST_UI } from "../../utils/connectionTheme";
 
 export default function AboutAppScreen() {
   const router = useRouter();
-  const { top } = useScreenInsets();
+  const { top, bottom } = useScreenInsets();
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
 
   return (
-    <View style={[styles.container, { paddingTop: top }]}>
+    <View style={[styles.container, { paddingTop: top, paddingBottom: bottom }]}>
       <Pressable style={styles.backBtn} onPress={() => router.back()}>
         <FallBackImage source={Images.BackIcon} style={styles.backIcon} />
       </Pressable>

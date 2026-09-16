@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as ExpoSplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { I18nextProvider } from "react-i18next";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import NoInternetOverlay from "../Components/NoInternetOverlay";
@@ -40,6 +41,7 @@ export default function RootLayout() {
     <I18nextProvider i18n={i18n}>
       <OtaAutoReload />
       <SafeAreaProvider>
+        <StatusBar style="dark" />
         <NetworkProvider>
           <NoInternetOverlay />
           <Stack screenOptions={{ headerShown: false, animation: "fade" }}>

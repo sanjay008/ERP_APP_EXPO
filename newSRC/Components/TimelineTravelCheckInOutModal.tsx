@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,8 +13,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useAppData } from "../context/AppDataContext";
+import AppDatePickerSheet from "./AppDatePickerSheet";
 import {
   adjustTravelCost,
   calculateDistanceKm,
@@ -31,6 +38,8 @@ import {
 import { getApiErrorMessage } from "../utils/apiError";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
+import { Images } from "../utils/Images";
+import { useScreenInsets } from "../utils/screenInsets";
 
 type Props = {
   visible: boolean;
@@ -50,6 +59,27 @@ type Step =
 
 const BREAK_OPTIONS = ["00:00", "00:15", "00:30", "00:45", "01:00"];
 
+function parseYmd(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
+}
+
+function formatDisplayDate(value: string) {
+  return parseYmd(value).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function parseHm(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours || 0, minutes || 0, 0, 0);
+  return date;
+}
+
 export default function TimelineTravelCheckInOutModal({
   visible,
   onClose,
@@ -57,6 +87,7 @@ export default function TimelineTravelCheckInOutModal({
 }: Props) {
   const { t } = useTranslation();
   const { permissions } = useAppData();
+  const { modalPadding } = useScreenInsets();
   const isSimple = String(permissions?.simpel_check_in_out?.read) === "1";
 
   const [step, setStep] = useState<Step>("loading");
@@ -64,8 +95,11 @@ export default function TimelineTravelCheckInOutModal({
   const [coords, setCoords] = useState<CicoCoords | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [date] = useState(formatCicoDate());
+  const [date, setDate] = useState(formatCicoDate());
   const [time, setTime] = useState(formatCicoTime());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [success, setSuccess] = useState<{ title: string; text: string } | null>(null);
   const [startType, setStartType] = useState("");
   const [endType, setEndType] = useState("");
   const [startAddress, setStartAddress] = useState<CicoAddressItem | null>(null);
@@ -86,6 +120,10 @@ export default function TimelineTravelCheckInOutModal({
     setCoords(null);
     setSubmitting(false);
     setTime(formatCicoTime());
+    setDate(formatCicoDate());
+    setDatePickerOpen(false);
+    setTimePickerOpen(false);
+    setSuccess(null);
     setStartType("");
     setEndType("");
     setStartAddress(null);
@@ -102,12 +140,8 @@ export default function TimelineTravelCheckInOutModal({
   const bootstrap = useCallback(async () => {
     setStep("loading");
     try {
-      const [cico, location] = await Promise.all([
-        fetchCicoSession(formatCicoDate()),
-        getDeviceCoordinates(),
-      ]);
+      const cico = await fetchCicoSession(formatCicoDate());
       setSession(cico);
-      setCoords(location);
       setTravelEnabled(cico.travelCostEnabled);
 
       const checkingOut = cico.cicoStatus === "check_out";
@@ -129,6 +163,10 @@ export default function TimelineTravelCheckInOutModal({
       setEndAddress(resolveDefaultAddress(cico.addressBuckets, nextEnd));
       setClosingDay(nextEnd === "Home");
       setStep("summary");
+
+      getDeviceCoordinates()
+        .then(setCoords)
+        .catch(() => setCoords(null));
     } catch (error) {
       Alert.alert(getApiErrorMessage(error, t("Something went wrong")));
       onClose();
@@ -222,8 +260,11 @@ export default function TimelineTravelCheckInOutModal({
         await performCicoCheckIn(payload);
       }
 
+      setSuccess({
+        title: isCheckOut ? t("EmployeeCheckOut") : t("EmployeeCheckIn"),
+        text: `${date} (${time})\n${startType || "N/A"}  >  ${endType || "N/A"}`,
+      });
       onComplete();
-      onClose();
     } catch (error) {
       Alert.alert(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
@@ -291,15 +332,37 @@ export default function TimelineTravelCheckInOutModal({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.backdrop, success ? styles.backdropCenter : null]}>
+        {success ? (
+          <View style={styles.successCard}>
+            <Text style={styles.successTitle}>{success.title}</Text>
+            <Text style={styles.successText}>{success.text}</Text>
+            <Pressable
+              style={styles.successOk}
+              onPress={() => {
+                setSuccess(null);
+                onClose();
+              }}
+            >
+              <Text style={styles.successOkText}>{t("Ok")}</Text>
+            </Pressable>
+          </View>
+        ) : (
+        <View style={[styles.sheet, { paddingBottom: modalPadding }]}>
           <View style={styles.header}>
             <Text style={styles.title}>
               {isCheckOut ? t("Check Out") : t("Check In")}
             </Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Text style={styles.close}>{t("Sluiten")}</Text>
+            <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
+              <Image source={Images.CloseIcon} style={styles.closeIcon} />
             </Pressable>
           </View>
 
@@ -309,24 +372,37 @@ export default function TimelineTravelCheckInOutModal({
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
               {step === "summary" ? (
                 <>
-                  <Text style={styles.label}>{t("Date")}</Text>
-                  <Text style={styles.value}>{date}</Text>
-                  <Text style={styles.label}>{t("Time")}</Text>
                   {session.canEditDateTime ? (
-                    <TextInput style={styles.input} value={time} onChangeText={setTime} />
-                  ) : (
-                    <Text style={styles.value}>{time}</Text>
-                  )}
+                    <>
+                      <Text style={styles.label}>{t("Date")}</Text>
+                      <Pressable style={styles.pickerField} onPress={() => setDatePickerOpen(true)}>
+                        <Text style={styles.pickerValue}>{formatDisplayDate(date)}</Text>
+                        <View style={styles.pickerIcon}>
+                          <Image source={Images.date} style={styles.pickerIconImage} />
+                        </View>
+                      </Pressable>
 
-                  <Text style={styles.meta}>
-                    {startType || "-"} → {endType || "-"}
-                  </Text>
-                  {coords ? (
-                    <Text style={styles.gps}>
-                      GPS: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-                    </Text>
+                      <Text style={styles.label}>{t("Time")}</Text>
+                      <Pressable style={styles.pickerField} onPress={() => setTimePickerOpen(true)}>
+                        <Text style={styles.pickerValue}>{time}</Text>
+                        <View style={styles.pickerIcon}>
+                          <Ionicons name="time-outline" size={18} color={AppColors.white} />
+                        </View>
+                      </Pressable>
+                    </>
                   ) : (
-                    <Text style={styles.gps}>{t("Location unavailable")}</Text>
+                    <>
+                      <Text style={styles.label}>{t("Date")}</Text>
+                      <View style={styles.readonlyRow}>
+                        <Text style={styles.label}>{t("Current Date")} :</Text>
+                        <Text style={styles.value}>{formatDisplayDate(date)}</Text>
+                      </View>
+                      <Text style={styles.label}>{t("Time")}</Text>
+                      <View style={styles.readonlyRow}>
+                        <Text style={styles.label}>{t("Current Time")} :</Text>
+                        <Text style={styles.value}>{time}</Text>
+                      </View>
+                    </>
                   )}
 
                   {isCheckOut && isSimple ? (
@@ -337,13 +413,6 @@ export default function TimelineTravelCheckInOutModal({
                           renderOption(item, breakTime === item, () => setBreakTime(item))
                         )}
                       </View>
-                      <Text style={styles.label}>{t("Description")}</Text>
-                      <TextInput
-                        style={[styles.input, styles.multiline]}
-                        value={description}
-                        onChangeText={setDescription}
-                        multiline
-                      />
                     </>
                   ) : null}
 
@@ -477,14 +546,6 @@ export default function TimelineTravelCheckInOutModal({
                     />
                   </View>
 
-                  <Text style={styles.label}>{t("Description")}</Text>
-                  <TextInput
-                    style={[styles.input, styles.multiline]}
-                    value={description}
-                    onChangeText={setDescription}
-                    multiline
-                  />
-
                   <Pressable
                     style={[styles.primaryBtn, submitting && styles.disabled]}
                     onPress={submit}
@@ -499,7 +560,71 @@ export default function TimelineTravelCheckInOutModal({
             </ScrollView>
           )}
         </View>
+        )}
       </View>
+
+      <AppDatePickerSheet
+        visible={datePickerOpen}
+        value={parseYmd(date)}
+        onConfirm={(next) => {
+          setDate(formatCicoDate(next));
+          setDatePickerOpen(false);
+        }}
+        onClose={() => setDatePickerOpen(false)}
+      />
+
+      {timePickerOpen && Platform.OS === "android" ? (
+        <DateTimePicker
+          value={parseHm(time)}
+          mode="time"
+          is24Hour
+          display="default"
+          onChange={(event: DateTimePickerEvent, next?: Date) => {
+            setTimePickerOpen(false);
+            if (event.type === "dismissed" || !next) return;
+            setTime(formatCicoTime(next));
+          }}
+        />
+      ) : null}
+
+      {timePickerOpen && Platform.OS !== "android" ? (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          navigationBarTranslucent
+          onRequestClose={() => setTimePickerOpen(false)}
+        >
+          <View style={styles.timeOverlay}>
+            <Pressable style={styles.timeBackdrop} onPress={() => setTimePickerOpen(false)} />
+            <View style={[styles.timeSheet, { paddingBottom: modalPadding }]}>
+              <View style={styles.timeSheetHeader}>
+                <Pressable onPress={() => setTimePickerOpen(false)}>
+                  <Text style={styles.cancelText}>{t("Cancel")}</Text>
+                </Pressable>
+                <Text style={styles.title}>{t("Time")}</Text>
+                <Pressable
+                  onPress={() => {
+                    setTimePickerOpen(false);
+                  }}
+                >
+                  <Text style={styles.doneText}>{t("Done")}</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={parseHm(time)}
+                mode="time"
+                display="spinner"
+                is24Hour
+                onChange={(_event: DateTimePickerEvent, next?: Date) => {
+                  if (next) setTime(formatCicoTime(next));
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </Modal>
   );
 }
@@ -509,6 +634,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
+  },
+  backdropCenter: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   sheet: {
     backgroundColor: AppColors.white,
@@ -530,7 +659,20 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: AppColors.black,
   },
-  close: {
+  closeBtn: {
+    height: 35,
+    width: 35,
+    borderWidth: 1,
+    borderColor: "#E7E7E7",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  closeIcon: {
+    width: 18,
+    height: 18,
+  },
+  cancelText: {
     fontFamily: FONTS.LexendMedium,
     fontSize: 14,
     color: AppColors.primary,
@@ -551,16 +693,102 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: AppColors.black,
   },
-  meta: {
-    fontFamily: FONTS.LexendMedium,
+  pickerField: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 5,
+    paddingLeft: 10,
+    overflow: "hidden",
+  },
+  pickerValue: {
+    flex: 1,
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 14,
+    color: AppColors.black,
+    paddingVertical: 12,
+  },
+  pickerIcon: {
+    backgroundColor: AppColors.primary,
+    padding: 7,
+    borderRadius: 5,
+    margin: 4,
+  },
+  pickerIconImage: {
+    width: 20,
+    height: 20,
+    tintColor: AppColors.white,
+  },
+  readonlyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+  },
+  successCard: {
+    width: "80%",
+    backgroundColor: AppColors.white,
+    borderRadius: 10,
+    paddingTop: 16,
+    alignSelf: "center",
+    overflow: "hidden",
+  },
+  successTitle: {
+    fontFamily: FONTS.LexendSemiBold,
     fontSize: 15,
     color: AppColors.black,
-    marginTop: 12,
+    textAlign: "center",
+    paddingHorizontal: 16,
   },
-  gps: {
+  successText: {
     fontFamily: FONTS.LexendRegular,
-    fontSize: 12,
-    color: AppColors.subtitle,
+    fontSize: 15,
+    color: AppColors.black,
+    lineHeight: 22,
+    textAlign: "center",
+    marginVertical: 8,
+    paddingHorizontal: 16,
+  },
+  successOk: {
+    borderTopWidth: 1,
+    borderTopColor: "#9CA3AF",
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  successOkText: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 16,
+    color: AppColors.primary,
+    textAlign: "center",
+  },
+  timeOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  timeBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  timeSheet: {
+    backgroundColor: AppColors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 24,
+  },
+  timeSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  doneText: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 15,
+    color: AppColors.primary,
   },
   input: {
     borderWidth: 1,

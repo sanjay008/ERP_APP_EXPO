@@ -18,7 +18,7 @@ import { listScreenStyles } from "../../utils/listScreenStyles";
 export default function PasswordSettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { top } = useScreenInsets();
+  const { top, footerPadding } = useScreenInsets();
   const { setToast } = useContext(RegisterBackContext);
 
   const [otpEnabled, setOtpEnabled] = useState(true);
@@ -104,7 +104,7 @@ export default function PasswordSettingsScreen() {
   };
 
   return (
-    <View style={[listScreenStyles.container, { paddingTop: top }]}>
+    <View style={[listScreenStyles.container, { paddingTop: top, paddingBottom: footerPadding }]}>
       <ScreenHeader title={t("Password Settings")} onBack={() => router.back()} />
       {loading ? (
         <View style={styles.centered}>

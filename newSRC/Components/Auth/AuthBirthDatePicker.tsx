@@ -4,6 +4,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import AuthButton from "./AuthButton";
 import { AppColors } from "../../utils/theme";
+import { useScreenInsets } from "../../utils/screenInsets";
 
 type Props = {
   visible: boolean;
@@ -20,6 +21,7 @@ export default function AuthBirthDatePicker({
   onChange,
   onClose,
 }: Props) {
+  const { modalPadding } = useScreenInsets();
   if (!visible) return null;
 
   if (Platform.OS === "android") {
@@ -36,10 +38,17 @@ export default function AuthBirthDatePicker({
   }
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: modalPadding }]}>
           <DateTimePicker
             value={value}
             mode="date"

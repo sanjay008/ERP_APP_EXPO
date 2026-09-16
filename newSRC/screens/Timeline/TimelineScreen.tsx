@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -13,8 +13,6 @@ import {
   View,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
-import Svg, { Line } from "react-native-svg";
 import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import LanguageChange from "../../Components/LanguageChange";
@@ -24,9 +22,10 @@ import ProjectCheckInOutModal from "../../Components/ProjectCheckInOutModal";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
   fetchTimelineCheckInOut,
-  filterTimelineByRange,
   getEndpointAddress,
+  getEndpointIdLabel,
   getEndpointTitle,
+  getEndpointType,
   getTimelineItemDate,
   type TimelineItem,
 } from "../../services/timelineService";
@@ -42,118 +41,52 @@ import { Images } from "../../utils/Images";
 import { LIST_UI } from "../../utils/connectionTheme";
 import { useAppData } from "../../context/AppDataContext";
 
-type PeriodMode = "week" | "month";
-
-function DashedVerticalLine({ height }: { height: number }) {
-  if (height <= 0) return null;
-
-  return (
-    <View style={[styles.dashedLineWrap, { height }]}>
-      <Svg width={2} height={height}>
-        <Line
-          x1={1}
-          y1={0}
-          x2={1}
-          y2={height}
-          stroke="#D1D5DB"
-          strokeWidth={2}
-          strokeDasharray="4 4"
-        />
-      </Svg>
-    </View>
-  );
-}
-
-function TimelineIcon({ isCheckIn }: { isCheckIn: boolean }) {
-  return (
-    <View
-      style={[
-        styles.timelineIcon,
-        { backgroundColor: isCheckIn ? AppColors.litegreen : AppColors.diclinelite },
-      ]}
-    >
-      <Ionicons
-        name={isCheckIn ? "log-in-outline" : "log-out-outline"}
-        size={14}
-        color={isCheckIn ? AppColors.green : AppColors.dicline}
-      />
-    </View>
-  );
-}
-
-function PeriodToggle({
-  mode,
-  onChange,
-}: {
-  mode: PeriodMode;
-  onChange: (mode: PeriodMode) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.periodToggle}>
-      {(["week", "month"] as const).map((value) => {
-        const active = mode === value;
-        return (
-          <Pressable
-            key={value}
-            style={[styles.periodBtn, active && styles.periodBtnActive]}
-            onPress={() => onChange(value)}
-          >
-            <Text style={[styles.periodBtnText, active && styles.periodBtnTextActive]}>
-              {t(value === "week" ? "Week" : "Month")}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 function TimelineEventCard({
   item,
   isCheckIn,
-  showConnector,
 }: {
   item: TimelineItem;
   isCheckIn: boolean;
-  showConnector: boolean;
 }) {
   const { t } = useTranslation();
 
   const time = (isCheckIn ? item.check_in_time : item.check_out_time)?.slice(0, 5) ?? "--:--";
   const breakTime = item.break_time?.slice(0, 5) ?? "00:00";
   const closeDay = item.stop_time ? t("Yes") : t("No");
+  const typeLabel = getEndpointType(item, isCheckIn);
+  const typeId = getEndpointIdLabel(item, isCheckIn);
   const title = getEndpointTitle(item, isCheckIn);
   const address = getEndpointAddress(item, isCheckIn);
 
   return (
     <View style={styles.eventRow}>
-      <View style={styles.railColumn}>
-        <TimelineIcon isCheckIn={isCheckIn} />
-        {showConnector ? <DashedVerticalLine height={12} /> : null}
-      </View>
-
       <View
         style={[
-          styles.eventCard,
-          isCheckIn ? styles.checkInCard : styles.checkOutCard,
+          styles.typeBox,
+          { backgroundColor: item.cico_bg_color || AppColors.lightprimary1 },
         ]}
       >
-        <View style={styles.eventCardHeader}>
-          <Text style={[styles.eventLabel, isCheckIn ? styles.checkInLabel : styles.checkOutLabel]}>
-            {isCheckIn ? t("Check In") : t("Check Out")}
-          </Text>
-          <Text style={styles.eventTime}>{time}</Text>
-        </View>
-
-        {!isCheckIn ? (
-          <Text style={styles.eventMeta}>
-            {t("Breake")}: {breakTime} • {t("Close day")}: {closeDay}
+        {typeLabel ? (
+          <Text style={styles.typeLabel} numberOfLines={1}>
+            {typeLabel}
           </Text>
         ) : null}
-
+        {typeId ? <Text style={styles.typeId}>{typeId}</Text> : null}
+        <Text style={styles.eventTime}>{time}</Text>
+      </View>
+      <View style={styles.typeDivider} />
+      <View style={styles.eventCard}>
         {title ? <Text style={styles.eventTitle}>{title}</Text> : null}
+        {!isCheckIn ? (
+          <>
+            <Text style={styles.eventMeta}>
+              {t("Breake")}: {breakTime}
+            </Text>
+            <Text style={styles.eventMeta}>
+              {t("Close day")}: {closeDay}
+            </Text>
+          </>
+        ) : null}
         {address ? <Text style={styles.eventAddress}>{address}</Text> : null}
       </View>
     </View>
@@ -162,7 +95,7 @@ function TimelineEventCard({
 
 export default function TimelineScreen() {
   const { t } = useTranslation();
-  const { top, scrollPadding } = useScreenInsets({ includeTabBar: true });
+  const { top, scrollPadding, fabBottom } = useScreenInsets({ includeTabBar: true });
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
   const { permissions } = useAppData();
 
@@ -171,7 +104,6 @@ export default function TimelineScreen() {
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [periodMode, setPeriodMode] = useState<PeriodMode>("week");
   const [employeeModalVisible, setEmployeeModalVisible] = useState(false);
   const [projectModalMode, setProjectModalMode] = useState<"check-in" | "check-out" | null>(null);
   const [checkInOutStatus, setCheckInOutStatus] = useState<"check_in" | "check_out">("check_in");
@@ -250,11 +182,6 @@ export default function TimelineScreen() {
     await Promise.all([loadTimeline(), refreshCheckInOutStatus()]);
   }, [loadTimeline, refreshCheckInOutStatus]);
 
-  const filteredItems = useMemo(
-    () => filterTimelineByRange(items, periodMode),
-    [items, periodMode]
-  );
-
   const renderItem = ({ item, index }: { item: TimelineItem; index: number }) => {
     const isCheckIn = item.cico_status === "Check-in";
     const date = getTimelineItemDate(item);
@@ -262,31 +189,25 @@ export default function TimelineScreen() {
       ? item.check_in_date_with_day
       : item.check_out_date_with_day;
 
-    const previousItem = index > 0 ? filteredItems[index - 1] : null;
+    const previousItem = index > 0 ? items[index - 1] : null;
     const previousDate = previousItem
       ? getTimelineItemDate(previousItem)
       : null;
     const showDateHeader = index === 0 || previousDate !== date;
 
-    const nextItem = index < filteredItems.length - 1 ? filteredItems[index + 1] : null;
-    const nextDate = nextItem ? getTimelineItemDate(nextItem) : null;
-    const showConnector = nextDate === date;
-
     return (
       <View style={styles.listBlock}>
         {showDateHeader ? (
-          <Text style={styles.dateHeader}>
-            {dateWithDay ? t(String(dateWithDay)) : ""}
-            {dateWithDay && date ? ", " : ""}
-            {date ? t(String(date)) : ""}
-          </Text>
+          <View style={styles.dateHeaderBox}>
+            <Text style={styles.dateHeader}>
+              {dateWithDay ? t(String(dateWithDay)) : ""}
+              {dateWithDay && date ? ", " : ""}
+              {date ? t(String(date)) : ""}
+            </Text>
+          </View>
         ) : null}
 
-        <TimelineEventCard
-          item={item}
-          isCheckIn={isCheckIn}
-          showConnector={showConnector}
-        />
+        <TimelineEventCard item={item} isCheckIn={isCheckIn} />
       </View>
     );
   };
@@ -313,61 +234,27 @@ export default function TimelineScreen() {
         </View>
       </View>
 
-      <View style={styles.titleRow}>
-        <Text style={styles.screenTitle}>{t("Check In & Out")}</Text>
-        <PeriodToggle mode={periodMode} onChange={setPeriodMode} />
-      </View>
-
-      {canEmployeeCheckIn || canProjectCheckIn ? (
-        <View style={styles.actionRow}>
-          {canEmployeeCheckIn ? (
-            <Pressable
-              style={[
-                styles.actionBtn,
-                checkInOutStatus === "check_out" ? styles.checkOutBtn : styles.checkInBtn,
-              ]}
-              onPress={() => setEmployeeModalVisible(true)}
-            >
-              <Text style={styles.actionBtnText}>
-                {checkInOutStatus === "check_out" ? t("Check Out") : t("Check In")}
-              </Text>
-            </Pressable>
-          ) : null}
-          {canProjectCheckIn ? (
-            <Pressable
-              style={[
-                styles.actionBtn,
-                checkInOutStatusProject === 1 ? styles.checkOutBtn : styles.projectBtn,
-              ]}
-              onPress={() =>
-                setProjectModalMode(checkInOutStatusProject === 1 ? "check-out" : "check-in")
-              }
-            >
-              <Text style={styles.actionBtnText}>
-                {checkInOutStatusProject === 1
-                  ? t("Project Check Out")
-                  : t("Project Check In")}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-
       <ListScreenBody
         loading={loading}
-        itemCount={filteredItems.length}
+        itemCount={items.length}
         apiError={apiError}
         onRetry={loadTimeline}
       >
         <FlatList
-          data={filteredItems}
+          data={items}
           renderItem={renderItem}
           keyExtractor={(item, index) =>
             item.id != null ? String(item.id) + index : `timeline-${index}`
           }
           showsVerticalScrollIndicator={false}
           style={styles.list}
-          contentContainerStyle={[styles.listContent, { paddingBottom: scrollPadding }]}
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingBottom:
+                scrollPadding + (canEmployeeCheckIn || canProjectCheckIn ? 72 : 0),
+            },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -384,6 +271,41 @@ export default function TimelineScreen() {
           })}
         />
       </ListScreenBody>
+
+      {canEmployeeCheckIn || canProjectCheckIn ? (
+        <View style={[styles.fabStack, { bottom: fabBottom }]}>
+          {canProjectCheckIn ? (
+            <Pressable
+              style={[
+                styles.fabBtn,
+                checkInOutStatusProject === 1 ? styles.checkOutBtn : styles.projectBtn,
+              ]}
+              onPress={() =>
+                setProjectModalMode(checkInOutStatusProject === 1 ? "check-out" : "check-in")
+              }
+            >
+              <Text style={styles.actionBtnText}>
+                {checkInOutStatusProject === 1
+                  ? t("Project Check Out")
+                  : t("Project Check In")}
+              </Text>
+            </Pressable>
+          ) : null}
+          {canEmployeeCheckIn ? (
+            <Pressable
+              style={[
+                styles.fabBtn,
+                checkInOutStatus === "check_out" ? styles.checkOutBtn : styles.checkInBtn,
+              ]}
+              onPress={() => setEmployeeModalVisible(true)}
+            >
+              <Text style={styles.actionBtnText}>
+                {checkInOutStatus === "check_out" ? t("Check Out") : t("Check In")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
       <TimelineTravelCheckInOutModal
         visible={employeeModalVisible}
@@ -434,32 +356,21 @@ const styles = StyleSheet.create({
   logoPlayground: {
     marginLeft: 0,
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: LIST_UI.screenPadding,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  screenTitle: {
-    flex: 1,
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 18,
-    color: AppColors.black,
-    marginRight: 12,
-  },
-  actionRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  fabStack: {
+    position: "absolute",
+    right: 16,
+    alignItems: "flex-end",
     gap: 10,
-    paddingHorizontal: LIST_UI.screenPadding,
-    paddingBottom: 12,
   },
-  actionBtn: {
+  fabBtn: {
     borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
   checkInBtn: {
     backgroundColor: AppColors.primary,
@@ -475,30 +386,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: AppColors.white,
   },
-  periodToggle: {
-    flexDirection: "row",
-    backgroundColor: AppColors.white,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 3,
-  },
-  periodBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  periodBtnActive: {
-    backgroundColor: AppColors.primary,
-  },
-  periodBtnText: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 13,
-    color: AppColors.black,
-  },
-  periodBtnTextActive: {
-    color: AppColors.white,
-  },
   list: {
     flex: 1,
   },
@@ -510,85 +397,76 @@ const styles = StyleSheet.create({
   listBlock: {
     marginBottom: 4,
   },
-  dateHeader: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 15,
-    color: AppColors.black,
-    marginBottom: 10,
-    marginTop: 8,
-  },
-  eventRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  railColumn: {
-    width: 28,
-    alignItems: "center",
-    marginRight: 10,
-    paddingTop: 14,
-  },
-  timelineIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    alignItems: "center",
+  dateHeaderBox: {
+    marginVertical: 10,
+    backgroundColor: AppColors.lightprimary,
+    borderRadius: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     justifyContent: "center",
-    zIndex: 1,
-  },
-  dashedLineWrap: {
-    marginTop: 4,
     alignItems: "center",
   },
-  eventCard: {
-    flex: 1,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  checkInCard: {
-    backgroundColor: AppColors.litegreen,
-  },
-  checkOutCard: {
-    backgroundColor: AppColors.diclinelite,
-  },
-  eventCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  eventLabel: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 14,
-  },
-  checkInLabel: {
-    color: AppColors.green,
-  },
-  checkOutLabel: {
-    color: AppColors.dicline,
-  },
-  eventTime: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 14,
-    color: AppColors.black,
-  },
-  eventMeta: {
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 13,
-    color: AppColors.black,
-    marginBottom: 4,
-  },
-  eventTitle: {
+  dateHeader: {
     fontFamily: FONTS.LexendMedium,
     fontSize: 13,
     color: AppColors.black,
-    marginBottom: 2,
+    textAlign: "center",
+  },
+  eventRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    paddingVertical: 10,
+  },
+  typeBox: {
+    width: "25%",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  typeLabel: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
+    textAlign: "center",
+  },
+  typeId: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
+    textAlign: "center",
+  },
+  typeDivider: {
+    width: 2,
+    backgroundColor: AppColors.lightprimary,
+    marginHorizontal: 5,
+  },
+  eventCard: {
+    width: "69%",
+    justifyContent: "center",
+  },
+  eventTime: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
+    textAlign: "center",
+  },
+  eventMeta: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
+  },
+  eventTitle: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
   },
   eventAddress: {
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 13,
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
     color: AppColors.black,
-    lineHeight: 18,
   },
 });
