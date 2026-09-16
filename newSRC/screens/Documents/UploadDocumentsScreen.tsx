@@ -173,7 +173,7 @@ export default function UploadDocumentsScreen() {
             <Text style={styles.introTitle}>{t("Upload your documents")}</Text>
             <Text style={styles.introText}>
               {t(
-                "Select a document type and upload clear photos. Driving licence requires front, back and expiry date.",
+                "Select a document type and upload clear photos. Some types need front and back plus an expiry date.",
               )}
             </Text>
           </View>

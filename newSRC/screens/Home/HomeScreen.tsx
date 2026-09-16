@@ -43,6 +43,7 @@ import {
   fetchCheckInOutState,
   fetchProjectCheckInOutState,
   getTodayFormats,
+  isCheckedInFlag,
 } from "../../services/checkInOutService";
 
 type HomeItem = HomeMenuItem;
@@ -61,19 +62,15 @@ export default function HomeScreen() {
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [employeeModalMode, setEmployeeModalMode] = useState<"check-in" | "check-out" | null>(null);
   const [projectModalMode, setProjectModalMode] = useState<"check-in" | "check-out" | null>(null);
-  const [checkInOutStatus, setCheckInOutStatus] = useState(0);
-  const [checkInOutStatusProject, setCheckInOutStatusProject] = useState(0);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const refreshCheckInOutStatus = useCallback(async () => {
     const { displayDate } = getTodayFormats();
     try {
-      const [employeeState, projectState] = await Promise.all([
+      await Promise.all([
         fetchCheckInOutState(displayDate),
         fetchProjectCheckInOutState(displayDate),
       ]);
-      setCheckInOutStatus(Number(employeeState.checkData?.check_in_out ?? 0));
-      setCheckInOutStatusProject(Number(projectState.checkData?.check_in_out ?? 0));
     } catch {
       // Keep last known status if refresh fails silently.
     }
@@ -142,18 +139,24 @@ export default function HomeScreen() {
     }, [t])
   );
 
-  const handleItemPress = (item: HomeItem) => {
+  const handleItemPress = async (item: HomeItem) => {
     const linkTo = item.link_to?.trim();
 
     if (linkTo === "checkinout") {
       setProjectModalMode(null);
-      setEmployeeModalMode(checkInOutStatus === 1 ? "check-out" : "check-in");
+      const { displayDate } = getTodayFormats();
+      const state = await fetchCheckInOutState(displayDate);
+      const checkedIn = isCheckedInFlag(state.checkData?.check_in_out);
+      setEmployeeModalMode(checkedIn ? "check-out" : "check-in");
       return;
     }
 
     if (linkTo === "Check_In/Out_for_Project") {
       setEmployeeModalMode(null);
-      setProjectModalMode(checkInOutStatusProject === 1 ? "check-out" : "check-in");
+      const { displayDate } = getTodayFormats();
+      const state = await fetchProjectCheckInOutState(displayDate);
+      const checkedIn = isCheckedInFlag(state.checkData?.check_in_out);
+      setProjectModalMode(checkedIn ? "check-out" : "check-in");
       return;
     }
 

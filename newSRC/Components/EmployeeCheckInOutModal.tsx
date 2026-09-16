@@ -20,11 +20,13 @@ import {
   fetchContractSchedule,
   formatBreakTime,
   getTodayFormats,
+  isAlreadyCheckedInError,
   performCheckIn,
   performCheckOut,
   type EmployeeContractOption,
   type ScheduleItem,
 } from "../services/checkInOutService";
+import { getApiErrorMessage } from "../utils/validation";
 import { AppColors } from "../utils/theme";
 import { Colors } from "../utils/colors";
 import { FONTS } from "../utils/FONTS";
@@ -59,6 +61,7 @@ export default function EmployeeCheckInOutModal({
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [activeMode, setActiveMode] = useState<Mode>(mode);
   const [contracts, setContracts] = useState<EmployeeContractOption[]>([]);
   const [selectedContract, setSelectedContract] = useState<EmployeeContractOption | null>(null);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
@@ -127,6 +130,7 @@ export default function EmployeeCheckInOutModal({
       return;
     }
     setDescription("");
+    setActiveMode(mode);
     if (mode === "check-in") {
       loadCheckInData();
     } else {
@@ -186,7 +190,18 @@ export default function EmployeeCheckInOutModal({
       onComplete();
       onClose();
     } catch (error: any) {
-      Alert.alert(t("Error"), error?.message || t("Something went wrong"));
+      if (isAlreadyCheckedInError(error)) {
+        setActiveMode("check-out");
+        await loadCheckOutData();
+        setToast({
+          top: 45,
+          text: t("This relaties has already checked in please checkout first."),
+          type: "error",
+          visible: true,
+        });
+        return;
+      }
+      Alert.alert(t("Error"), getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSubmitting(false);
     }
@@ -230,7 +245,7 @@ export default function EmployeeCheckInOutModal({
 
         {loading ? (
           <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 24 }} />
-        ) : mode === "check-in" ? (
+        ) : activeMode === "check-in" ? (
           <>
             <FormSelectField
               label={t("Contract")}
@@ -321,13 +336,13 @@ export default function EmployeeCheckInOutModal({
         <Pressable
           style={[styles.primaryButton, submitting && styles.buttonDisabled]}
           disabled={submitting || loading}
-          onPress={mode === "check-in" ? handleCheckIn : handleCheckOut}
+          onPress={activeMode === "check-in" ? handleCheckIn : handleCheckOut}
         >
           {submitting ? (
             <ActivityIndicator color={AppColors.white} />
           ) : (
             <Text style={styles.primaryButtonText}>
-              {mode === "check-in" ? t("Check In") : t("Check Out")}
+              {activeMode === "check-in" ? t("Check In") : t("Check Out")}
             </Text>
           )}
         </Pressable>

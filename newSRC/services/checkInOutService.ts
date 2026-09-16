@@ -61,6 +61,25 @@ type ApiBody<T> = {
   break_data?: BreakTimeOption[];
 };
 
+export function isCheckedInFlag(value: unknown) {
+  return value === 1 || value === "1" || value === true || Number(value) === 1;
+}
+
+export function isAlreadyCheckedInError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error && "message" in error
+        ? String((error as { message?: unknown }).message || "")
+        : String(error || "");
+  const text = message.toLowerCase();
+  return (
+    text.includes("already checked in") ||
+    text.includes("checkout first") ||
+    text.includes("check out first")
+  );
+}
+
 export function getTodayFormats() {
   const today = new Date();
   const options: Intl.DateTimeFormatOptions = {
@@ -157,7 +176,7 @@ export async function fetchCheckInOutState(currentDate: string) {
 
     const checkData = body.data ?? null;
     const breakTimes = Array.isArray(body.break_data) ? body.break_data : [];
-    const checkedIn = Number(checkData?.check_in_out) === 1;
+    const checkedIn = isCheckedInFlag(checkData?.check_in_out);
 
     if (checkData?.id) {
       await storeData("CHECK_IN_ID", checkData.id);
@@ -280,7 +299,7 @@ export async function fetchProjectCheckInOutState(currentDate: string) {
 
     const checkData = body.data ?? null;
     const breakTimes = Array.isArray(body.break_data) ? body.break_data : [];
-    const checkedIn = Number(checkData?.check_in_out) === 1;
+    const checkedIn = isCheckedInFlag(checkData?.check_in_out);
 
     if (checkData?.id) {
       await storeData("CHECK_IN_ID_PROJECT", checkData.id);

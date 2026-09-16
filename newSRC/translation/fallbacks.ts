@@ -225,8 +225,8 @@ export const fallbackResources = {
       "Update Now": "Update Now",
       "Upload Documents": "Upload Documents",
       "Upload your documents": "Upload your documents",
-      "Select a document type and upload clear photos. Driving licence requires front, back and expiry date.":
-        "Select a document type and upload clear photos. Driving licence requires front, back and expiry date.",
+      "Select a document type and upload clear photos. Some types need front and back plus an expiry date.":
+        "Select a document type and upload clear photos. Some types need front and back plus an expiry date.",
       "Uploaded Documents": "Uploaded Documents",
       "No documents uploaded yet.": "No documents uploaded yet.",
       Retry: "Retry",
@@ -266,6 +266,8 @@ export const fallbackResources = {
       ID: "ID",
       Paspoort: "Paspoort",
       "NIWO-vergunning": "NIWO-vergunning",
+      "This relaties has already checked in please checkout first.":
+        "This relatie has already checked in. Please check out first.",
     },
   },
   nl: {
@@ -491,8 +493,8 @@ export const fallbackResources = {
       "Update Now": "Nu updaten",
       "Upload Documents": "Documenten uploaden",
       "Upload your documents": "Upload uw documenten",
-      "Select a document type and upload clear photos. Driving licence requires front, back and expiry date.":
-        "Selecteer een documenttype en upload duidelijke foto's. Rijbewijs vereist voorkant, achterkant en vervaldatum.",
+      "Select a document type and upload clear photos. Some types need front and back plus an expiry date.":
+        "Selecteer een documenttype en upload duidelijke foto's. Sommige types vereisen voorkant, achterkant en een vervaldatum.",
       "Uploaded Documents": "Geüploade documenten",
       "No documents uploaded yet.": "Nog geen documenten geüpload.",
       Retry: "Opnieuw proberen",
@@ -532,6 +534,8 @@ export const fallbackResources = {
       ID: "ID",
       Paspoort: "Paspoort",
       "NIWO-vergunning": "NIWO-vergunning",
+      "This relaties has already checked in please checkout first.":
+        "Deze relatie is al ingecheckt. Check eerst uit.",
     },
   },
 };
