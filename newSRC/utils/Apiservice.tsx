@@ -91,15 +91,12 @@ async function performApiRequest<T = unknown>(
     });
 
     if (response.status >= 400) {
-      throw toAppApiError({
-        response: { status: response.status, data: response.data },
-        isAxiosError: true,
-      });
+      throw toAppApiError(response.data);
     }
 
     const body = response.data;
     if (body && typeof body === "object" && "status" in body && body.status === false) {
-      throw toAppApiError({ message: body.message || "Request failed" });
+      throw toAppApiError(body);
     }
 
     return body;

@@ -79,15 +79,33 @@ function readResponseMessage(data: unknown): string | undefined {
     const payload = data as {
       message?: string;
       error?: string;
-      errors?: Array<string | { message?: string }>;
+      errors?: Array<string | { message?: string }> | Record<string, unknown>;
     };
 
-    if (payload.message) return payload.message;
-    if (payload.error) return payload.error;
+    let fieldMessage: string | undefined;
+    if (Array.isArray(payload.errors)) {
+      const firstError = payload.errors[0];
+      if (typeof firstError === "string") fieldMessage = firstError;
+      else if (firstError?.message) fieldMessage = firstError.message;
+    } else if (payload.errors && typeof payload.errors === "object") {
+      const values = Object.values(payload.errors);
+      for (const value of values) {
+        if (typeof value === "string" && value.trim()) {
+          fieldMessage = value.trim();
+          break;
+        }
+        if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) {
+          fieldMessage = value[0].trim();
+          break;
+        }
+      }
+    }
 
-    const firstError = payload.errors?.[0];
-    if (typeof firstError === "string") return firstError;
-    if (firstError?.message) return firstError.message;
+    const direct = payload.message || payload.error || "";
+    const generic = /^validation\s+(failed|error)/i.test(direct);
+    if (fieldMessage && (!direct || generic)) return fieldMessage;
+    if (direct) return direct;
+    if (fieldMessage) return fieldMessage;
   }
 
   return undefined;
@@ -182,9 +200,14 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
     return { kind: "unknown", message: translateApiMessage(error, defaultFallback) };
   }
 
-  if (error && typeof error === "object" && "message" in error) {
-    const message = String((error as { message?: unknown }).message || defaultFallback);
-    return { kind: "unknown", message: translateApiMessage(message, defaultFallback) };
+  if (error && typeof error === "object") {
+    const responseMessage = readResponseMessage(error);
+    if (responseMessage) {
+      return {
+        kind: "unknown",
+        message: translateApiMessage(responseMessage, defaultFallback),
+      };
+    }
   }
 
   return { kind: "unknown", message: defaultFallback };

@@ -27,4 +27,8 @@ export const Images = {
   ConnectionLinkedin: require("../assets/Images/linkdin.png"),
   ConnectionLocation: require("../assets/Images/location.png"),
   ConnectionWebsite: require("../assets/Images/website.png"),
+  documentlogo: require("../assets/Images/documentlogo.png"),
+  RightIcon: require("../assets/Images/RightIcon.png"),
+  UploadPhoto: require("../assets/Images/UploadPhoto.png"),
+  date: require("../assets/Images/date.png"),
 };

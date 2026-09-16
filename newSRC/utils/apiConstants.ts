@@ -127,6 +127,10 @@ export const apiConstants = {
   update_user_timezone: `${baseUrlnew}update_user_timezone`,
   update_password_settings: `${baseUrlnew}update_password_settings`,
   get_timezones: `${baseUrlnew}get_timezones`,
+  getQuickUploadTypes: `${baseUrlnew}documenten/get-quick-upload-types`,
+  getRelatieDocuments: `${baseUrlnew}documenten/get-relatie-documents`,
+  getDocumentDetails: `${baseUrlnew}documenten/get-document-details`,
+  quickUploadDocument: `${baseUrlnew}documenten/quick-upload`,
 };
 
 export default apiConstants;

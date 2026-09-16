@@ -324,6 +324,22 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <Pressable
+          style={styles.uploadDocsRow}
+          onPress={() => router.push("/(app)/documents")}
+        >
+          <View style={styles.uploadDocsIconBox}>
+            <Image source={Images.documentlogo} style={styles.uploadDocsIcon} resizeMode="contain" />
+          </View>
+          <View style={styles.uploadDocsText}>
+            <Text style={styles.uploadDocsTitle}>{t("Upload Documents")}</Text>
+            <Text style={styles.uploadDocsSubtitle} numberOfLines={1}>
+              {t("Paspoort, ID, Driving Licence, NIWO")}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
+        </Pressable>
+
         <Text style={styles.sectionTitle}>{t("Personal Details")}</Text>
 
         <View style={styles.detailsList}>
@@ -417,7 +433,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    marginBottom: 28,
+    marginBottom: 16,
   },
   avatar: {
     width: 72,
@@ -440,6 +456,43 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendRegular,
     fontSize: 13,
     lineHeight: 18,
+    color: AppColors.subtitle,
+  },
+  uploadDocsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: AppColors.white,
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#DFE5EA",
+    marginBottom: 24,
+    gap: 12,
+  },
+  uploadDocsIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#EEF3FD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadDocsIcon: {
+    width: 22,
+    height: 22,
+  },
+  uploadDocsText: {
+    flex: 1,
+    gap: 3,
+  },
+  uploadDocsTitle: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 15,
+    color: AppColors.black,
+  },
+  uploadDocsSubtitle: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 12,
     color: AppColors.subtitle,
   },
   sectionTitle: {
