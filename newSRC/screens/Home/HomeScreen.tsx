@@ -51,7 +51,7 @@ type HomeItem = HomeMenuItem;
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { top, scrollPadding } = useScreenInsets({ includeTabBar: true });
+  const { top, scrollPadding, modalPadding } = useScreenInsets({ includeTabBar: true });
   const { clearAppData } = useAppData();
 
   const [logo, setLogo] = useState<string | null>(null);
@@ -274,10 +274,12 @@ export default function HomeScreen() {
         visible={logoutVisible}
         transparent
         animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => setLogoutVisible(false)}
       >
         <View style={styles.logoutBackdrop}>
-          <View style={styles.logoutCard}>
+          <View style={[styles.logoutCard, { marginBottom: modalPadding }]}>
             <Text style={styles.logoutTitle}>{t("Uitloggen")} ?</Text>
             <Text style={styles.logoutMessage}>{t("Weet u zeker dat u wilt uitloggen?")}</Text>
             <View style={styles.logoutActions}>

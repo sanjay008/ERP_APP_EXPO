@@ -12,9 +12,13 @@ export type AbsenceLeaveItem = {
   leave_absence_store?: number;
   leave_log?: { created_at?: string; user_name?: { username?: string } };
   leave_type_data?: {
+    id?: string | number;
+    leave_type_id?: string | number;
     leave_type_name?: string;
     leave_hour_system?: number;
   };
+  leave_type?: string | number;
+  leave_type_id?: string | number;
   status_data?: { status_name?: string; color?: string };
   status_permission?: { read?: boolean };
   permissions?: { permission_edit?: boolean; permission_delete?: boolean };
@@ -147,7 +151,14 @@ export async function fetchLeaveTimelineDates(contractId: string | number) {
   const response = await post<LeaveTimelineDate[]>(apiConstants.get_time_line_by_employee_id, {
     contract_id: contractId,
   });
-  return response?.status && Array.isArray(response.data) ? response.data : [];
+  const rows = response?.status && Array.isArray(response.data) ? response.data : [];
+  return rows
+    .map((item) => ({
+      date: String(item?.date || ""),
+      schedule_id: item?.schedule_id,
+      total_hours: item?.total_hours,
+    }))
+    .filter((item) => item.date);
 }
 
 export async function fetchLeaveAbsenceDetails(leaveId: string | number) {
@@ -166,12 +177,24 @@ export async function deleteLeaveAbsence(leaveId: string | number) {
   return post(apiConstants.deleteleaveabsence, { leave_id: leaveId });
 }
 
-export async function submitLeaveAbsence(leaveId: string | number) {
-  const conflict = await post(apiConstants.check_conflicting_hours, { leave_id: leaveId });
-  if (!conflict?.status) {
-    throw toAppApiError({ message: conflict?.message || "Conflicting hours" });
+export async function submitLeaveAbsence(leaveId: string | number, relatiesId?: string | number) {
+  const extra = relatiesId ? { relaties_id: relatiesId } : {};
+
+  // Old app always called update_leave_absence even if conflict check failed.
+  // Blocking on check_conflicting_hours showed "already sent" for the wrong user.
+  await post(apiConstants.check_conflicting_hours, {
+    leave_id: leaveId,
+    ...extra,
+  });
+
+  const response = await post(apiConstants.update_leave_absence, {
+    leave_id: leaveId,
+    ...extra,
+  });
+  if (!response?.status) {
+    throw toAppApiError({ message: response?.message || "Failed to submit leave" });
   }
-  return post(apiConstants.update_leave_absence, { leave_id: leaveId });
+  return response;
 }
 
 export async function updateLeaveAbsenceStatus(leaveId: string | number, statusId: string | number) {

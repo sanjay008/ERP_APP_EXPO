@@ -253,6 +253,7 @@ export default function ProfileScreen() {
     userData?.data?.relaties?.email_adres ||
     userData?.data?.user?.email ||
     "-";
+  const displayRole = userData?.data?.user?.role || "";
   const profileImage =
     userData?.data?.user?.profile_image || userData?.data?.relaties?.file_path || null;
 
@@ -318,6 +319,11 @@ export default function ProfileScreen() {
             <Text style={styles.profileName} numberOfLines={1}>
               {displayName}
             </Text>
+            {displayRole ? (
+              <Text style={styles.profileRole} numberOfLines={1}>
+                {displayRole}
+              </Text>
+            ) : null}
             <Text style={styles.profileEmail} numberOfLines={1}>
               {displayEmail}
             </Text>
@@ -450,7 +456,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 24,
     color: AppColors.black,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  profileRole: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: AppColors.primary,
+    marginBottom: 2,
+    textTransform: "capitalize",
   },
   profileEmail: {
     fontFamily: FONTS.LexendRegular,

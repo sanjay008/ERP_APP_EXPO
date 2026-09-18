@@ -8,8 +8,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Images } from "../../utils/Images";
+import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors as Colors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 
@@ -31,13 +31,15 @@ export default function DocumentImageSourceSheet({
   onSelect,
 }: Props) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const { modalPadding } = useScreenInsets();
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       <View style={styles.host} pointerEvents="box-none">
@@ -45,7 +47,7 @@ export default function DocumentImageSourceSheet({
         <View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 16) + 8 },
+            { paddingBottom: modalPadding },
           ]}
         >
           <View style={styles.handle} />

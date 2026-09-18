@@ -22,7 +22,7 @@ import { FONTS } from "../../utils/FONTS";
 export default function EventScannerScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { top } = useScreenInsets();
+  const { top, bottom } = useScreenInsets();
   const params = useLocalSearchParams<{ id?: string; color?: string }>();
   const eventId = params.id ?? "";
   const { setToast } = useContext(RegisterBackContext);
@@ -124,7 +124,7 @@ export default function EventScannerScreen() {
         onBarcodeScanned={handleBarcode}
       />
 
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { paddingBottom: bottom }]}>
         <View style={styles.scanFrame} />
         <Text style={styles.hint}>{t("Scan event QR code")}</Text>
       </View>

@@ -2,6 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from "re
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import FormSelectField from "../../Components/FormSelectField";
 import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
+import AppDatePickerSheet from "../../Components/AppDatePickerSheet";
 import ApiFeedback from "../../Components/ApiFeedback";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
@@ -23,12 +25,14 @@ import {
   fetchLeaveAbsenceDetails,
   fetchLeaveTypes,
   updateLeaveRequest,
+  type AbsenceLeaveItem,
   type LeaveTypeItem,
 } from "../../services/absenceService";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { Colors } from "../../utils/colors";
 import { FONTS } from "../../utils/FONTS";
+import { Images } from "../../utils/Images";
 
 type TimeField = "start" | "end" | "break" | null;
 
@@ -48,6 +52,51 @@ function parseTime(value?: string) {
   return date;
 }
 
+function formatApiDate(value: Date) {
+  const day = String(value.getDate()).padStart(2, "0");
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  return `${value.getFullYear()}-${month}-${day}`;
+}
+
+function parseApiDate(value?: string) {
+  if (!value) return new Date();
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+function resolveLeaveType(types: LeaveTypeItem[], item: AbsenceLeaveItem): LeaveTypeItem | null {
+  const typeData = item.leave_type_data;
+  const candidateIds = [item.leave_type, item.leave_type_id, typeData?.id, typeData?.leave_type_id].filter(
+    (value) => value !== undefined && value !== null && String(value).trim() !== ""
+  );
+
+  const matchedId = types.find((type) =>
+    candidateIds.some((id) => String(type.id) === String(id))
+  );
+  if (matchedId) return matchedId;
+
+  const name = String(typeData?.leave_type_name || "").trim().toLowerCase();
+  if (name) {
+    const matchedName = types.find(
+      (type) => String(type.leave_type_name || "").trim().toLowerCase() === name
+    );
+    if (matchedName) return matchedName;
+  }
+
+  if (typeData?.leave_type_name) {
+    return {
+      id: candidateIds[0] ?? typeData.leave_type_name,
+      leave_type_name: typeData.leave_type_name,
+    };
+  }
+
+  return null;
+}
+
 export default function LeaveRequestEditScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -60,10 +109,11 @@ export default function LeaveRequestEditScreen() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [details, setDetails] = useState<any>(null);
+  const [details, setDetails] = useState<AbsenceLeaveItem | null>(null);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeItem[]>([]);
   const [selectedType, setSelectedType] = useState<LeaveTypeItem | null>(null);
   const [date, setDate] = useState("");
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
   const [breakTime, setBreakTime] = useState(new Date());
@@ -91,10 +141,9 @@ export default function LeaveRequestEditScreen() {
       if (contractId) {
         const types = await fetchLeaveTypes(contractId);
         setLeaveTypes(types);
-        const matched = types.find(
-          (type) => String(type.id) === String(first.leave_type_data?.id)
-        );
-        if (matched) setSelectedType(matched);
+        setSelectedType(resolveLeaveType(types, first));
+      } else {
+        setSelectedType(resolveLeaveType([], first));
       }
     } catch (error) {
       captureApiError(error);
@@ -150,6 +199,9 @@ export default function LeaveRequestEditScreen() {
     if (activeTimeField === "break") setBreakTime(selected);
   };
 
+  const typeValue =
+    selectedType?.leave_type_name || details?.leave_type_data?.leave_type_name || "";
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <ScreenHeader title={t("Leave Request")} onBack={() => router.back()} />
@@ -165,18 +217,33 @@ export default function LeaveRequestEditScreen() {
               label={t("Type")}
               required
               placeholder={t("Select")}
-              value={selectedType?.leave_type_name}
+              value={typeValue}
               onPress={() => setTypeSheetVisible(true)}
             />
 
-            <View style={styles.field}>
-              <Text style={styles.label}>{t("Datum")}</Text>
-              <Text style={styles.value}>{date || "-"}</Text>
-            </View>
+            <Text style={[styles.label, styles.fieldLabel]}>{t("Datum")}</Text>
+            <Pressable style={styles.pickerInput} onPress={() => setDatePickerOpen(true)}>
+              <Text style={styles.pickerInputText}>{date || t("Select Datum")}</Text>
+              <View style={styles.pickerIcon}>
+                <Image source={Images.date} style={styles.pickerIconImage} />
+              </View>
+            </Pressable>
 
-            <TimeFieldRow label={t("Start time")} value={formatTimeValue(startTime)} onPress={() => setActiveTimeField("start")} />
-            <TimeFieldRow label={t("End time")} value={formatTimeValue(endTime)} onPress={() => setActiveTimeField("end")} />
-            <TimeFieldRow label={t("Break")} value={formatTimeValue(breakTime)} onPress={() => setActiveTimeField("break")} />
+            <PickerField
+              label={t("Start time")}
+              value={formatTimeValue(startTime)}
+              onPress={() => setActiveTimeField("start")}
+            />
+            <PickerField
+              label={t("End time")}
+              value={formatTimeValue(endTime)}
+              onPress={() => setActiveTimeField("end")}
+            />
+            <PickerField
+              label={t("Break")}
+              value={formatTimeValue(breakTime)}
+              onPress={() => setActiveTimeField("break")}
+            />
 
             <Text style={styles.label}>{t("Total hours")}</Text>
             <TextInput
@@ -195,7 +262,11 @@ export default function LeaveRequestEditScreen() {
               placeholderTextColor={Colors.placeholder}
             />
 
-            <Pressable style={[styles.primaryButton, submitting && styles.disabled]} disabled={submitting} onPress={handleSave}>
+            <Pressable
+              style={[styles.primaryButton, submitting && styles.disabled]}
+              disabled={submitting}
+              onPress={handleSave}
+            >
               {submitting ? (
                 <ActivityIndicator color={AppColors.white} />
               ) : (
@@ -206,20 +277,51 @@ export default function LeaveRequestEditScreen() {
         )}
       </ScrollView>
 
+      <AppDatePickerSheet
+        visible={datePickerOpen}
+        value={parseApiDate(date)}
+        onClose={() => setDatePickerOpen(false)}
+        onConfirm={(next) => {
+          setDate(formatApiDate(next));
+          setDatePickerOpen(false);
+        }}
+      />
+
       {activeTimeField ? (
-        <DateTimePicker
-          value={
-            activeTimeField === "start"
-              ? startTime
-              : activeTimeField === "end"
-                ? endTime
-                : breakTime
-          }
-          mode="time"
-          is24Hour
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={onTimeChange}
-        />
+        Platform.OS === "android" ? (
+          <DateTimePicker
+            value={
+              activeTimeField === "start"
+                ? startTime
+                : activeTimeField === "end"
+                  ? endTime
+                  : breakTime
+            }
+            mode="time"
+            is24Hour
+            display="default"
+            onChange={onTimeChange}
+          />
+        ) : (
+          <View style={styles.iosTimeWrap}>
+            <DateTimePicker
+              value={
+                activeTimeField === "start"
+                  ? startTime
+                  : activeTimeField === "end"
+                    ? endTime
+                    : breakTime
+              }
+              mode="time"
+              is24Hour
+              display="spinner"
+              onChange={onTimeChange}
+            />
+            <Pressable style={styles.iosTimeDone} onPress={() => setActiveTimeField(null)}>
+              <Text style={styles.iosTimeDoneText}>{t("Done")}</Text>
+            </Pressable>
+          </View>
+        )
       ) : null}
 
       <SelectionBottomSheet
@@ -239,7 +341,7 @@ export default function LeaveRequestEditScreen() {
   );
 }
 
-function TimeFieldRow({
+function PickerField({
   label,
   value,
   onPress,
@@ -249,25 +351,52 @@ function TimeFieldRow({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.timeRow} onPress={onPress}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
-    </Pressable>
+    <>
+      <Text style={[styles.label, styles.fieldLabel]}>{label}</Text>
+      <Pressable style={styles.pickerInput} onPress={onPress}>
+        <Text style={styles.pickerInputText}>{value}</Text>
+        <View style={styles.pickerIcon}>
+          <Image source={Images.date} style={styles.pickerIconImage} />
+        </View>
+      </Pressable>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: AppColors.white },
-  field: { marginBottom: 12 },
+  fieldLabel: { marginTop: 12 },
   label: { fontFamily: FONTS.LexendMedium, color: AppColors.black, marginBottom: 6 },
-  value: { fontFamily: FONTS.LexendRegular, color: Colors.placeholder },
-  timeRow: {
+  pickerInput: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingLeft: 12,
+    minHeight: 50,
+    marginBottom: 12,
+    overflow: "hidden",
+    backgroundColor: AppColors.white,
+  },
+  pickerInputText: {
+    flex: 1,
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 14,
+    color: AppColors.black,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.border,
-    marginBottom: 8,
+  },
+  pickerIcon: {
+    backgroundColor: AppColors.primary,
+    padding: 7,
+    borderRadius: 5,
+    margin: 4,
+  },
+  pickerIconImage: {
+    width: 20,
+    height: 20,
+    tintColor: AppColors.white,
   },
   input: {
     borderWidth: 1,
@@ -289,4 +418,20 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { fontFamily: FONTS.LexendSemiBold, color: AppColors.white, fontSize: 16 },
   disabled: { opacity: 0.7 },
+  iosTimeWrap: {
+    backgroundColor: AppColors.white,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingBottom: 12,
+  },
+  iosTimeDone: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  iosTimeDoneText: {
+    fontFamily: FONTS.LexendSemiBold,
+    color: AppColors.primary,
+    fontSize: 15,
+  },
 });

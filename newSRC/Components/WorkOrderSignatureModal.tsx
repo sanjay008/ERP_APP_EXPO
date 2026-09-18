@@ -129,6 +129,8 @@ export default function WorkOrderSignatureModal({
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView

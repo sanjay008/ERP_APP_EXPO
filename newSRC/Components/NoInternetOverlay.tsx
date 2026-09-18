@@ -12,10 +12,12 @@ import { useTranslation } from "react-i18next";
 import { useNetwork } from "../context/NetworkContext";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
+import { useScreenInsets } from "../utils/screenInsets";
 
 export default function NoInternetOverlay() {
   const { t } = useTranslation();
   const { isOnline, isReady, refreshNetwork } = useNetwork();
+  const { modalPadding } = useScreenInsets();
   const [retrying, setRetrying] = useState(false);
 
   if (!isReady || isOnline) {
@@ -32,8 +34,8 @@ export default function NoInternetOverlay() {
   };
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent>
-      <View style={styles.backdrop}>
+    <Modal visible transparent animationType="fade" statusBarTranslucent navigationBarTranslucent>
+      <View style={[styles.backdrop, { paddingBottom: modalPadding }]}>
         <View style={styles.card}>
           <View style={styles.iconWrap}>
             <Ionicons name="cloud-offline-outline" size={42} color={AppColors.primary} />

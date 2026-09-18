@@ -1,7 +1,9 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -39,7 +41,7 @@ import {
   type LeaveTimelineDate,
   type LeaveTypeItem,
 } from "../../services/absenceService";
-import { useScreenInsets } from "../../utils/screenInsets";
+import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { Colors } from "../../utils/colors";
 import { FONTS } from "../../utils/FONTS";
@@ -149,7 +151,14 @@ export default function AbsenceRequestScreen() {
     relatiesId?: string;
     color?: string;
   }>();
-  const { top, scrollPadding } = useScreenInsets();
+  const { top, scrollPadding, modalPadding } = useScreenInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const sheetPadding =
+    keyboardHeight > 0
+      ? Platform.OS === "ios"
+        ? 12
+        : keyboardHeight + 8
+      : modalPadding;
   const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
@@ -219,7 +228,7 @@ export default function AbsenceRequestScreen() {
       ]);
       setLeaveTypes(types);
       setTimelineDates(dates);
-      setSelectedDates({});
+      setSelectedDates(dates.length === 1 && dates[0]?.date ? { [dates[0].date]: dates[0] } : {});
       setSelectedLeaveType(null);
       setLeaveReason("");
       setLeaveModalVisible(true);
@@ -232,7 +241,7 @@ export default function AbsenceRequestScreen() {
     try {
       const dates = await fetchLeaveTimelineDates(contractId);
       setTimelineDates(dates);
-      setSelectedDates({});
+      setSelectedDates(dates.length === 1 && dates[0]?.date ? { [dates[0].date]: dates[0] } : {});
       setAbsenceReason("");
       setAbsenceHours("");
       setAbsenceModalVisible(true);
@@ -270,7 +279,7 @@ export default function AbsenceRequestScreen() {
 
   const handleSubmitRequest = async (leaveId: string | number) => {
     try {
-      await submitLeaveAbsence(leaveId);
+      await submitLeaveAbsence(leaveId, params.relatiesId);
       setToast({ top: 45, text: t("Submitted"), type: "success", visible: true });
       loadData(true);
     } catch (error) {
@@ -293,8 +302,15 @@ export default function AbsenceRequestScreen() {
     [leaveTypes]
   );
 
-  const createLeave = async () => {
+  const resolvedDates = () => {
     const selected = Object.values(selectedDates);
+    if (selected.length) return selected;
+    if (timelineDates.length === 1 && timelineDates[0]?.date) return timelineDates;
+    return [];
+  };
+
+  const createLeave = async () => {
+    const selected = resolvedDates();
     if (!selected.length || !selectedLeaveType) {
       Alert.alert(t("Error"), t("Please fill required fields"));
       return;
@@ -303,7 +319,7 @@ export default function AbsenceRequestScreen() {
     try {
       await storeLeaveRequest({
         contract_id: contractId,
-        relaties_id: params.relatiesId,
+        ...(params.relatiesId ? { relaties_id: params.relatiesId } : {}),
         leave_type: selectedLeaveType.id,
         date: selected.map((d) => d.date).join(","),
         schedule_id: selected.map((d) => d.schedule_id).join(","),
@@ -321,8 +337,8 @@ export default function AbsenceRequestScreen() {
   };
 
   const createAbsence = async () => {
-    const selected = Object.values(selectedDates);
-    if (!selected.length || !absenceHours.trim()) {
+    const selected = resolvedDates();
+    if (!selected.length || !absenceHours.trim() || !absenceReason.trim()) {
       Alert.alert(t("Error"), t("Please fill required fields"));
       return;
     }
@@ -330,7 +346,9 @@ export default function AbsenceRequestScreen() {
     try {
       await storeAbsenceRequest({
         contract_id: contractId,
-        relaties_id: params.relatiesId,
+        ...(params.relatiesId
+          ? { relaties_id: params.relatiesId, absence_employer_id: params.relatiesId }
+          : {}),
         date: selected.map((d) => d.date).join(","),
         schedule_id: selected.map((d) => d.schedule_id).join(","),
         total_hours: absenceHours,
@@ -419,87 +437,133 @@ export default function AbsenceRequestScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={leaveModalVisible} transparent animationType="slide" onRequestClose={() => setLeaveModalVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t("+ Leave")}</Text>
-            <FormSelectField
-              label={t("Type")}
-              required
-              placeholder={t("Select")}
-              value={selectedLeaveType?.leave_type_name}
-              onPress={() => setTypeSheetVisible(true)}
-            />
-            <Text style={styles.modalLabel}>{t("Datum")}</Text>
-            <ScrollView style={styles.dateList} nestedScrollEnabled>
-              {timelineDates.map((entry) => {
-                const selected = Boolean(selectedDates[entry.date]);
-                return (
-                  <Pressable key={entry.date} style={[styles.dateItem, selected && styles.dateItemSelected]} onPress={() => toggleDate(entry)}>
-                    <Text style={styles.dateItemText}>{entry.date}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <TextInput
-              value={leaveReason}
-              onChangeText={setLeaveReason}
-              placeholder={t("Description")}
-              placeholderTextColor={Colors.placeholder}
-              style={styles.input}
-            />
-            <View style={styles.modalActions}>
-              <Pressable style={styles.secondaryButton} onPress={() => setLeaveModalVisible(false)}>
-                <Text style={styles.secondaryButtonText}>{t("Cancel")}</Text>
-              </Pressable>
-              <Pressable style={styles.primaryButton} disabled={submitting} onPress={createLeave}>
-                <Text style={styles.primaryButtonText}>{t("Save")}</Text>
-              </Pressable>
+      <Modal
+        visible={leaveModalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setLeaveModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <View style={styles.modalBackdrop}>
+            <View
+              style={[
+                styles.modalCard,
+                { paddingBottom: sheetPadding, maxHeight: keyboardHeight > 0 ? "100%" : "85%" },
+              ]}
+            >
+              <Text style={styles.modalTitle}>{t("+ Leave")}</Text>
+              <FormSelectField
+                label={t("Type")}
+                required
+                placeholder={t("Select")}
+                value={selectedLeaveType?.leave_type_name}
+                onPress={() => setTypeSheetVisible(true)}
+              />
+              <Text style={styles.modalLabel}>{t("Datum")}</Text>
+              <ScrollView
+                style={styles.dateList}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+              >
+                {timelineDates.map((entry) => {
+                  const selected = Boolean(selectedDates[entry.date]);
+                  return (
+                    <Pressable key={entry.date} style={[styles.dateItem, selected && styles.dateItemSelected]} onPress={() => toggleDate(entry)}>
+                      <Text style={styles.dateItemText}>{entry.date}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <TextInput
+                value={leaveReason}
+                onChangeText={setLeaveReason}
+                placeholder={t("Description")}
+                placeholderTextColor={Colors.placeholder}
+                style={styles.input}
+              />
+              <View style={styles.modalActions}>
+                <Pressable style={styles.secondaryButton} onPress={() => setLeaveModalVisible(false)}>
+                  <Text style={styles.secondaryButtonText}>{t("Cancel")}</Text>
+                </Pressable>
+                <Pressable style={styles.primaryButton} disabled={submitting} onPress={createLeave}>
+                  <Text style={styles.primaryButtonText}>{t("Save")}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={absenceModalVisible} transparent animationType="slide" onRequestClose={() => setAbsenceModalVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t("+ Absence")}</Text>
-            <Text style={styles.modalLabel}>{t("Datum")}</Text>
-            <ScrollView style={styles.dateList} nestedScrollEnabled>
-              {timelineDates.map((entry) => {
-                const selected = Boolean(selectedDates[entry.date]);
-                return (
-                  <Pressable key={entry.date} style={[styles.dateItem, selected && styles.dateItemSelected]} onPress={() => toggleDate(entry)}>
-                    <Text style={styles.dateItemText}>{entry.date}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <TextInput
-              value={absenceHours}
-              onChangeText={setAbsenceHours}
-              placeholder={t("Hours")}
-              keyboardType="decimal-pad"
-              placeholderTextColor={Colors.placeholder}
-              style={styles.input}
-            />
-            <TextInput
-              value={absenceReason}
-              onChangeText={setAbsenceReason}
-              placeholder={t("Description")}
-              placeholderTextColor={Colors.placeholder}
-              style={styles.input}
-            />
-            <View style={styles.modalActions}>
-              <Pressable style={styles.secondaryButton} onPress={() => setAbsenceModalVisible(false)}>
-                <Text style={styles.secondaryButtonText}>{t("Cancel")}</Text>
-              </Pressable>
-              <Pressable style={styles.primaryButton} disabled={submitting} onPress={createAbsence}>
-                <Text style={styles.primaryButtonText}>{t("Save")}</Text>
-              </Pressable>
+      <Modal
+        visible={absenceModalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setAbsenceModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <View style={styles.modalBackdrop}>
+            <View
+              style={[
+                styles.modalCard,
+                { paddingBottom: sheetPadding, maxHeight: keyboardHeight > 0 ? "100%" : "85%" },
+              ]}
+            >
+              <Text style={styles.modalTitle}>{t("+ Absence")}</Text>
+              <Text style={styles.modalLabel}>{t("Datum")}</Text>
+              <ScrollView
+                style={styles.dateList}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+              >
+                {timelineDates.map((entry) => {
+                  const selected = Boolean(selectedDates[entry.date]);
+                  return (
+                    <Pressable key={entry.date} style={[styles.dateItem, selected && styles.dateItemSelected]} onPress={() => toggleDate(entry)}>
+                      <Text style={styles.dateItemText}>{entry.date}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <TextInput
+                value={absenceHours}
+                onChangeText={setAbsenceHours}
+                placeholder={t("Hours")}
+                keyboardType="decimal-pad"
+                placeholderTextColor={Colors.placeholder}
+                style={styles.input}
+              />
+              <TextInput
+                value={absenceReason}
+                onChangeText={setAbsenceReason}
+                placeholder={t("Description")}
+                placeholderTextColor={Colors.placeholder}
+                style={styles.input}
+              />
+              <View style={styles.modalActions}>
+                <Pressable style={styles.secondaryButton} onPress={() => setAbsenceModalVisible(false)}>
+                  <Text style={styles.secondaryButtonText}>{t("Cancel")}</Text>
+                </Pressable>
+                <Pressable style={styles.primaryButton} disabled={submitting} onPress={createAbsence}>
+                  <Text style={styles.primaryButtonText}>{t("Save")}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <SelectionBottomSheet
@@ -551,6 +615,7 @@ export default function AbsenceRequestScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   employeeName: {
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 16,
@@ -606,7 +671,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontFamily: FONTS.LexendSemiBold, fontSize: 18, marginBottom: 12 },
   modalLabel: { fontFamily: FONTS.LexendMedium, marginBottom: 8 },
-  dateList: { maxHeight: 180, marginBottom: 12 },
+  dateList: { maxHeight: 180, marginBottom: 12, flexShrink: 1 },
   dateItem: {
     borderWidth: 1,
     borderColor: LIST_UI.cardBorder,

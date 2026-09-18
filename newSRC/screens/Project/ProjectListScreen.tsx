@@ -48,7 +48,7 @@ function StatusBadge({ status }: { status?: ProjectStatus }) {
 export default function ProjectListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { top, scrollPadding } = useScreenInsets();
+  const { top, scrollPadding, modalPadding } = useScreenInsets();
   const params = useLocalSearchParams<{ color?: string }>();
 
   const [items, setItems] = useState<ProjectItem[]>([]);
@@ -232,9 +232,15 @@ export default function ProjectListScreen() {
         }}
       />
 
-      <Modal visible={filterVisible} transparent animationType="fade">
+      <Modal
+        visible={filterVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
+      >
         <Pressable style={styles.filterBackdrop} onPress={() => setFilterVisible(false)}>
-          <Pressable style={styles.filterSheet} onPress={() => undefined}>
+          <Pressable style={[styles.filterSheet, { paddingBottom: modalPadding }]} onPress={() => undefined}>
             <Text style={styles.filterTitle}>{t("Filter By Status")}</Text>
             <ScrollView style={styles.filterList} showsVerticalScrollIndicator={false}>
               {statuses.map((status) => {

@@ -15,6 +15,7 @@ import { fetchLanguages, type LanguageItem } from "../services/authService";
 import { applyUserLanguage } from "../utils/languageSync";
 import { getApiErrorMessage } from "../utils/validation";
 import { RegisterBackContext } from "../constants/GoBackContext";
+import { useScreenInsets } from "../utils/screenInsets";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import i18n from "../translation/i18n";
@@ -22,6 +23,7 @@ import i18n from "../translation/i18n";
 export default function LanguageChange() {
   const { t } = useTranslation();
   const { setToast } = useContext(RegisterBackContext);
+  const { modalPadding } = useScreenInsets();
   const [selected, setSelected] = useState<LanguageItem | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [languages, setLanguages] = useState<LanguageItem[]>([]);
@@ -90,9 +92,14 @@ export default function LanguageChange() {
         visible={modalVisible}
         transparent
         animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => setModalVisible(false)}
       >
-        <Pressable style={styles.backdrop} onPress={() => !saving && setModalVisible(false)}>
+        <Pressable
+          style={[styles.backdrop, { paddingBottom: modalPadding }]}
+          onPress={() => !saving && setModalVisible(false)}
+        >
           <View style={styles.sheet}>
             {saving ? (
               <View style={styles.savingWrap}>

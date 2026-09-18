@@ -27,6 +27,7 @@ import {
 } from "../../../services/profileService";
 import { pickProfileImage } from "../../../utils/profileImagePicker";
 import { getApiErrorMessage, isValidEmail } from "../../../utils/validation";
+import { useScreenInsets } from "../../../utils/screenInsets";
 import { AppColors } from "../../../utils/theme";
 import { authTypography } from "../../../utils/authTypography";
 import { FONTS } from "../../../utils/FONTS";
@@ -55,6 +56,7 @@ const parseDate = (value: string) => {
 export default function ProfileCompletionScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { modalPadding } = useScreenInsets();
 
   const [step, setStep] = useState<ProfileStep>(1);
   const [loading, setLoading] = useState(false);
@@ -439,9 +441,15 @@ export default function ProfileCompletionScreen() {
         }}
       />
 
-      <Modal visible={imageSheetOpen} transparent animationType="slide">
+      <Modal
+        visible={imageSheetOpen}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
+      >
         <Pressable style={styles.sheetOverlay} onPress={() => setImageSheetOpen(false)}>
-          <Pressable style={styles.sheet}>
+          <Pressable style={[styles.sheet, { paddingBottom: modalPadding }]}>
             <Text style={styles.sheetTitle}>{t("Choose image")}</Text>
             <Pressable style={styles.sheetOption} onPress={() => pickImage("camera")}>
               <Ionicons name="camera-outline" size={20} color={AppColors.primary} />

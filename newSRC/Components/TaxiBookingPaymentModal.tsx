@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import SelectionSheet from "./Auth/SelectionSheet";
+import { useKeyboardHeight, useScreenInsets } from "../utils/screenInsets";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import type { BookingClientInfo, BookingCurrency } from "../services/bookingService";
@@ -56,6 +59,14 @@ export default function TaxiBookingPaymentModal({
   onSubmit,
 }: Props) {
   const { t } = useTranslation();
+  const { modalPadding } = useScreenInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const sheetPadding =
+    keyboardHeight > 0
+      ? Platform.OS === "ios"
+        ? 12
+        : keyboardHeight + 8
+      : modalPadding;
   const [step, setStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState("");
   const [currencyCode, setCurrencyCode] = useState("");
@@ -131,9 +142,20 @@ export default function TaxiBookingPaymentModal({
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={onClose}
+      >
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         <View style={styles.backdrop}>
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { paddingBottom: sheetPadding }]}>
             <Text style={styles.title}>{t("Booking Payments")}</Text>
             <Text style={styles.stepLabel}>
               {t("Step")} {step}/2
@@ -227,6 +249,7 @@ export default function TaxiBookingPaymentModal({
             </View>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <SelectionSheet
@@ -261,6 +284,7 @@ export default function TaxiBookingPaymentModal({
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -16,7 +17,6 @@ import {
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useAppData } from "../context/AppDataContext";
 import AppDatePickerSheet from "./AppDatePickerSheet";
@@ -36,10 +36,10 @@ import {
   type CicoSession,
 } from "../services/timelineCicoService";
 import { getApiErrorMessage } from "../utils/apiError";
+import { getKeyboardAvoidBehavior, useScreenInsets } from "../utils/screenInsets";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import { Images } from "../utils/Images";
-import { useScreenInsets } from "../utils/screenInsets";
 
 type Props = {
   visible: boolean;
@@ -57,7 +57,7 @@ type Step =
   | "travel"
   | "checkoutExtra";
 
-const BREAK_OPTIONS = ["00:00", "00:15", "00:30", "00:45", "01:00"];
+const BREAK_OPTIONS = ["00:00", "00:30", "00:45", "01:00", "01:30"];
 
 function parseYmd(value: string) {
   const [year, month, day] = value.split("-").map(Number);
@@ -78,6 +78,14 @@ function parseHm(value: string) {
   const date = new Date();
   date.setHours(hours || 0, minutes || 0, 0, 0);
   return date;
+}
+
+function RadioDot({ selected, color }: { selected: boolean; color: string }) {
+  return (
+    <View style={[styles.radioOuter, { borderColor: color }]}>
+      {selected ? <View style={[styles.radioInner, { backgroundColor: color }]} /> : null}
+    </View>
+  );
 }
 
 export default function TimelineTravelCheckInOutModal({
@@ -211,7 +219,7 @@ export default function TimelineTravelCheckInOutModal({
   }, [session, travelEnabled, startAddress, endAddress, startType, endType]);
 
   useEffect(() => {
-    if (!visible || step === "loading") return;
+    if (!visible || step === "loading" || step === "summary") return;
     refreshDistanceAndCost();
   }, [visible, step, refreshDistanceAndCost]);
 
@@ -294,6 +302,7 @@ export default function TimelineTravelCheckInOutModal({
 
   const afterPickEndType = (type: string) => {
     setEndType(type);
+    if (type === "Home") setClosingDay(true);
     const list = session?.addressBuckets?.[type] || [];
     const selected = resolveDefaultAddress(session?.addressBuckets || {}, type);
     setEndAddress(selected);
@@ -304,32 +313,39 @@ export default function TimelineTravelCheckInOutModal({
     }
   };
 
-  const renderOption = (label: string, active: boolean, onPress: () => void) => (
-    <Pressable
-      key={label}
-      style={[styles.option, active && styles.optionActive]}
-      onPress={onPress}
-    >
-      <Text style={[styles.optionText, active && styles.optionTextActive]}>{label}</Text>
-    </Pressable>
-  );
+  const goBack = () => {
+    if (step === "startType") setStep("summary");
+    else if (step === "startAddress") setStep("startType");
+    else if (step === "endType") {
+      setStep(startAddresses.length <= 1 ? "startType" : "startAddress");
+    } else if (step === "endAddress") setStep("endType");
+    else if (step === "travel") {
+      setStep(endAddresses.length <= 1 ? "endType" : "endAddress");
+    } else if (step === "checkoutExtra") setStep("travel");
+  };
 
-  const renderAddressOption = (
-    item: CicoAddressItem,
-    active: boolean,
-    onPress: () => void
-  ) => (
-    <Pressable
-      key={String(item.id ?? item.address)}
-      style={[styles.option, active && styles.optionActive]}
-      onPress={onPress}
-    >
-      <Text style={[styles.optionText, active && styles.optionTextActive]}>
-        {item.title || item.address || "-"}
-      </Text>
-      {item.address ? <Text style={styles.optionSub}>{item.address}</Text> : null}
-    </Pressable>
-  );
+  const submitCheckoutExtra = () => {
+    if (!breakTime) {
+      Alert.alert(t("Error"), t("Please select break time"));
+      return;
+    }
+    submit();
+  };
+
+  const stepHeading =
+    step === "startType"
+      ? t("Starting Point")
+      : step === "startAddress"
+        ? startType
+        : step === "endType"
+          ? t("Select Destination")
+          : step === "endAddress"
+            ? endType
+            : step === "travel"
+              ? t("Travel Cost")
+              : "";
+
+  const showBack = step !== "loading" && step !== "summary";
 
   return (
     <Modal
@@ -340,228 +356,350 @@ export default function TimelineTravelCheckInOutModal({
       navigationBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={[styles.backdrop, success ? styles.backdropCenter : null]}>
-        {success ? (
-          <View style={styles.successCard}>
-            <Text style={styles.successTitle}>{success.title}</Text>
-            <Text style={styles.successText}>{success.text}</Text>
-            <Pressable
-              style={styles.successOk}
-              onPress={() => {
-                setSuccess(null);
-                onClose();
-              }}
-            >
-              <Text style={styles.successOkText}>{t("Ok")}</Text>
-            </Pressable>
-          </View>
-        ) : (
-        <View style={[styles.sheet, { paddingBottom: modalPadding }]}>
-          <View style={styles.header}>
-            <Text style={styles.title}>
-              {isCheckOut ? t("Check Out") : t("Check In")}
-            </Text>
-            <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
-              <Image source={Images.CloseIcon} style={styles.closeIcon} />
-            </Pressable>
-          </View>
-
-          {step === "loading" || !session ? (
-            <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 24 }} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={getKeyboardAvoidBehavior()}
+      >
+        <View style={[styles.backdrop, success ? styles.backdropCenter : null]}>
+          {success ? (
+            <View style={styles.successCard}>
+              <Text style={styles.successTitle}>{success.title}</Text>
+              <Text style={styles.successText}>{success.text}</Text>
+              <Pressable
+                style={styles.successOk}
+                onPress={() => {
+                  setSuccess(null);
+                  onClose();
+                }}
+              >
+                <Text style={styles.successOkText}>{t("Ok")}</Text>
+              </Pressable>
+            </View>
           ) : (
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-              {step === "summary" ? (
-                <>
-                  {session.canEditDateTime ? (
-                    <>
-                      <Text style={styles.label}>{t("Date")}</Text>
-                      <Pressable style={styles.pickerField} onPress={() => setDatePickerOpen(true)}>
-                        <Text style={styles.pickerValue}>{formatDisplayDate(date)}</Text>
-                        <View style={styles.pickerIcon}>
-                          <Image source={Images.date} style={styles.pickerIconImage} />
-                        </View>
-                      </Pressable>
-
-                      <Text style={styles.label}>{t("Time")}</Text>
-                      <Pressable style={styles.pickerField} onPress={() => setTimePickerOpen(true)}>
-                        <Text style={styles.pickerValue}>{time}</Text>
-                        <View style={styles.pickerIcon}>
-                          <Ionicons name="time-outline" size={18} color={AppColors.white} />
-                        </View>
-                      </Pressable>
-                    </>
+            <Pressable style={styles.backdropFill} onPress={onClose}>
+              <Pressable
+                style={[styles.card, { marginBottom: modalPadding }]}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <View style={styles.topRow}>
+                  {showBack ? (
+                    <Pressable style={styles.iconBtn} onPress={goBack}>
+                      <Image source={Images.BackIcon} style={styles.navIcon} />
+                    </Pressable>
                   ) : (
-                    <>
-                      <Text style={styles.label}>{t("Date")}</Text>
-                      <View style={styles.readonlyRow}>
-                        <Text style={styles.label}>{t("Current Date")} :</Text>
-                        <Text style={styles.value}>{formatDisplayDate(date)}</Text>
-                      </View>
-                      <Text style={styles.label}>{t("Time")}</Text>
-                      <View style={styles.readonlyRow}>
-                        <Text style={styles.label}>{t("Current Time")} :</Text>
-                        <Text style={styles.value}>{time}</Text>
-                      </View>
-                    </>
+                    <View style={styles.iconBtnSpacer} />
                   )}
+                  <Pressable style={styles.iconBtn} onPress={onClose}>
+                    <Image source={Images.CloseIcon} style={styles.navIcon} />
+                  </Pressable>
+                </View>
 
-                  {isCheckOut && isSimple ? (
-                    <>
-                      <Text style={styles.label}>{t("Breake")}</Text>
-                      <View style={styles.rowWrap}>
-                        {BREAK_OPTIONS.map((item) =>
-                          renderOption(item, breakTime === item, () => setBreakTime(item))
+                <Text style={styles.screenTitle}>
+                  {isCheckOut ? t("Check Out") : t("Check In")}
+                </Text>
+
+                {step === "loading" || !session ? (
+                  <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 24 }} />
+                ) : (
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.content}
+                  >
+                    {showBack && stepHeading ? (
+                      <Text style={styles.stepTitle}>{stepHeading}</Text>
+                    ) : null}
+
+                    {step === "summary" ? (
+                      <>
+                        {session.canEditDateTime ? (
+                          <>
+                            <Text style={styles.fieldLabel}>{t("Date")} :</Text>
+                            <Pressable
+                              style={styles.dateInput}
+                              onPress={() => setDatePickerOpen(true)}
+                            >
+                              <Text style={styles.dateInputText}>
+                                {formatDisplayDate(date)}
+                              </Text>
+                              <View style={styles.pickerIcon}>
+                                <Image source={Images.date} style={styles.pickerIconImage} />
+                              </View>
+                            </Pressable>
+
+                            <Text style={styles.fieldLabel}>{t("Time")} :</Text>
+                            <Pressable
+                              style={styles.dateInput}
+                              onPress={() => setTimePickerOpen(true)}
+                            >
+                              <Text style={styles.dateInputText}>{time}</Text>
+                              <View style={styles.pickerIcon}>
+                                <Image source={Images.date} style={styles.pickerIconImage} />
+                              </View>
+                            </Pressable>
+                          </>
+                        ) : (
+                          <>
+                            <Text style={styles.fieldLabel}>{t("Date")} :</Text>
+                            <View style={styles.infoRow}>
+                              <Text style={styles.fieldLabel}>{t("Current Date")} :</Text>
+                              <Text style={styles.infoValue}>{formatDisplayDate(date)}</Text>
+                            </View>
+                            <Text style={styles.fieldLabel}>{t("Time")} :</Text>
+                            <View style={styles.infoRow}>
+                              <Text style={styles.fieldLabel}>{t("Current Time")} :</Text>
+                              <Text style={styles.infoValue}>{time}</Text>
+                            </View>
+                          </>
                         )}
-                      </View>
-                    </>
-                  ) : null}
 
-                  <Pressable
-                    style={[styles.primaryBtn, submitting && styles.disabled]}
-                    onPress={goNextFromSummary}
-                    disabled={submitting}
-                  >
-                    <Text style={styles.primaryBtnText}>
-                      {submitting
-                        ? t("Loading...")
-                        : isSimple
-                          ? isCheckOut
-                            ? t("Check Out")
-                            : t("Check In")
-                          : t("Continue")}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
+                        {isCheckOut && isSimple ? (
+                          <>
+                            <Text style={styles.fieldLabel}>{t("BREAK TIME")}</Text>
+                            <View style={styles.chipWrap}>
+                              {BREAK_OPTIONS.map((item) => {
+                                const active = breakTime === item;
+                                return (
+                                  <Pressable
+                                    key={item}
+                                    style={[styles.chip, active && styles.chipActive]}
+                                    onPress={() => setBreakTime(item)}
+                                  >
+                                    <RadioDot
+                                      selected={active}
+                                      color={active ? AppColors.white : AppColors.primary}
+                                    />
+                                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                                      {item}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </>
+                        ) : null}
 
-              {step === "startType" ? (
-                <>
-                  <Text style={styles.label}>{t("Start point")}</Text>
-                  {startTypes.map((type) =>
-                    renderOption(type, startType === type, () => afterPickStartType(type))
-                  )}
-                </>
-              ) : null}
+                        <Pressable
+                          style={[styles.nextButton, submitting && styles.disabled]}
+                          onPress={goNextFromSummary}
+                          disabled={submitting}
+                        >
+                          <Text style={styles.nextButtonText}>
+                            {submitting
+                              ? t("Loading...")
+                              : isSimple
+                                ? isCheckOut
+                                  ? t("Check Out")
+                                  : t("Check In")
+                                : t("Next")}
+                          </Text>
+                        </Pressable>
+                      </>
+                    ) : null}
 
-              {step === "startAddress" ? (
-                <>
-                  <Text style={styles.label}>{t("Start address")}</Text>
-                  {startAddresses.map((item) =>
-                    renderAddressOption(item, startAddress?.id === item.id, () => {
-                      setStartAddress(item);
-                      setStep("endType");
-                    })
-                  )}
-                </>
-              ) : null}
+                    {step === "startType"
+                      ? startTypes.map((type) => (
+                          <Pressable
+                            key={type}
+                            style={[styles.infoRow, styles.startTypeRow]}
+                            onPress={() => afterPickStartType(type)}
+                          >
+                            <RadioDot selected={startType === type} color={AppColors.white} />
+                            <Text style={styles.typeRowText}>{type}</Text>
+                          </Pressable>
+                        ))
+                      : null}
 
-              {step === "endType" ? (
-                <>
-                  <Text style={styles.label}>{t("Destination")}</Text>
-                  {endTypes.map((type) =>
-                    renderOption(type, endType === type, () => afterPickEndType(type))
-                  )}
-                </>
-              ) : null}
+                    {step === "startAddress"
+                      ? startAddresses.map((item) => (
+                          <Pressable
+                            key={String(item.id ?? item.address)}
+                            style={styles.infoRow}
+                            onPress={() => {
+                              setStartAddress(item);
+                              setStep("endType");
+                            }}
+                          >
+                            <RadioDot
+                              selected={startAddress?.id === item.id}
+                              color={AppColors.primary}
+                            />
+                            <View style={styles.addressCopy}>
+                              <Text style={styles.addressTitle}>
+                                {item.title || item.address || "-"}
+                              </Text>
+                              {item.address ? (
+                                <Text style={styles.addressTitle}>{item.address}</Text>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        ))
+                      : null}
 
-              {step === "endAddress" ? (
-                <>
-                  <Text style={styles.label}>{t("Destination address")}</Text>
-                  {endAddresses.map((item) =>
-                    renderAddressOption(item, endAddress?.id === item.id, () => {
-                      setEndAddress(item);
-                      setStep("travel");
-                    })
-                  )}
-                </>
-              ) : null}
+                    {step === "endType" ? (
+                      <>
+                        {endTypes.map((type) => (
+                          <Pressable
+                            key={type}
+                            style={[styles.infoRow, styles.endTypeRow]}
+                            onPress={() => afterPickEndType(type)}
+                          >
+                            <RadioDot selected={endType === type} color={AppColors.white} />
+                            <Text style={styles.typeRowText}>{type}</Text>
+                          </Pressable>
+                        ))}
+                        {isCheckOut && endType === "Home" ? (
+                          <View style={styles.closingDayRow}>
+                            <Text style={styles.closingDayLabel}>{t("Closing Day")}</Text>
+                            <Switch
+                              value={closingDay}
+                              onValueChange={setClosingDay}
+                              trackColor={{ false: AppColors.Boxgray, true: AppColors.primary }}
+                              thumbColor={AppColors.white}
+                            />
+                          </View>
+                        ) : null}
+                      </>
+                    ) : null}
 
-              {step === "travel" ? (
-                <>
-                  <View style={styles.switchRow}>
-                    <Text style={styles.label}>{t("Travel cost")}</Text>
-                    <Switch
-                      value={travelEnabled}
-                      onValueChange={setTravelEnabled}
-                      trackColor={{ true: AppColors.primary }}
-                    />
-                  </View>
-                  <Text style={styles.value}>
-                    {t("Distance")}: {distance} km
-                  </Text>
-                  <Text style={styles.label}>{t("Cost")}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={String(tripCost)}
-                    onChangeText={setTripCost}
-                    keyboardType="decimal-pad"
-                    editable={travelEnabled}
-                  />
+                    {step === "endAddress"
+                      ? endAddresses.map((item) => (
+                          <Pressable
+                            key={String(item.id ?? item.address)}
+                            style={styles.infoRow}
+                            onPress={() => {
+                              setEndAddress(item);
+                              setStep("travel");
+                            }}
+                          >
+                            <RadioDot
+                              selected={endAddress?.id === item.id}
+                              color={AppColors.primary}
+                            />
+                            <View style={styles.addressCopy}>
+                              <Text style={styles.addressTitle}>
+                                {item.title || item.address || "-"}
+                              </Text>
+                              {item.address ? (
+                                <Text style={styles.addressTitle}>{item.address}</Text>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        ))
+                      : null}
 
-                  {endType === "Home" && isCheckOut ? (
-                    <View style={styles.switchRow}>
-                      <Text style={styles.label}>{t("Closing Day")}</Text>
-                      <Switch
-                        value={closingDay}
-                        onValueChange={setClosingDay}
-                        trackColor={{ true: AppColors.primary }}
-                      />
-                    </View>
-                  ) : null}
+                    {step === "travel" ? (
+                      <>
+                        <View style={styles.travelToggleRow}>
+                          <Text style={styles.addressTitle}>{t("Enable Travel Cost")}</Text>
+                          <View style={styles.switchBorder}>
+                            <Switch
+                              value={travelEnabled}
+                              onValueChange={setTravelEnabled}
+                              trackColor={{ false: AppColors.Boxgray, true: AppColors.primary }}
+                              thumbColor={AppColors.white}
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.infoRow}>
+                          <Text style={styles.fieldLabel}>{t("Distance")} : </Text>
+                          <Text style={styles.infoValue}>{distance || 0} Km</Text>
+                        </View>
+                        <View style={[styles.infoRow, { marginBottom: 20 }]}>
+                          <Text style={styles.fieldLabel}>{t("Cost")} : </Text>
+                          <Text style={styles.infoValue}>
+                            {travelEnabled
+                              ? Number(tripCost)
+                                ? String(tripCost)
+                                : "0.00"
+                              : "0.00"}
+                          </Text>
+                        </View>
+                        <Pressable
+                          style={[styles.nextButton, submitting && styles.disabled]}
+                          onPress={() => {
+                            if (isCheckOut) setStep("checkoutExtra");
+                            else submit();
+                          }}
+                          disabled={submitting}
+                        >
+                          <Text style={styles.nextButtonText}>
+                            {submitting
+                              ? t("Loading...")
+                              : isCheckOut
+                                ? t("Next")
+                                : t("Check In")}
+                          </Text>
+                        </Pressable>
+                      </>
+                    ) : null}
 
-                  <Pressable
-                    style={[styles.primaryBtn, submitting && styles.disabled]}
-                    onPress={() => {
-                      if (isCheckOut) setStep("checkoutExtra");
-                      else submit();
-                    }}
-                    disabled={submitting}
-                  >
-                    <Text style={styles.primaryBtnText}>
-                      {submitting
-                        ? t("Loading...")
-                        : isCheckOut
-                          ? t("Continue")
-                          : t("Check In")}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
+                    {step === "checkoutExtra" ? (
+                      <>
+                        <Text style={styles.sectionTitle}>{t("BREAK TIME")}*</Text>
+                        <View style={styles.chipWrap}>
+                          {BREAK_OPTIONS.map((item) => {
+                            const active = breakTime === item;
+                            return (
+                              <Pressable
+                                key={item}
+                                style={styles.stopOption}
+                                onPress={() => setBreakTime(item)}
+                              >
+                                <RadioDot selected={active} color={AppColors.primary} />
+                                <Text style={styles.stopOptionText}>{item}</Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
 
-              {step === "checkoutExtra" ? (
-                <>
-                  <Text style={styles.label}>{t("Breake")}</Text>
-                  <View style={styles.rowWrap}>
-                    {BREAK_OPTIONS.map((item) =>
-                      renderOption(item, breakTime === item, () => setBreakTime(item))
-                    )}
-                  </View>
+                        <Text style={styles.sectionTitle}>{t("STOP TIME")}*</Text>
+                        <View style={styles.chipWrap}>
+                          {[true, false].map((value) => {
+                            const active = stopTime === value;
+                            return (
+                              <Pressable
+                                key={String(value)}
+                                style={styles.stopOption}
+                                onPress={() => setStopTime(value)}
+                              >
+                                <RadioDot selected={active} color={AppColors.primary} />
+                                <Text style={styles.stopOptionText}>
+                                  {value ? t("Yes") : t("No")}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
 
-                  <View style={styles.switchRow}>
-                    <Text style={styles.label}>{t("Close day")}</Text>
-                    <Switch
-                      value={stopTime}
-                      onValueChange={setStopTime}
-                      trackColor={{ true: AppColors.primary }}
-                    />
-                  </View>
+                        <Text style={styles.sectionTitle}>{t("DESCRIPTION")}</Text>
+                        <TextInput
+                          style={styles.descriptionInput}
+                          value={description}
+                          onChangeText={setDescription}
+                          placeholder={t("Enter description...")}
+                          placeholderTextColor={AppColors.placeholder}
+                          multiline
+                        />
 
-                  <Pressable
-                    style={[styles.primaryBtn, submitting && styles.disabled]}
-                    onPress={submit}
-                    disabled={submitting}
-                  >
-                    <Text style={styles.primaryBtnText}>
-                      {submitting ? t("Loading...") : t("Check Out")}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
-            </ScrollView>
+                        <Pressable
+                          style={[styles.nextButton, submitting && styles.disabled]}
+                          onPress={submitCheckoutExtra}
+                          disabled={submitting}
+                        >
+                          <Text style={styles.nextButtonText}>
+                            {submitting ? t("Loading...") : t("Check Out")}
+                          </Text>
+                        </Pressable>
+                      </>
+                    ) : null}
+                  </ScrollView>
+                )}
+              </Pressable>
+            </Pressable>
           )}
         </View>
-        )}
-      </View>
+      </KeyboardAvoidingView>
 
       <AppDatePickerSheet
         visible={datePickerOpen}
@@ -603,12 +741,8 @@ export default function TimelineTravelCheckInOutModal({
                 <Pressable onPress={() => setTimePickerOpen(false)}>
                   <Text style={styles.cancelText}>{t("Cancel")}</Text>
                 </Pressable>
-                <Text style={styles.title}>{t("Time")}</Text>
-                <Pressable
-                  onPress={() => {
-                    setTimePickerOpen(false);
-                  }}
-                >
+                <Text style={styles.screenTitle}>{t("Time")}</Text>
+                <Pressable onPress={() => setTimePickerOpen(false)}>
                   <Text style={styles.doneText}>{t("Done")}</Text>
                 </Pressable>
               </View>
@@ -630,70 +764,76 @@ export default function TimelineTravelCheckInOutModal({
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    paddingHorizontal: 16,
   },
   backdropCenter: {
-    justifyContent: "center",
     alignItems: "center",
   },
-  sheet: {
-    backgroundColor: AppColors.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "92%",
-    paddingBottom: 20,
+  backdropFill: {
+    flex: 1,
+    justifyContent: "center",
   },
-  header: {
+  card: {
+    backgroundColor: AppColors.white,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingTop: 16,
+    paddingBottom: 24,
+    maxHeight: "90%",
+  },
+  topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
+    width: "100%",
   },
-  title: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 17,
-    color: AppColors.black,
-  },
-  closeBtn: {
+  iconBtn: {
     height: 35,
     width: 35,
     borderWidth: 1,
-    borderColor: "#E7E7E7",
+    borderColor: AppColors.litegray,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  closeIcon: {
+  iconBtnSpacer: {
+    height: 35,
+    width: 35,
+  },
+  navIcon: {
     width: 18,
     height: 18,
   },
-  cancelText: {
+  screenTitle: {
+    alignSelf: "center",
     fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
-    color: AppColors.primary,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 8,
-  },
-  label: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 13,
-    color: AppColors.subtitle,
-    marginTop: 8,
-  },
-  value: {
-    fontFamily: FONTS.LexendSemiBold,
+    paddingVertical: 10,
     fontSize: 15,
     color: AppColors.black,
   },
-  pickerField: {
+  stepTitle: {
+    alignSelf: "center",
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 15,
+    color: AppColors.black,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  content: {
+    paddingBottom: 8,
+  },
+  fieldLabel: {
+    paddingVertical: 8,
+    fontSize: 13,
+    fontFamily: FONTS.LexendRegular,
+    color: AppColors.black,
+  },
+  dateInput: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -703,12 +843,11 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     overflow: "hidden",
   },
-  pickerValue: {
+  dateInputText: {
     flex: 1,
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 14,
     color: AppColors.black,
     paddingVertical: 12,
+    fontFamily: FONTS.LexendRegular,
   },
   pickerIcon: {
     backgroundColor: AppColors.primary,
@@ -721,11 +860,154 @@ const styles = StyleSheet.create({
     height: 20,
     tintColor: AppColors.white,
   },
-  readonlyRow: {
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderColor: AppColors.litegray,
+    marginVertical: 3,
+  },
+  infoValue: {
+    fontSize: 12,
+    color: AppColors.placeholder,
+    fontFamily: FONTS.LexendRegular,
+    flex: 1,
+  },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    width: "100%",
+    marginBottom: 10,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: AppColors.litegray,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: AppColors.white,
+  },
+  chipActive: {
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
+  },
+  chipText: {
+    fontSize: 14,
+    fontFamily: FONTS.LexendRegular,
+    color: AppColors.black,
+    marginLeft: 6,
+  },
+  chipTextActive: {
+    color: AppColors.white,
+  },
+  radioOuter: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  startTypeRow: {
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
+  },
+  endTypeRow: {
+    backgroundColor: AppColors.green,
+    borderColor: AppColors.green,
+  },
+  typeRowText: {
+    flex: 1,
+    padding: 4,
+    color: AppColors.white,
+    fontFamily: FONTS.LexendRegular,
+  },
+  addressCopy: {
+    flex: 1,
+  },
+  addressTitle: {
+    flex: 1,
+    padding: 4,
+    color: AppColors.black,
+    fontFamily: FONTS.LexendRegular,
+  },
+  closingDayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 10,
+  },
+  closingDayLabel: {
+    flex: 1,
+    textAlign: "right",
+    padding: 4,
+    color: AppColors.black,
+    fontFamily: FONTS.LexendRegular,
+  },
+  travelToggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 8,
+  },
+  switchBorder: {
+    borderColor: AppColors.Boxgray,
+    borderWidth: 1,
+    borderRadius: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nextButton: {
+    padding: 10,
+    backgroundColor: AppColors.primary,
+    borderRadius: 5,
+    marginBottom: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  nextButtonText: {
+    color: AppColors.white,
+    fontFamily: FONTS.LexendRegular,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.LexendMedium,
+    marginVertical: 8,
+    color: AppColors.black,
+  },
+  stopOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+    marginBottom: 8,
+  },
+  stopOptionText: {
+    fontSize: 14,
+    fontFamily: FONTS.LexendRegular,
+    color: AppColors.black,
+  },
+  descriptionInput: {
+    height: 100,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    color: AppColors.black,
+    fontFamily: FONTS.LexendRegular,
+    marginBottom: 20,
+    textAlignVertical: "top",
   },
   successCard: {
     width: "80%",
@@ -785,73 +1067,15 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
+  cancelText: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.primary,
+  },
   doneText: {
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 15,
     color: AppColors.primary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#E0E5EA",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 14,
-    color: AppColors.black,
-  },
-  multiline: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  option: {
-    borderWidth: 1,
-    borderColor: "#E0E5EA",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  optionActive: {
-    borderColor: AppColors.primary,
-    backgroundColor: "#EEF4FF",
-  },
-  optionText: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
-    color: AppColors.black,
-  },
-  optionTextActive: {
-    color: AppColors.primary,
-  },
-  optionSub: {
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 12,
-    color: AppColors.subtitle,
-    marginTop: 4,
-  },
-  rowWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  primaryBtn: {
-    marginTop: 16,
-    backgroundColor: AppColors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryBtnText: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 15,
-    color: AppColors.white,
   },
   disabled: {
     opacity: 0.7,

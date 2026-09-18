@@ -13,6 +13,8 @@ import {
   View,
 } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import Svg, { Line } from "react-native-svg";
 import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import LanguageChange from "../../Components/LanguageChange";
@@ -23,7 +25,6 @@ import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
   fetchTimelineCheckInOut,
   getEndpointAddress,
-  getEndpointIdLabel,
   getEndpointTitle,
   getEndpointType,
   getTimelineItemDate,
@@ -41,12 +42,51 @@ import { Images } from "../../utils/Images";
 import { LIST_UI } from "../../utils/connectionTheme";
 import { useAppData } from "../../context/AppDataContext";
 
+function DashedVerticalLine({ height }: { height: number }) {
+  if (height <= 0) return null;
+
+  return (
+    <View style={[styles.dashedLineWrap, { height }]}>
+      <Svg width={2} height={height}>
+        <Line
+          x1={1}
+          y1={0}
+          x2={1}
+          y2={height}
+          stroke="#D1D5DB"
+          strokeWidth={2}
+          strokeDasharray="4 4"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+function TimelineIcon({ isCheckIn }: { isCheckIn: boolean }) {
+  return (
+    <View
+      style={[
+        styles.timelineIcon,
+        { backgroundColor: isCheckIn ? AppColors.litegreen : AppColors.diclinelite },
+      ]}
+    >
+      <Ionicons
+        name={isCheckIn ? "log-in-outline" : "log-out-outline"}
+        size={14}
+        color={isCheckIn ? AppColors.green : AppColors.dicline}
+      />
+    </View>
+  );
+}
+
 function TimelineEventCard({
   item,
   isCheckIn,
+  showConnector,
 }: {
   item: TimelineItem;
   isCheckIn: boolean;
+  showConnector: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -54,39 +94,41 @@ function TimelineEventCard({
   const breakTime = item.break_time?.slice(0, 5) ?? "00:00";
   const closeDay = item.stop_time ? t("Yes") : t("No");
   const typeLabel = getEndpointType(item, isCheckIn);
-  const typeId = getEndpointIdLabel(item, isCheckIn);
   const title = getEndpointTitle(item, isCheckIn);
   const address = getEndpointAddress(item, isCheckIn);
+  const showTitle = Boolean(title && title !== typeLabel);
 
   return (
     <View style={styles.eventRow}>
+      <View style={styles.railColumn}>
+        <TimelineIcon isCheckIn={isCheckIn} />
+        {showConnector ? <DashedVerticalLine height={12} /> : null}
+      </View>
+
       <View
         style={[
-          styles.typeBox,
-          { backgroundColor: item.cico_bg_color || AppColors.lightprimary1 },
+          styles.eventCard,
+          isCheckIn ? styles.checkInCard : styles.checkOutCard,
         ]}
       >
-        {typeLabel ? (
-          <Text style={styles.typeLabel} numberOfLines={1}>
-            {typeLabel}
+        <View style={styles.eventCardHeader}>
+          <Text style={[styles.eventLabel, isCheckIn ? styles.checkInLabel : styles.checkOutLabel]}>
+            {isCheckIn ? t("Check In") : t("Check Out")}
+          </Text>
+          <View style={styles.timeCol}>
+            <Text style={styles.eventTime}>{time}</Text>
+            {typeLabel ? <Text style={styles.typeUnderTime}>{typeLabel}</Text> : null}
+          </View>
+        </View>
+
+        {showTitle ? <Text style={styles.eventTitle}>{title}</Text> : null}
+
+        {!isCheckIn ? (
+          <Text style={styles.eventMeta}>
+            {t("Breake")}: {breakTime} • {t("Close day")}: {closeDay}
           </Text>
         ) : null}
-        {typeId ? <Text style={styles.typeId}>{typeId}</Text> : null}
-        <Text style={styles.eventTime}>{time}</Text>
-      </View>
-      <View style={styles.typeDivider} />
-      <View style={styles.eventCard}>
-        {title ? <Text style={styles.eventTitle}>{title}</Text> : null}
-        {!isCheckIn ? (
-          <>
-            <Text style={styles.eventMeta}>
-              {t("Breake")}: {breakTime}
-            </Text>
-            <Text style={styles.eventMeta}>
-              {t("Close day")}: {closeDay}
-            </Text>
-          </>
-        ) : null}
+
         {address ? <Text style={styles.eventAddress}>{address}</Text> : null}
       </View>
     </View>
@@ -195,19 +237,25 @@ export default function TimelineScreen() {
       : null;
     const showDateHeader = index === 0 || previousDate !== date;
 
+    const nextItem = index < items.length - 1 ? items[index + 1] : null;
+    const nextDate = nextItem ? getTimelineItemDate(nextItem) : null;
+    const showConnector = nextDate === date;
+
     return (
       <View style={styles.listBlock}>
         {showDateHeader ? (
-          <View style={styles.dateHeaderBox}>
-            <Text style={styles.dateHeader}>
-              {dateWithDay ? t(String(dateWithDay)) : ""}
-              {dateWithDay && date ? ", " : ""}
-              {date ? t(String(date)) : ""}
-            </Text>
-          </View>
+          <Text style={styles.dateHeader}>
+            {dateWithDay ? t(String(dateWithDay)) : ""}
+            {dateWithDay && date ? ", " : ""}
+            {date ? t(String(date)) : ""}
+          </Text>
         ) : null}
 
-        <TimelineEventCard item={item} isCheckIn={isCheckIn} />
+        <TimelineEventCard
+          item={item}
+          isCheckIn={isCheckIn}
+          showConnector={showConnector}
+        />
       </View>
     );
   };
@@ -397,76 +445,98 @@ const styles = StyleSheet.create({
   listBlock: {
     marginBottom: 4,
   },
-  dateHeaderBox: {
-    marginVertical: 10,
-    backgroundColor: AppColors.lightprimary,
-    borderRadius: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   dateHeader: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 13,
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 15,
     color: AppColors.black,
-    textAlign: "center",
+    marginBottom: 10,
+    marginTop: 8,
   },
   eventRow: {
     flexDirection: "row",
-    alignItems: "stretch",
-    paddingVertical: 10,
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
-  typeBox: {
-    width: "25%",
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+  railColumn: {
+    width: 28,
+    alignItems: "center",
+    marginRight: 10,
+    paddingTop: 14,
+  },
+  timelineIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 1,
   },
-  typeLabel: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
-    color: AppColors.black,
-    textAlign: "center",
-  },
-  typeId: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
-    color: AppColors.black,
-    textAlign: "center",
-  },
-  typeDivider: {
-    width: 2,
-    backgroundColor: AppColors.lightprimary,
-    marginHorizontal: 5,
+  dashedLineWrap: {
+    marginTop: 4,
+    alignItems: "center",
   },
   eventCard: {
-    width: "69%",
-    justifyContent: "center",
+    flex: 1,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  checkInCard: {
+    backgroundColor: AppColors.litegreen,
+  },
+  checkOutCard: {
+    backgroundColor: AppColors.diclinelite,
+  },
+  eventCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  eventLabel: {
+    flex: 1,
+    marginRight: 8,
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 14,
+  },
+  checkInLabel: {
+    color: AppColors.green,
+  },
+  checkOutLabel: {
+    color: AppColors.dicline,
   },
   eventTime: {
-    fontFamily: FONTS.LexendMedium,
+    fontFamily: FONTS.LexendSemiBold,
     fontSize: 14,
     color: AppColors.black,
-    textAlign: "center",
+    textAlign: "right",
+  },
+  timeCol: {
+    alignItems: "flex-end",
+  },
+  typeUnderTime: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 12,
+    color: AppColors.black,
+    marginTop: 2,
+    textAlign: "right",
   },
   eventMeta: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 13,
     color: AppColors.black,
+    marginBottom: 4,
   },
   eventTitle: {
     fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
+    fontSize: 13,
     color: AppColors.black,
+    marginBottom: 2,
   },
   eventAddress: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 13,
     color: AppColors.black,
+    lineHeight: 18,
   },
 });

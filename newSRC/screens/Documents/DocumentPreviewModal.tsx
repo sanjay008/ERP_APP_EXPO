@@ -13,7 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenInsets } from "../../utils/screenInsets";
 import { WebView } from "react-native-webview";
 import { Images } from "../../utils/Images";
 import { AppColors as Colors } from "../../utils/theme";
@@ -37,7 +37,7 @@ export default function DocumentPreviewModal({
   onClose,
 }: Props) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const { top, modalPadding } = useScreenInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isPdf = String(fileType || "").toLowerCase() === "pdf";
 
@@ -64,6 +64,7 @@ export default function DocumentPreviewModal({
       transparent
       animationType="fade"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       <StatusBar backgroundColor="rgba(0,0,0,0.92)" barStyle="light-content" />
@@ -71,7 +72,7 @@ export default function DocumentPreviewModal({
         <View
           style={[
             styles.header,
-            { paddingTop: Math.max(insets.top, 12), paddingBottom: 12 },
+            { paddingTop: Math.max(top, 12), paddingBottom: 12 },
           ]}
         >
           <Text style={styles.title} numberOfLines={1}>
@@ -110,7 +111,7 @@ export default function DocumentPreviewModal({
           <TouchableOpacity
             style={[
               styles.downloadBtn,
-              { marginBottom: Math.max(insets.bottom, 16) },
+              { marginBottom: modalPadding },
             ]}
             onPress={onDownload}
             activeOpacity={0.85}
@@ -118,7 +119,7 @@ export default function DocumentPreviewModal({
             <Text style={styles.downloadText}>{t("Download")}</Text>
           </TouchableOpacity>
         ) : (
-          <View style={{ height: Math.max(insets.bottom, 16) }} />
+          <View style={{ height: modalPadding }} />
         )}
       </View>
     </Modal>

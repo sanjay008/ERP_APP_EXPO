@@ -30,7 +30,14 @@ export default function SelectionSheet({
   const { footerPadding } = useScreenInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={[styles.sheet, { paddingBottom: footerPadding }]}>
           <Text style={styles.title}>{title}</Text>

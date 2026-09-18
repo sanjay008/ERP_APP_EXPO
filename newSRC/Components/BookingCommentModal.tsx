@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useKeyboardHeight, useScreenInsets } from "../utils/screenInsets";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 
@@ -31,6 +34,14 @@ export default function BookingCommentModal({
   onSubmit,
 }: Props) {
   const { t } = useTranslation();
+  const { modalPadding } = useScreenInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const sheetOffset =
+    keyboardHeight > 0
+      ? Platform.OS === "ios"
+        ? 12
+        : keyboardHeight + 8
+      : modalPadding;
   const [primary, setPrimary] = useState("");
   const [secondary, setSecondary] = useState("");
 
@@ -61,9 +72,20 @@ export default function BookingCommentModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.backdrop}>
+          <View style={[styles.sheet, { marginBottom: sheetOffset }]}>
           <Text style={styles.title}>{title}</Text>
 
           <Text style={styles.label}>{primaryLabel}</Text>
@@ -113,11 +135,13 @@ export default function BookingCommentModal({
           </View>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

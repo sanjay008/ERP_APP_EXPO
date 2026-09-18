@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import { getStoreUrl } from "../utils/versionCheck";
+import { useScreenInsets } from "../utils/screenInsets";
 import { RFValue } from "react-native-responsive-fontsize";
 
 type VersionUpdateModalProps = {
@@ -13,6 +14,7 @@ type VersionUpdateModalProps = {
 
 export default function VersionUpdateModal({ visible, onClose }: VersionUpdateModalProps) {
   const { t } = useTranslation();
+  const { modalPadding } = useScreenInsets();
 
   const openStore = async () => {
     const url = getStoreUrl();
@@ -23,8 +25,15 @@ export default function VersionUpdateModal({ visible, onClose }: VersionUpdateMo
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.overlay, { paddingBottom: modalPadding }]}>
         <View style={styles.card}>
           <Pressable style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={20} color={AppColors.black} />

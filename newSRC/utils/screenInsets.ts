@@ -1,4 +1,5 @@
-import { Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { Dimensions, Keyboard, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /** Floating custom tab bar approximate height (Figma 87px bar + top padding). */
@@ -39,4 +40,32 @@ export function useScreenInsets(options: ScreenInsetsOptions = {}) {
 
 export function getKeyboardAvoidBehavior(): "padding" | "height" {
   return Platform.OS === "ios" ? "padding" : "height";
+}
+
+/** Keyboard overlap height. Use as extra bottom padding inside modal sheets. */
+export function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const onShow = (event: { endCoordinates?: { height?: number; screenY?: number }; duration?: number }) => {
+      const windowHeight = Dimensions.get("window").height;
+      const keyboardTop = event?.endCoordinates?.screenY ?? windowHeight;
+      const next = Math.max(windowHeight - keyboardTop, event?.endCoordinates?.height || 0);
+      setHeight(next);
+    };
+
+    const onHide = () => setHeight(0);
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  return height;
 }
