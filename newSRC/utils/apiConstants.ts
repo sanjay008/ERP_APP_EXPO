@@ -131,6 +131,12 @@ export const apiConstants = {
   getRelatieDocuments: `${baseUrlnew}documenten/get-relatie-documents`,
   getDocumentDetails: `${baseUrlnew}documenten/get-document-details`,
   quickUploadDocument: `${baseUrlnew}documenten/quick-upload`,
+  announcementsList: `${baseUrlnew}announcements/list`,
+  announcementsDetails: `${baseUrlnew}announcements/details`,
+  payslipsList: `${baseUrlnew}payslips/list`,
+  payslipsDetails: `${baseUrlnew}payslips/details`,
+  performanceReviewsList: `${baseUrlnew}performance-reviews/list`,
+  performanceReviewsDetails: `${baseUrlnew}performance-reviews/details`,
 };
 
 export default apiConstants;

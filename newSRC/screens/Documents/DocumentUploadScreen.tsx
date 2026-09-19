@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import AuthButton from "../../Components/Auth/AuthButton";
 import AppDatePickerSheet from "../../Components/AppDatePickerSheet";
@@ -24,7 +25,16 @@ import DocumentImageSourceSheet, {
   type ImageSourceChoice,
 } from "./DocumentImageSourceSheet";
 import { styles } from "./styles";
-import type { PickedDocumentFile, QuickUploadType } from "./types";
+import {
+  getMaxFiles,
+  getMinPhotos,
+  isCertificateDocumentType,
+  isDocFlag,
+  isMultiPhotoType,
+  isPdfFile,
+  type PickedDocumentFile,
+  type QuickUploadType,
+} from "./types";
 import {
   extractDocumentApiError,
   isApiSuccess,
@@ -78,24 +88,36 @@ function parseDocumentTypeParam(raw: string | string[] | undefined): QuickUpload
   return undefined;
 }
 
+function emptySlots(count: number) {
+  return Array.from({ length: count }, () => null as PickedDocumentFile | null);
+}
+
 export default function DocumentUploadScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ documentType?: string }>();
-  const { top, scrollPadding } = useScreenInsets();
+  const { top, footerPadding } = useScreenInsets();
   const { setToast } = useContext(RegisterBackContext);
 
   const documentType = useMemo(
     () => parseDocumentTypeParam(params.documentType),
     [params.documentType],
   );
-  const minPhotos = Math.max(1, Number(documentType?.min_photos || 2));
-  const requiresExpiry = documentType?.expire_date_required !== false;
-  const allowCamera = documentType?.allow_camera !== false;
+  const minPhotos = getMinPhotos(documentType);
+  const maxFiles = getMaxFiles(documentType);
+  const requiresExpiry = isCertificateDocumentType(documentType)
+    ? false
+    : isDocFlag(documentType?.expire_date_required, true);
+  const allowCamera = isDocFlag(documentType?.allow_camera, true);
+  const acceptPdf = isDocFlag(documentType?.accept_pdf);
+  const isMultiUpload = isMultiPhotoType(documentType);
   const typeName = documentType?.type || "";
   const typeSlug = documentType?.slug || "";
+  const isSingleFile = !isMultiUpload && minPhotos === 1;
 
-  const [photos, setPhotos] = useState<(PickedDocumentFile | null)[]>([null, null]);
+  const [photos, setPhotos] = useState<(PickedDocumentFile | null)[]>(() =>
+    emptySlots(isMultiPhotoType(documentType) ? 1 : getMinPhotos(documentType)),
+  );
   const [expiryDate, setExpiryDate] = useState("");
   const [expiryPickerOpen, setExpiryPickerOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -105,18 +127,22 @@ export default function DocumentUploadScreen() {
 
   const subtitle = useMemo(() => {
     const parts: string[] = [];
-    parts.push(
-      minPhotos === 1 ? t("At least 1 photo") : t(`At least ${minPhotos} photos`),
-    );
+    if (isMultiUpload) {
+      parts.push(t("Add multiple photos"));
+    } else if (isSingleFile) {
+      parts.push(acceptPdf ? t("Photo or PDF") : t("At least 1 photo"));
+    } else {
+      parts.push(t(`At least ${minPhotos} photos`));
+    }
     if (requiresExpiry) parts.push(t("Expiry date required"));
     return parts.join(" · ");
-  }, [minPhotos, requiresExpiry, t]);
+  }, [acceptPdf, isMultiUpload, isSingleFile, minPhotos, requiresExpiry, t]);
 
   const applyPhotoAt = useCallback(
     (index: number, file: PickedDocumentFile) => {
       setPhotos((prev) => {
         const next = [...prev];
-        while (next.length < minPhotos) next.push(null);
+        while (next.length <= index) next.push(null);
         next[index] = file;
         return next;
       });
@@ -129,8 +155,45 @@ export default function DocumentUploadScreen() {
         return next;
       });
     },
-    [minPhotos],
+    [],
   );
+
+  const appendPhotos = useCallback((files: PickedDocumentFile[]) => {
+    if (!files.length) return;
+    setPhotos((prev) => {
+      const next = [...prev];
+      const firstEmpty = next.findIndex((item) => !item);
+      let cursor = firstEmpty >= 0 ? firstEmpty : next.length;
+      files.forEach((file) => {
+        if (cursor >= maxFiles) return;
+        if (cursor < next.length) next[cursor] = file;
+        else next.push(file);
+        cursor += 1;
+      });
+      return next.slice(0, maxFiles);
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.photos;
+      delete next.front;
+      return next;
+    });
+  }, [maxFiles]);
+
+  const addPhotoSlot = useCallback(() => {
+    setPhotos((prev) => (prev.length >= maxFiles ? prev : [...prev, null]));
+  }, [maxFiles]);
+
+  const removePhotoSlot = useCallback((index: number) => {
+    setPhotos((prev) => {
+      if (prev.length <= 1) {
+        const next = [...prev];
+        next[index] = null;
+        return next;
+      }
+      return prev.filter((_, itemIndex) => itemIndex !== index);
+    });
+  }, []);
 
   const openCamera = async (): Promise<PickedDocumentFile | null> => {
     const { granted } = await ImagePicker.requestCameraPermissionsAsync();
@@ -155,7 +218,7 @@ export default function DocumentUploadScreen() {
     return assetToFile(result.assets[0]);
   };
 
-  const openGallery = async (): Promise<PickedDocumentFile | null> => {
+  const openGallery = async (multiple = false): Promise<PickedDocumentFile[]> => {
     if (Platform.OS !== "web") {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
@@ -165,26 +228,46 @@ export default function DocumentUploadScreen() {
           type: "error",
           top: 45,
         });
-        return null;
+        return [];
       }
     }
 
+    const remaining = Math.max(1, maxFiles - photos.filter(Boolean).length);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.85,
-      allowsMultipleSelection: false,
+      allowsMultipleSelection: multiple,
+      selectionLimit: multiple ? remaining : 1,
       exif: false,
     });
 
+    if (result.canceled || !result.assets?.length) return [];
+    return result.assets.map(assetToFile);
+  };
+
+  const openFiles = async (): Promise<PickedDocumentFile | null> => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: acceptPdf ? ["application/pdf", "image/*"] : ["image/*"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
     if (result.canceled || !result.assets?.[0]) return null;
-    return assetToFile(result.assets[0]);
+    const asset = result.assets[0];
+    return {
+      uri: asset.uri,
+      name: asset.name || `document_${Date.now()}.pdf`,
+      type: asset.mimeType || "application/pdf",
+    };
   };
 
   const openSourcePicker = (index: number) => {
-    if (!allowCamera) {
+    const onlyGallery = !allowCamera && !acceptPdf;
+    if (onlyGallery) {
       void (async () => {
-        const file = await openGallery();
-        if (file) applyPhotoAt(index, file);
+        const files = await openGallery(isMultiUpload);
+        if (isMultiUpload) appendPhotos(files);
+        else if (files[0]) applyPhotoAt(index, files[0]);
       })();
       return;
     }
@@ -200,15 +283,44 @@ export default function DocumentUploadScreen() {
 
     await new Promise((resolve) => setTimeout(resolve, 400));
 
-    const file = source === "camera" ? await openCamera() : await openGallery();
-    if (!file) return;
-    applyPhotoAt(index, file);
+    const files =
+      source === "camera"
+        ? [await openCamera()].filter(Boolean) as PickedDocumentFile[]
+        : source === "files"
+          ? [await openFiles()].filter(Boolean) as PickedDocumentFile[]
+          : await openGallery(isMultiUpload);
+
+    if (!files.length) return;
+    if (index < 0 || isMultiUpload) {
+      if (index >= 0 && files[0]) applyPhotoAt(index, files[0]);
+      appendPhotos(index >= 0 ? files.slice(1) : files);
+      return;
+    }
+    applyPhotoAt(index, files[0]);
   };
+
+  const slotErrorKey = (index: number) =>
+    index === 0 ? "front" : index === 1 ? "back" : `photo_${index}`;
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!photos[0]) next.front = t("Front photo is required");
-    if (!photos[1]) next.back = t("Back photo is required");
+    const filled = photos.filter(Boolean);
+    if (isMultiUpload) {
+      if (!filled.length) next.photos = t("Photo is required");
+    } else {
+      for (let index = 0; index < minPhotos; index += 1) {
+        if (photos[index]) continue;
+        if (index === 0) {
+          next.front = isSingleFile
+            ? t("Photo is required")
+            : t("Front photo is required");
+        } else if (index === 1) {
+          next.back = t("Back photo is required");
+        } else {
+          next[`photo_${index}`] = t("Photo is required");
+        }
+      }
+    }
     if (requiresExpiry && !expiryDate) next.expiry_date = t("Expiry date is required");
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -217,24 +329,60 @@ export default function DocumentUploadScreen() {
   const onUpload = async () => {
     if (!documentType || !validate()) return;
 
-    const frontPhoto = photos[0];
-    const backPhoto = photos[1];
-    if (!frontPhoto || !backPhoto) return;
+    const filled = photos.filter((item): item is PickedDocumentFile => Boolean(item));
+    if (!filled.length) return;
 
     setLoading(true);
     try {
       const userData = await loadDocumentAuthUser();
+
+      if (isMultiUpload) {
+        for (const [index, photo] of filled.entries()) {
+          const stamp = `${toYmd(new Date())}-${Date.now().toString().slice(-4)}-${index + 1}`;
+          const res = await quickUploadDocuments(userData, {
+            type: typeName || typeSlug,
+            expire_date: requiresExpiry ? expiryDate : undefined,
+            filename: `${typeName || typeSlug} ${stamp}`,
+            front_file: {
+              ...photo,
+              name: isPdfFile(photo) ? photo.name : `photo_${index + 1}.jpg`,
+            },
+          });
+          if (!isApiSuccess(res)) {
+            throw new Error(
+              extractDocumentApiError(res) ||
+                (typeof res?.message === "string" ? res.message : "") ||
+                t("Something went wrong. Please try again."),
+            );
+          }
+        }
+        setToast({
+          visible: true,
+          text: t("Submitted successfully"),
+          type: "success",
+          top: 45,
+        });
+        router.back();
+        return;
+      }
+
+      const frontPhoto = filled[0];
+      const backPhoto = photos[1] || null;
+      const stamp = `${toYmd(new Date())}-${Date.now().toString().slice(-4)}`;
       const res = await quickUploadDocuments(userData, {
         type: typeName || typeSlug,
         expire_date: requiresExpiry ? expiryDate : undefined,
+        filename: `${typeName || typeSlug} ${stamp}`,
         front_file: {
           ...frontPhoto,
-          name: "photo_front.jpg",
+          name: isPdfFile(frontPhoto) ? frontPhoto.name : "photo_front.jpg",
         },
-        back_file: {
-          ...backPhoto,
-          name: "photo_back.jpg",
-        },
+        back_file: backPhoto
+          ? {
+              ...backPhoto,
+              name: isPdfFile(backPhoto) ? backPhoto.name : "photo_back.jpg",
+            }
+          : null,
       });
 
       if (isApiSuccess(res)) {
@@ -276,7 +424,7 @@ export default function DocumentUploadScreen() {
     return (
       <View style={[styles.container, { paddingTop: top }]}>
         <ScreenHeader title={t("Upload Documents")} onBack={() => router.back()} />
-        <View style={[styles.background, styles.content]}>
+        <View style={[styles.background, styles.content, { paddingBottom: footerPadding }]}>
           <Text style={styles.sectionHint}>
             {t("Something went wrong. Please try again.")}
           </Text>
@@ -286,9 +434,18 @@ export default function DocumentUploadScreen() {
     );
   }
 
-  const slots = [0, 1];
-  const slotErrorKey = (index: number) =>
-    index === 0 ? "front" : index === 1 ? "back" : `photo_${index}`;
+  const slots = Array.from(
+    { length: isMultiUpload ? photos.length : minPhotos },
+    (_, index) => index,
+  );
+  const filledCount = photos.filter(Boolean).length;
+  const photoHint = isMultiUpload
+    ? t("Add photos of each certificate. You can add more than one.")
+    : isSingleFile
+      ? acceptPdf
+        ? t("Add a photo or PDF of the certificate")
+        : t("Add a clear photo of the document")
+      : t("Add clear Front and Back photos of the document");
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
@@ -297,7 +454,7 @@ export default function DocumentUploadScreen() {
         <KeyboardAwareScrollView
           enableOnAndroid
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[styles.content, { paddingBottom: scrollPadding }]}
+          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.introCard}>
@@ -307,30 +464,49 @@ export default function DocumentUploadScreen() {
 
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t("Photos")}</Text>
-              <Text style={styles.sectionMeta}>{`${photos.filter(Boolean).length}/2`}</Text>
+              <Text style={styles.sectionTitle}>{acceptPdf ? t("Files") : t("Photos")}</Text>
+              <Text style={styles.sectionMeta}>
+                {`${filledCount}/${isMultiUpload ? maxFiles : minPhotos}`}
+              </Text>
             </View>
-            <Text style={styles.sectionHint}>
-              {t("Add clear Front and Back photos of the document")}
-            </Text>
+            <Text style={styles.sectionHint}>{photoHint}</Text>
+            {errors.photos ? <Text style={styles.fieldError}>{errors.photos}</Text> : null}
 
             <View style={styles.photoRow}>
               {slots.map((index) => {
                 const photo = photos[index];
                 const errKey = slotErrorKey(index);
                 const slotError = errors[errKey];
-                const slotLabel =
-                  index === 0
-                    ? t("Front")
-                    : index === 1
-                      ? t("Back of document")
-                      : `${t("Photo")} ${index + 1}`;
+                const slotLabel = isMultiUpload
+                  ? `${t("Photo")} ${index + 1}`
+                  : isSingleFile
+                    ? t("Photo")
+                    : index === 0
+                      ? t("Front")
+                      : index === 1
+                        ? t("Back of document")
+                        : `${t("Photo")} ${index + 1}`;
                 return (
-                  <View key={`slot-${index}`} style={styles.photoColumn}>
-                    <Text style={styles.slotCaption}>
-                      {slotLabel}
-                      <Text style={styles.required}> *</Text>
-                    </Text>
+                  <View
+                    key={`slot-${index}`}
+                    style={[
+                      styles.photoColumn,
+                      (isSingleFile || isMultiUpload) && styles.photoColumnSingle,
+                    ]}
+                  >
+                    <View style={styles.slotCaptionRow}>
+                      <Text style={styles.slotCaption}>
+                        {slotLabel}
+                        {!isMultiUpload || index === 0 ? (
+                          <Text style={styles.required}> *</Text>
+                        ) : null}
+                      </Text>
+                      {isMultiUpload && photos.length > 1 ? (
+                        <Pressable onPress={() => removePhotoSlot(index)} hitSlop={8}>
+                          <Text style={styles.removePhotoText}>{t("Remove")}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
                     <TouchableOpacity
                       style={[
                         styles.photoSlot,
@@ -342,7 +518,20 @@ export default function DocumentUploadScreen() {
                     >
                       {photo ? (
                         <>
-                          <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+                          {isPdfFile(photo) ? (
+                            <View style={styles.pdfPreview}>
+                              <Image
+                                source={Images.PdfLogo}
+                                style={styles.pdfPreviewIcon}
+                                tintColor={Colors.primary}
+                              />
+                              <Text style={styles.pdfPreviewName} numberOfLines={2}>
+                                {photo.name}
+                              </Text>
+                            </View>
+                          ) : (
+                            <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+                          )}
                           <View style={styles.photoOverlay}>
                             <View style={styles.retakeBtn}>
                               <Text style={styles.retakeText}>{t("Change")}</Text>
@@ -369,7 +558,11 @@ export default function DocumentUploadScreen() {
                               slotError ? styles.photoActionError : null,
                             ]}
                           >
-                            {allowCamera ? t("Camera or Gallery") : t("Tap to select")}
+                            {acceptPdf
+                              ? t("Camera, Gallery or File")
+                              : allowCamera
+                                ? t("Camera or Gallery")
+                                : t("Tap to select")}
                           </Text>
                         </View>
                       )}
@@ -379,6 +572,11 @@ export default function DocumentUploadScreen() {
                 );
               })}
             </View>
+            {isMultiUpload && photos.length < maxFiles ? (
+              <TouchableOpacity style={styles.addPhotosBtn} onPress={addPhotoSlot} activeOpacity={0.85}>
+                <Text style={styles.addPhotosText}>{t("Add photo")}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           {requiresExpiry ? (
@@ -427,9 +625,10 @@ export default function DocumentUploadScreen() {
               </View>
             </View>
           ) : null}
-
-          <AuthButton title={t("Upload")} onPress={onUpload} disabled={loading} />
         </KeyboardAwareScrollView>
+        <View style={[styles.uploadFooter, { paddingBottom: footerPadding }]}>
+          <AuthButton title={t("Upload")} onPress={onUpload} disabled={loading} />
+        </View>
       </View>
 
       <AppDatePickerSheet
@@ -457,6 +656,7 @@ export default function DocumentUploadScreen() {
         visible={sourceSheetOpen}
         showCamera={allowCamera}
         showGallery
+        showFiles={acceptPdf}
         onClose={() => {
           setSourceSheetOpen(false);
           setPendingSlotIndex(null);

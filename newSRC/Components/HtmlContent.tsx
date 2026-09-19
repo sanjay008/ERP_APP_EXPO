@@ -1,6 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { StyleSheet, useWindowDimensions, View, ViewStyle } from "react-native";
-import RenderHTML, { type MixedStyleDeclaration } from "react-native-render-html";
+import { Image as ExpoImage } from "expo-image";
+import RenderHTML, {
+  type CustomMixedRenderer,
+  type MixedStyleDeclaration,
+  useContentWidth,
+} from "react-native-render-html";
 import { Colors } from "../utils/colors";
 import { FONTS } from "../utils/FONTS";
 
@@ -14,6 +19,59 @@ type Props = {
 };
 
 const SYSTEM_FONTS = [...new Set(Object.values(FONTS))];
+const ICON_MAX_WIDTH = 96;
+
+function resolveHtmlImageSrc(src?: string) {
+  if (!src) return "";
+  if (src.startsWith("data:") || src.startsWith("http://") || src.startsWith("https://")) {
+    return src;
+  }
+  if (src.startsWith("//")) return `https:${src}`;
+  if (src.startsWith("/")) return `https://app.erpportaal.nl${src}`;
+  return src;
+}
+
+function ScaledHtmlImage({ uri, maxWidth }: { uri: string; maxWidth: number }) {
+  const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
+
+  const width = natural
+    ? natural.width < ICON_MAX_WIDTH
+      ? natural.width
+      : maxWidth
+    : maxWidth;
+  const height = natural
+    ? natural.width < ICON_MAX_WIDTH
+      ? natural.height
+      : (natural.height / natural.width) * maxWidth
+    : Math.round(maxWidth * 0.62);
+
+  return (
+    <View style={styles.imageWrap}>
+      <ExpoImage
+        source={{ uri }}
+        style={{ width, height, borderRadius: 6, backgroundColor: "#F7F9FB" }}
+        contentFit="contain"
+        onLoad={(event) => {
+          const nextWidth = event.source?.width;
+          const nextHeight = event.source?.height;
+          if (!nextWidth || !nextHeight) return;
+          setNatural({ width: nextWidth, height: nextHeight });
+        }}
+      />
+    </View>
+  );
+}
+
+const HtmlImageRenderer: CustomMixedRenderer = function HtmlImageRenderer({ tnode }) {
+  const contentWidth = useContentWidth();
+  const src = resolveHtmlImageSrc(tnode.attributes.src || tnode.attributes["data-src"]);
+  if (!src) return null;
+  return <ScaledHtmlImage uri={src} maxWidth={contentWidth} />;
+};
+
+const HTML_RENDERERS = {
+  img: HtmlImageRenderer,
+};
 
 const VARIANT_THEME: Record<
   HtmlVariant,
@@ -149,6 +207,17 @@ const buildTagsStyles = (variant: HtmlVariant): Record<string, MixedStyleDeclara
       textDecorationLine: "underline",
       fontFamily: theme.fontMedium,
     },
+    img: {
+      alignSelf: "center",
+      marginTop: 8,
+      marginBottom: 8,
+    },
+    figure: {
+      marginTop: 8,
+      marginBottom: 8,
+      marginLeft: 0,
+      marginRight: 0,
+    },
   };
 };
 
@@ -179,6 +248,15 @@ function HtmlContent({
     [theme]
   );
 
+  const renderersProps = useMemo(
+    () => ({
+      img: {
+        enableExperimentalPercentWidth: true,
+      },
+    }),
+    []
+  );
+
   return (
     <View style={[styles.container, containerStyle]}>
       <RenderHTML
@@ -187,6 +265,9 @@ function HtmlContent({
         tagsStyles={tagsStyles}
         baseStyle={baseStyle}
         systemFonts={SYSTEM_FONTS}
+        renderers={HTML_RENDERERS}
+        renderersProps={renderersProps}
+        computeEmbeddedMaxWidth={(available) => available}
         defaultTextProps={{
           selectable: true,
           style: {
@@ -206,5 +287,12 @@ export default React.memo(HtmlContent);
 const styles = StyleSheet.create({
   container: {
     width: "100%",
+    overflow: "visible",
+  },
+  imageWrap: {
+    width: "100%",
+    marginTop: 12,
+    marginBottom: 4,
+    overflow: "visible",
   },
 });

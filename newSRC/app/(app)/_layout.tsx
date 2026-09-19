@@ -117,6 +117,12 @@ function AppStack() {
       <Stack.Screen name="profile/password-settings" options={{ headerShown: false }} />
       <Stack.Screen name="documents/index" options={{ headerShown: false }} />
       <Stack.Screen name="documents/upload" options={{ headerShown: false }} />
+      <Stack.Screen name="announcements/index" options={{ headerShown: false }} />
+      <Stack.Screen name="announcements/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="payslips/index" options={{ headerShown: false }} />
+      <Stack.Screen name="payslips/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="performance-reviews/index" options={{ headerShown: false }} />
+      <Stack.Screen name="performance-reviews/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="pay-job/index" options={{ headerShown: false }} />
       <Stack.Screen name="pay-order/index" options={{ headerShown: false }} />
       <Stack.Screen name="about/index" options={{ headerShown: false }} />

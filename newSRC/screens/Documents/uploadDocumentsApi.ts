@@ -1,10 +1,12 @@
 import ApiService from "../../utils/Apiservice";
 import apiConstants from "../../utils/apiConstants";
 import { getData } from "../../utils/storeData";
-import type {
-  PickedDocumentFile,
-  QuickUploadType,
-  RelatieDocument,
+import {
+  buildUploadTypeCards,
+  isPayslipDocumentType,
+  type PickedDocumentFile,
+  type QuickUploadType,
+  type RelatieDocument,
 } from "./types";
 
 type AuthUser = {
@@ -42,7 +44,7 @@ export function isApiSuccess(res: any) {
 
 export async function fetchQuickUploadTypes(
   userData: AuthUser | null | undefined,
-  mobileOnly = true,
+  mobileOnly = false,
 ) {
   return ApiService(apiConstants.getQuickUploadTypes, {
     customData: {
@@ -76,7 +78,7 @@ export type QuickUploadPayload = {
   type: string;
   expire_date?: string;
   front_file: PickedDocumentFile;
-  back_file: PickedDocumentFile;
+  back_file?: PickedDocumentFile | null;
   filename?: string;
   short_description?: string;
 };
@@ -97,11 +99,15 @@ export async function quickUploadDocuments(
         name: payload.front_file.name || "photo_front.jpg",
         type: payload.front_file.type || "image/jpeg",
       },
-      back_file: {
-        uri: payload.back_file.uri,
-        name: payload.back_file.name || "photo_back.jpg",
-        type: payload.back_file.type || "image/jpeg",
-      },
+      ...(payload.back_file
+        ? {
+            back_file: {
+              uri: payload.back_file.uri,
+              name: payload.back_file.name || "photo_back.jpg",
+              type: payload.back_file.type || "image/jpeg",
+            },
+          }
+        : {}),
     },
   });
 }
@@ -110,10 +116,14 @@ export function parseQuickUploadTypes(res: any): QuickUploadType[] {
   const list = res?.data?.types;
   if (!Array.isArray(list)) return [];
   return list.filter(
-    (item) =>
-      item &&
-      item.show_on_mobile !== false &&
-      (item.type || item.slug),
+    (item) => item && (item.type || item.slug) && !isPayslipDocumentType(item),
+  );
+}
+
+export function parseDocumentTypeCards(mobileRes: any, allRes?: any) {
+  return buildUploadTypeCards(
+    parseQuickUploadTypes(mobileRes),
+    parseQuickUploadTypes(allRes),
   );
 }
 

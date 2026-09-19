@@ -30,7 +30,7 @@ import {
   isApiSuccess,
   loadDocumentAuthUser,
   parseDocumentDetails,
-  parseQuickUploadTypes,
+  parseDocumentTypeCards,
   parseRelatieDocuments,
 } from "./uploadDocumentsApi";
 
@@ -63,17 +63,26 @@ export default function UploadDocumentsScreen() {
     setErrorText("");
     try {
       const userData = await loadDocumentAuthUser();
-      const [typesRes, docsRes] = await Promise.all([
+      const [mobileResult, allResult, docsResult] = await Promise.allSettled([
         fetchQuickUploadTypes(userData, true),
+        fetchQuickUploadTypes(userData, false),
         fetchRelatieDocuments(userData),
       ]);
 
-      if (isApiSuccess(typesRes)) {
-        setTypes(parseQuickUploadTypes(typesRes));
+      const mobileTypesRes = mobileResult.status === "fulfilled" ? mobileResult.value : null;
+      const allTypesRes = allResult.status === "fulfilled" ? allResult.value : null;
+      const docsRes = docsResult.status === "fulfilled" ? docsResult.value : null;
+
+      if (isApiSuccess(mobileTypesRes) || isApiSuccess(allTypesRes)) {
+        setTypes(parseDocumentTypeCards(mobileTypesRes, allTypesRes));
       } else {
+        setTypes(parseDocumentTypeCards(null, null));
         const msg =
-          extractDocumentApiError(typesRes) ||
-          typesRes?.message ||
+          extractDocumentApiError(mobileTypesRes) ||
+          extractDocumentApiError(allTypesRes) ||
+          (mobileResult.status === "rejected"
+            ? getApiErrorMessage(mobileResult.reason, tRef.current("Something went wrong. Please try again."))
+            : "") ||
           tRef.current("Something went wrong. Please try again.");
         setErrorText(msg);
         setToastRef.current({
@@ -205,7 +214,12 @@ export default function UploadDocumentsScreen() {
                 </View>
                 <View style={styles.typeTexts}>
                   <Text style={styles.typeTitle}>{t(item.type)}</Text>
-                  <Text style={styles.typeSubtitle}>{t(buildTypeSubtitle(item))}</Text>
+                  <Text style={styles.typeSubtitle}>
+                    {buildTypeSubtitle(item)
+                      .split(" · ")
+                      .map((part) => t(part))
+                      .join(" · ")}
+                  </Text>
                 </View>
               </View>
               <Image source={Images.RightIcon} style={styles.rightIcon} />
@@ -238,8 +252,18 @@ export default function UploadDocumentsScreen() {
                       {doc.status_name ? (
                         <Text style={styles.docMeta}>{doc.status_name}</Text>
                       ) : null}
+                      {resolveDocumentFileType(doc) === "pdf" ? (
+                        <Text style={styles.docMeta}>{t("PDF")}</Text>
+                      ) : null}
                     </View>
-                    <Image source={Images.RightIcon} style={styles.rightIcon} />
+                    <Image
+                      source={
+                        resolveDocumentFileType(doc) === "pdf"
+                          ? Images.PdfLogo
+                          : Images.RightIcon
+                      }
+                      style={styles.rightIcon}
+                    />
                   </View>
                 </TouchableOpacity>
               ))

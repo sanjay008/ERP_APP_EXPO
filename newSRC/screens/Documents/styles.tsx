@@ -118,17 +118,49 @@ export const styles = StyleSheet.create({
   },
   photoRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     alignItems: "flex-start",
   },
   photoColumn: {
-    flex: 1,
+    width: "47%",
+    flexGrow: 1,
     gap: 8,
+  },
+  photoColumnSingle: {
+    width: "47%",
+    flexGrow: 0,
   },
   slotCaption: {
     fontSize: 13,
     fontFamily: FONTS.SemiBold,
     color: Colors.black,
+  },
+  slotCaptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  removePhotoText: {
+    fontSize: 12,
+    fontFamily: FONTS.Medium,
+    color: "#D64545",
+  },
+  addPhotosBtn: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primarylite,
+  },
+  addPhotosText: {
+    fontSize: 13,
+    fontFamily: FONTS.SemiBold,
+    color: Colors.primary,
   },
   photoSlot: {
     width: "100%",
@@ -165,6 +197,25 @@ export const styles = StyleSheet.create({
   photoPreview: {
     width: "100%",
     height: "100%",
+  },
+  pdfPreview: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    gap: 8,
+    backgroundColor: "#F7F9FC",
+  },
+  pdfPreviewIcon: {
+    width: 36,
+    height: 36,
+  },
+  pdfPreviewName: {
+    fontSize: 11,
+    fontFamily: FONTS.Medium,
+    color: Colors.black,
+    textAlign: "center",
   },
   photoOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -315,6 +366,13 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: FONTS.SemiBold,
     color: Colors.white,
+  },
+  uploadFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.Boxgray,
+    backgroundColor: Colors.white,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

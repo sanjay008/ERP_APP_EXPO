@@ -31,6 +31,8 @@ import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
 import { useAppData } from "../../context/AppDataContext";
 import {
+  homeItemIcon,
+  homeItemLabel,
   logHomeItems,
   navigateFromHomeItem,
   type HomeMenuItem,
@@ -101,9 +103,12 @@ export default function HomeScreen() {
         );
         logHomeItems(unique);
         setHomeData(unique);
+      } else {
+        setHomeData([]);
       }
     } catch (error) {
       captureApiError(error);
+      setHomeData([]);
     } finally {
       setLoading(false);
     }
@@ -197,6 +202,14 @@ export default function HomeScreen() {
             contentFit="contain"
             tintColor={item.link_to !== "relaties" ? AppColors.white : undefined}
           />
+        ) : homeItemIcon(item.link_to) || item.icon ? (
+          <Ionicons
+            name={
+              (item.icon || homeItemIcon(item.link_to)) as keyof typeof Ionicons.glyphMap
+            }
+            size={22}
+            color={AppColors.white}
+          />
         ) : (
           <Image
             source={Images.userVector}
@@ -206,7 +219,7 @@ export default function HomeScreen() {
         )}
       </View>
       <Text style={styles.cardTitle} numberOfLines={2}>
-        {t(item.item_title)}
+        {t(homeItemLabel(item))}
       </Text>
     </TouchableOpacity>
   );

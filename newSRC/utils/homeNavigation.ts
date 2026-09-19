@@ -4,9 +4,31 @@ export type HomeMenuItem = {
   id: number | string;
   color_code?: string;
   item_image?: string;
-  item_title: string;
+  item_title?: string;
+  title?: string;
   link_to?: string;
+  icon?: string;
 };
+
+export function homeItemLabel(item: HomeMenuItem) {
+  return item.item_title || item.title || "";
+}
+
+export function homeItemIcon(linkTo?: string) {
+  switch (linkTo?.trim()) {
+    case "Announcements":
+    case "announcements":
+      return "megaphone-outline";
+    case "Payslips":
+    case "payslips":
+      return "document-text-outline";
+    case "PerformanceReviews":
+    case "performance_reviews":
+      return "ribbon-outline";
+    default:
+      return undefined;
+  }
+}
 
 type HomeRoute = {
   pathname:
@@ -34,7 +56,10 @@ type HomeRoute = {
     | "/(app)/my-bookings"
     | "/(app)/pay-job"
     | "/(app)/pay-order"
-    | "/(app)/about";
+    | "/(app)/about"
+    | "/(app)/announcements"
+    | "/(app)/payslips"
+    | "/(app)/performance-reviews";
   params?: Record<string, string>;
 };
 
@@ -62,7 +87,7 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     pathname: "/(app)/tasks",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Tasks/Complaints",
+      title: homeItemLabel(item) || "Tasks/Complaints",
     },
   }),
   Ticket: () => ({
@@ -72,21 +97,21 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     pathname: "/(app)/work-orders",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Work Orders",
+      title: homeItemLabel(item) || "Work Orders",
     },
   }),
   tenantcontracts: (item) => ({
     pathname: "/(app)/tenant-contracts",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Tenant Contracts",
+      title: homeItemLabel(item) || "Tenant Contracts",
     },
   }),
   employees: (item) => ({
     pathname: "/(app)/employees",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Employees",
+      title: homeItemLabel(item) || "Employees",
     },
   }),
   checkinout: () => ({
@@ -97,7 +122,7 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     params: {
       color: item.color_code || "",
       type: "leaverequest",
-      title: item.item_title || "Absence & Request",
+      title: homeItemLabel(item) || "Absence & Request",
     },
   }),
   employee_time_registration: (item) => ({
@@ -123,7 +148,7 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     params: {
       linkTo: "task_house",
       color: item.color_code || "",
-      title: item.item_title || "Add Task For Home",
+      title: homeItemLabel(item) || "Add Task For Home",
     },
   }),
   task_child: (item) => ({
@@ -131,7 +156,7 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     params: {
       linkTo: "task_child",
       color: item.color_code || "",
-      title: item.item_title || "Add Task For Child",
+      title: homeItemLabel(item) || "Add Task For Child",
     },
   }),
   task_user: (item) => ({
@@ -139,63 +164,63 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     params: {
       linkTo: "task_user",
       color: item.color_code || "",
-      title: item.item_title || "Add Task For User",
+      title: homeItemLabel(item) || "Add Task For User",
     },
   }),
   task_multiple_user: (item) => ({
     pathname: "/(app)/home-tasks/multiple-user",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Add Task For Multiple Users",
+      title: homeItemLabel(item) || "Add Task For Multiple Users",
     },
   }),
   customers: (item) => ({
     pathname: "/(app)/customers",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Customers",
+      title: homeItemLabel(item) || "Customers",
     },
   }),
   bookinglist: (item) => ({
     pathname: "/(app)/bookings",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Booking List",
+      title: homeItemLabel(item) || "Booking List",
     },
   }),
   AllPastBooking: (item) => ({
     pathname: "/(app)/bookings/past",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "All Past Booking",
+      title: homeItemLabel(item) || "All Past Booking",
     },
   }),
   MyCompany: (item) => ({
     pathname: "/(app)/my-company",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "My Company",
+      title: homeItemLabel(item) || "My Company",
     },
   }),
   EcommerceTemplate: (item) => ({
     pathname: "/(app)/products",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Ecommerce Product",
+      title: homeItemLabel(item) || "Ecommerce Product",
     },
   }),
   EventList: (item) => ({
     pathname: "/(app)/events",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Event List",
+      title: homeItemLabel(item) || "Event List",
     },
   }),
   MyBookings: (item) => ({
     pathname: "/(app)/my-bookings",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "My Booking",
+      title: homeItemLabel(item) || "My Booking",
     },
   }),
   "Check_In/Out_for_Project": () => ({
@@ -208,14 +233,56 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     pathname: "/(app)/pay-job",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Pay Job",
+      title: homeItemLabel(item) || "Pay Job",
     },
   }),
   pay_order: (item) => ({
     pathname: "/(app)/pay-order",
     params: {
       color: item.color_code || "",
-      title: item.item_title || "Pay order",
+      title: homeItemLabel(item) || "Pay order",
+    },
+  }),
+  announcements: (item) => ({
+    pathname: "/(app)/announcements",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Announcements",
+    },
+  }),
+  Announcements: (item) => ({
+    pathname: "/(app)/announcements",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Announcements",
+    },
+  }),
+  payslips: (item) => ({
+    pathname: "/(app)/payslips",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Payslips",
+    },
+  }),
+  Payslips: (item) => ({
+    pathname: "/(app)/payslips",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Payslips",
+    },
+  }),
+  performance_reviews: (item) => ({
+    pathname: "/(app)/performance-reviews",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Performance reviews",
+    },
+  }),
+  PerformanceReviews: (item) => ({
+    pathname: "/(app)/performance-reviews",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Performance reviews",
     },
   }),
 };
@@ -225,7 +292,7 @@ export function logHomeItems(items: HomeMenuItem[]) {
     "🏠 Home API => get_home_items | items:",
     items.map((item) => ({
       id: item.id,
-      title: item.item_title,
+      title: homeItemLabel(item),
       link_to: item.link_to,
       color_code: item.color_code,
     }))
@@ -239,7 +306,7 @@ export function navigateFromHomeItem(
   const linkTo = item.link_to?.trim();
 
   if (!linkTo) {
-    console.log("🏠 HomeNav: missing link_to for", item.item_title);
+    console.log("🏠 HomeNav: missing link_to for", homeItemLabel(item));
     return false;
   }
 

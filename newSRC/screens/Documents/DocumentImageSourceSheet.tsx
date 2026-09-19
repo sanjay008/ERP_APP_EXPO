@@ -13,12 +13,13 @@ import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors as Colors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 
-export type ImageSourceChoice = "camera" | "gallery";
+export type ImageSourceChoice = "camera" | "gallery" | "files";
 
 type Props = {
   visible: boolean;
   showCamera?: boolean;
   showGallery?: boolean;
+  showFiles?: boolean;
   onClose: () => void;
   onSelect: (source: ImageSourceChoice) => void;
 };
@@ -27,6 +28,7 @@ export default function DocumentImageSourceSheet({
   visible,
   showCamera = true,
   showGallery = true,
+  showFiles = false,
   onClose,
   onSelect,
 }: Props) {
@@ -62,8 +64,10 @@ export default function DocumentImageSourceSheet({
             </View>
           </View>
 
-          <Text style={styles.title}>{t("Add photo")}</Text>
-          <Text style={styles.description}>{t("Choose Camera or Gallery")}</Text>
+          <Text style={styles.title}>{showFiles ? t("Add document") : t("Add photo")}</Text>
+          <Text style={styles.description}>
+            {showFiles ? t("Choose Camera, Gallery or File") : t("Choose Camera or Gallery")}
+          </Text>
 
           <View style={styles.optionsRow}>
             {showCamera ? (
@@ -101,6 +105,25 @@ export default function DocumentImageSourceSheet({
                   />
                 </View>
                 <Text style={styles.optionLabel}>{t("Gallery")}</Text>
+              </Pressable>
+            ) : null}
+
+            {showFiles ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.optionCard,
+                  { opacity: pressed ? 0.88 : 1 },
+                ]}
+                onPress={() => onSelect("files")}
+              >
+                <View style={styles.optionIconWrap}>
+                  <Image
+                    source={Images.PdfLogo}
+                    style={styles.optionIcon}
+                    tintColor={Colors.primary}
+                  />
+                </View>
+                <Text style={styles.optionLabel}>{t("Files")}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -180,10 +203,13 @@ const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   optionCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "30%",
+    minWidth: 90,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.primaryopacity,
