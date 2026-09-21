@@ -21,6 +21,17 @@ import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
 import { LIST_UI } from "../../utils/connectionTheme";
 import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
+import {
+  getDocumentUploadProgress,
+} from "../Documents/types";
+import {
+  fetchQuickUploadTypes,
+  fetchRelatieDocuments,
+  isApiSuccess,
+  loadDocumentAuthUser,
+  parseDocumentTypeCards,
+  parseRelatieDocuments,
+} from "../Documents/uploadDocumentsApi";
 
 type DetailRow = {
   key: string;
@@ -234,11 +245,40 @@ export default function ProfileScreen() {
 
   const [userData, setUserData] = useState<StoredUserData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [docProgress, setDocProgress] = useState({
+    done: 0,
+    total: 0,
+    remaining: 0,
+    percent: 0,
+  });
+
+  const loadDocumentProgress = useCallback(async () => {
+    try {
+      const authUser = await loadDocumentAuthUser();
+      const [mobileResult, allResult, docsResult] = await Promise.allSettled([
+        fetchQuickUploadTypes(authUser, true),
+        fetchQuickUploadTypes(authUser, false),
+        fetchRelatieDocuments(authUser),
+      ]);
+      const mobileRes = mobileResult.status === "fulfilled" ? mobileResult.value : null;
+      const allRes = allResult.status === "fulfilled" ? allResult.value : null;
+      const docsRes = docsResult.status === "fulfilled" ? docsResult.value : null;
+      const types =
+        isApiSuccess(mobileRes) || isApiSuccess(allRes)
+          ? parseDocumentTypeCards(mobileRes, allRes)
+          : parseDocumentTypeCards(null, null);
+      const documents = isApiSuccess(docsRes) ? parseRelatieDocuments(docsRes) : [];
+      setDocProgress(getDocumentUploadProgress(types, documents));
+    } catch {
+      setDocProgress({ done: 0, total: 0, remaining: 0, percent: 0 });
+    }
+  }, []);
 
   const loadProfile = useCallback(async () => {
     const stored = await getData("USERDATA");
     setUserData(stored);
-  }, []);
+    await loadDocumentProgress();
+  }, [loadDocumentProgress]);
 
   useFocusEffect(
     useCallback(() => {
@@ -340,10 +380,32 @@ export default function ProfileScreen() {
           <View style={styles.uploadDocsText}>
             <Text style={styles.uploadDocsTitle}>{t("Upload Documents")}</Text>
             <Text style={styles.uploadDocsSubtitle} numberOfLines={1}>
-              {t("Paspoort, ID, Driving Licence, NIWO")}
+              {docProgress.total
+                ? docProgress.remaining
+                  ? `${docProgress.done}/${docProgress.total} ${t("uploaded")} · ${docProgress.remaining} ${t("remaining")}`
+                  : `${docProgress.done}/${docProgress.total} ${t("uploaded")}`
+                : t("Paspoort, ID, Driving Licence, NIWO")}
             </Text>
+            {docProgress.total ? (
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${docProgress.percent}%`,
+                      backgroundColor:
+                        docProgress.percent >= 100 ? "#06AC14" : AppColors.primary,
+                    },
+                  ]}
+                />
+              </View>
+            ) : null}
           </View>
-          <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
+          {docProgress.total ? (
+            <Text style={styles.progressPercent}>{`${docProgress.percent}%`}</Text>
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
+          )}
         </Pressable>
 
         <Text style={styles.sectionTitle}>{t("Personal Details")}</Text>
@@ -508,6 +570,22 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendRegular,
     fontSize: 12,
     color: AppColors.subtitle,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "#E8EEF5",
+    overflow: "hidden",
+    marginTop: 6,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  progressPercent: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 13,
+    color: AppColors.primary,
   },
   sectionTitle: {
     fontFamily: FONTS.LexendSemiBold,

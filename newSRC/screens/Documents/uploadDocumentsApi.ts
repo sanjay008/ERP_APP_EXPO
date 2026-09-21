@@ -42,36 +42,78 @@ export function isApiSuccess(res: any) {
   );
 }
 
+function logDocFile(file?: PickedDocumentFile | null) {
+  if (!file) return null;
+  return { uri: file.uri, name: file.name, type: file.type };
+}
+
+function logDocumentApi(label: string, request: unknown) {
+  console.log(`📄 DOC API REQUEST => ${label}`, request);
+}
+
+function logDocumentApiResult(label: string, response: unknown) {
+  console.log(`📄 DOC API RESPONSE => ${label}`, response);
+}
+
+function logDocumentApiError(label: string, error: unknown) {
+  const err = error as { message?: string; response?: { data?: unknown } };
+  console.log(`📄 DOC API ERROR => ${label}`, err?.response?.data || err?.message || error);
+}
+
+async function callDocumentApi(label: string, request: unknown, run: () => Promise<any>) {
+  logDocumentApi(label, request);
+  try {
+    const response = await run();
+    logDocumentApiResult(label, response);
+    return response;
+  } catch (error) {
+    logDocumentApiError(label, error);
+    throw error;
+  }
+}
+
 export async function fetchQuickUploadTypes(
   userData: AuthUser | null | undefined,
   mobileOnly = false,
 ) {
-  return ApiService(apiConstants.getQuickUploadTypes, {
-    customData: {
-      ...buildDocumentAuth(userData),
-      mobile_only: mobileOnly ? 1 : 0,
-    },
-  });
+  const request = {
+    ...buildDocumentAuth(userData),
+    mobile_only: mobileOnly ? 1 : 0,
+  };
+  return callDocumentApi(
+    `get-quick-upload-types (mobile_only=${request.mobile_only})`,
+    request,
+    () =>
+      ApiService(apiConstants.getQuickUploadTypes, {
+        customData: request,
+      }),
+  );
 }
 
 export async function fetchRelatieDocuments(
   userData: AuthUser | null | undefined,
 ) {
-  return ApiService(apiConstants.getRelatieDocuments, {
-    customData: buildDocumentAuth(userData),
-  });
+  const request = buildDocumentAuth(userData);
+  return callDocumentApi("get-relatie-documents", request, () =>
+    ApiService(apiConstants.getRelatieDocuments, {
+      customData: request,
+    }),
+  );
 }
 
 export async function fetchDocumentDetails(
   userData: AuthUser | null | undefined,
   documentId: number | string,
 ) {
-  return ApiService(apiConstants.getDocumentDetails, {
-    customData: {
-      ...buildDocumentAuth(userData),
-      document_id: documentId,
-    },
-  });
+  const request = {
+    ...buildDocumentAuth(userData),
+    document_id: documentId,
+  };
+  return callDocumentApi("get-document-details", request, () =>
+    ApiService(apiConstants.getDocumentDetails, {
+      customData: request,
+    }),
+  );
 }
 
 export type QuickUploadPayload = {
@@ -87,29 +129,39 @@ export async function quickUploadDocuments(
   userData: AuthUser | null | undefined,
   payload: QuickUploadPayload,
 ) {
-  return ApiService(apiConstants.quickUploadDocument, {
-    customData: {
-      ...buildDocumentAuth(userData),
-      type: payload.type,
-      expire_date: payload.expire_date || "",
-      filename: payload.filename || payload.type,
-      short_description: payload.short_description || "",
-      front_file: {
-        uri: payload.front_file.uri,
-        name: payload.front_file.name || "photo_front.jpg",
-        type: payload.front_file.type || "image/jpeg",
-      },
-      ...(payload.back_file
-        ? {
-            back_file: {
-              uri: payload.back_file.uri,
-              name: payload.back_file.name || "photo_back.jpg",
-              type: payload.back_file.type || "image/jpeg",
-            },
-          }
-        : {}),
+  const request = {
+    ...buildDocumentAuth(userData),
+    type: payload.type,
+    expire_date: payload.expire_date || "",
+    filename: payload.filename || payload.type,
+    short_description: payload.short_description || "",
+    front_file: {
+      uri: payload.front_file.uri,
+      name: payload.front_file.name || "photo_front.jpg",
+      type: payload.front_file.type || "image/jpeg",
     },
-  });
+    ...(payload.back_file
+      ? {
+          back_file: {
+            uri: payload.back_file.uri,
+            name: payload.back_file.name || "photo_back.jpg",
+            type: payload.back_file.type || "image/jpeg",
+          },
+        }
+      : {}),
+  };
+  return callDocumentApi(
+    `quick-upload (${payload.type})`,
+    {
+      ...request,
+      front_file: logDocFile(request.front_file),
+      back_file: logDocFile((request as { back_file?: PickedDocumentFile }).back_file),
+    },
+    () =>
+      ApiService(apiConstants.quickUploadDocument, {
+        customData: request,
+      }),
+  );
 }
 
 export function parseQuickUploadTypes(res: any): QuickUploadType[] {

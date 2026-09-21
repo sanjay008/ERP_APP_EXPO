@@ -26,12 +26,16 @@ import DocumentImageSourceSheet, {
 } from "./DocumentImageSourceSheet";
 import { styles } from "./styles";
 import {
+  getDocumentTypeLabel,
+  getDocumentUploadType,
   getMaxFiles,
   getMinPhotos,
   isCertificateDocumentType,
   isDocFlag,
   isMultiPhotoType,
   isPdfFile,
+  isRequiredDocumentType,
+  requiresExpiryDate,
   type PickedDocumentFile,
   type QuickUploadType,
 } from "./types";
@@ -105,15 +109,14 @@ export default function DocumentUploadScreen() {
   );
   const minPhotos = getMinPhotos(documentType);
   const maxFiles = getMaxFiles(documentType);
-  const requiresExpiry = isCertificateDocumentType(documentType)
-    ? false
-    : isDocFlag(documentType?.expire_date_required, true);
+  const requiresExpiry = requiresExpiryDate(documentType);
   const allowCamera = isDocFlag(documentType?.allow_camera, true);
   const acceptPdf = isDocFlag(documentType?.accept_pdf);
   const isMultiUpload = isMultiPhotoType(documentType);
-  const typeName = documentType?.type || "";
-  const typeSlug = documentType?.slug || "";
+  const typeName = getDocumentTypeLabel(documentType);
+  const typeSlug = getDocumentUploadType(documentType);
   const isSingleFile = !isMultiUpload && minPhotos === 1;
+  const isRequired = isRequiredDocumentType(documentType);
 
   const [photos, setPhotos] = useState<(PickedDocumentFile | null)[]>(() =>
     emptySlots(isMultiPhotoType(documentType) ? 1 : getMinPhotos(documentType)),
@@ -127,6 +130,7 @@ export default function DocumentUploadScreen() {
 
   const subtitle = useMemo(() => {
     const parts: string[] = [];
+    if (isRequired) parts.push(t("Required"));
     if (isMultiUpload) {
       parts.push(t("Add multiple photos"));
     } else if (isSingleFile) {
@@ -136,7 +140,7 @@ export default function DocumentUploadScreen() {
     }
     if (requiresExpiry) parts.push(t("Expiry date required"));
     return parts.join(" · ");
-  }, [acceptPdf, isMultiUpload, isSingleFile, minPhotos, requiresExpiry, t]);
+  }, [acceptPdf, isMultiUpload, isRequired, isSingleFile, minPhotos, requiresExpiry, t]);
 
   const applyPhotoAt = useCallback(
     (index: number, file: PickedDocumentFile) => {
@@ -340,9 +344,9 @@ export default function DocumentUploadScreen() {
         for (const [index, photo] of filled.entries()) {
           const stamp = `${toYmd(new Date())}-${Date.now().toString().slice(-4)}-${index + 1}`;
           const res = await quickUploadDocuments(userData, {
-            type: typeName || typeSlug,
+            type: typeSlug || typeName,
             expire_date: requiresExpiry ? expiryDate : undefined,
-            filename: `${typeName || typeSlug} ${stamp}`,
+            filename: `${typeSlug || typeName} ${stamp}`,
             front_file: {
               ...photo,
               name: isPdfFile(photo) ? photo.name : `photo_${index + 1}.jpg`,
@@ -370,9 +374,9 @@ export default function DocumentUploadScreen() {
       const backPhoto = photos[1] || null;
       const stamp = `${toYmd(new Date())}-${Date.now().toString().slice(-4)}`;
       const res = await quickUploadDocuments(userData, {
-        type: typeName || typeSlug,
+        type: typeSlug || typeName,
         expire_date: requiresExpiry ? expiryDate : undefined,
-        filename: `${typeName || typeSlug} ${stamp}`,
+        filename: `${typeSlug || typeName} ${stamp}`,
         front_file: {
           ...frontPhoto,
           name: isPdfFile(frontPhoto) ? frontPhoto.name : "photo_front.jpg",
@@ -439,13 +443,15 @@ export default function DocumentUploadScreen() {
     (_, index) => index,
   );
   const filledCount = photos.filter(Boolean).length;
-  const photoHint = isMultiUpload
+  const photoHint = isCertificateDocumentType(documentType)
     ? t("Add photos of each certificate. You can add more than one.")
-    : isSingleFile
-      ? acceptPdf
-        ? t("Add a photo or PDF of the certificate")
-        : t("Add a clear photo of the document")
-      : t("Add clear Front and Back photos of the document");
+    : isMultiUpload
+      ? t("You can add more than one photo.")
+      : isSingleFile
+        ? acceptPdf
+          ? t("Add a photo or PDF of the document")
+          : t("Add a clear photo of the document")
+        : t("Add clear Front and Back photos of the document");
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

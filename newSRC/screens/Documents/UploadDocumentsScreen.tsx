@@ -18,6 +18,7 @@ import DocumentPreviewModal from "./DocumentPreviewModal";
 import { styles } from "./styles";
 import {
   buildTypeSubtitle,
+  getDocumentTypeLabel,
   resolveDocumentFileType,
   type QuickUploadType,
   type RelatieDocument,
@@ -213,7 +214,7 @@ export default function UploadDocumentsScreen() {
                   <Image source={Images.documentlogo} style={styles.typeIcon} />
                 </View>
                 <View style={styles.typeTexts}>
-                  <Text style={styles.typeTitle}>{t(item.type)}</Text>
+                  <Text style={styles.typeTitle}>{t(getDocumentTypeLabel(item))}</Text>
                   <Text style={styles.typeSubtitle}>
                     {buildTypeSubtitle(item)
                       .split(" · ")
@@ -243,7 +244,11 @@ export default function UploadDocumentsScreen() {
                       <Text style={styles.docTitle}>
                         {doc.filename || doc.type || t("Document")}
                       </Text>
-                      {doc.type ? <Text style={styles.docMeta}>{t(doc.type)}</Text> : null}
+                      {doc.type ? (
+                        <Text style={styles.docMeta}>
+                          {t(getDocumentTypeLabel({ type: doc.type, slug: "" }))}
+                        </Text>
+                      ) : null}
                       {doc.expire_date ? (
                         <Text style={styles.docMeta}>
                           {`${t("Expiry Date")}: ${doc.expire_date}`}
