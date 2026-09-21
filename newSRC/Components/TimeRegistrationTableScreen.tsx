@@ -14,6 +14,7 @@ import ScreenHeader from "./ScreenHeader";
 import ListScreenBody, { listEmptyFeedback } from "./ListScreenBody";
 import OptionBottomSheet, { type OptionItem } from "./OptionBottomSheet";
 import { useApiErrorState } from "../hooks/useApiErrorState";
+import { isEmptyDataMessage, parseApiError } from "../utils/apiError";
 import {
   TIME_REGISTRATION_MONTHS,
   buildEmployeeScheduleLabel,
@@ -83,8 +84,13 @@ export default function TimeRegistrationTableScreen({
         const data = await loadRows(year, month);
         setItems(data);
       } catch (error) {
-        captureApiError(error);
-        setItems([]);
+        const parsed = parseApiError(error);
+        if (isEmptyDataMessage(parsed.message)) {
+          setItems([]);
+        } else {
+          captureApiError(error);
+          setItems([]);
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);

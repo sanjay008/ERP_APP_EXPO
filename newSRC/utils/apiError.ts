@@ -49,7 +49,7 @@ function isTechnicalServerMessage(message: string): boolean {
   );
 }
 
-function isEmptyDataMessage(message: string): boolean {
+export function isEmptyDataMessage(message: string): boolean {
   const lower = message.toLowerCase();
   return (
     lower.includes("not found") ||

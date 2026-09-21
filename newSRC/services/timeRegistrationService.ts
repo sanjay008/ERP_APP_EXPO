@@ -1,6 +1,6 @@
 import apiClient from "../utils/client";
 import { apiConstants } from "../utils/apiConstants";
-import { toAppApiError } from "../utils/apiError";
+import { isEmptyDataMessage, toAppApiError } from "../utils/apiError";
 
 export type TimeRegistrationRow = {
   id?: string | number;
@@ -63,10 +63,14 @@ export function formatTimeShort(time?: string) {
 async function fetchRows(endpoint: string, payload: Record<string, unknown>) {
   const response = await apiClient.post<ApiBody<TimeRegistrationRow[]>>(endpoint, payload);
   const body = response.data;
-  if (!body?.status || !Array.isArray(body.data)) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch time registration" });
+  if (Array.isArray(body?.data)) return body.data;
+
+  const message = typeof body?.message === "string" ? body.message.trim() : "";
+  if (!body?.status || !message || isEmptyDataMessage(message)) {
+    return [];
   }
-  return body.data;
+
+  throw toAppApiError({ message: message || "Failed to fetch time registration" });
 }
 
 export function fetchEmployeeTimeRegistration(year: number, month: string) {
