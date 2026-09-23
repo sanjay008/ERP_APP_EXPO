@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import SearchBox from "../../Components/SearchBox";
@@ -28,22 +29,35 @@ function formatMoney(symbol: string | undefined, value?: number | string) {
 
 function PayOrderCard({
   item,
-  expanded,
-  onToggle,
+  onPress,
 }: {
   item: PayOrderItem;
-  expanded: boolean;
-  onToggle: () => void;
+  onPress: () => void;
 }) {
   const { t } = useTranslation();
   const symbol = item.rent_currencys?.symbol;
 
   return (
-    <Pressable style={styles.card} onPress={onToggle}>
+    <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.cardHeader}>
-        <Text style={styles.title}>
-          {t("Pay order")}: {item.pay_order_nr || "-"}
-        </Text>
+        <View style={styles.textWrap}>
+          <Text style={styles.row}>
+            {t("Pay order")} :{"  "}
+            <Text style={styles.value}>{item.pay_order_nr || "-"}</Text>
+          </Text>
+          <Text style={styles.row}>
+            {t("Description")} :{"  "}
+            <Text style={styles.value}>{item.description || "-"}</Text>
+          </Text>
+          <Text style={styles.row}>
+            {t("Amount")} :{"  "}
+            <Text style={styles.value}>{formatMoney(symbol, item.amount)}</Text>
+          </Text>
+          <Text style={styles.row}>
+            {t("Outstading")} :{"  "}
+            <Text style={styles.value}>{formatMoney(symbol, item.outstading)}</Text>
+          </Text>
+        </View>
         {item.module_status?.status_name ? (
           <View
             style={[
@@ -55,70 +69,18 @@ function PayOrderCard({
           </View>
         ) : null}
       </View>
-
-      <Text style={styles.row}>
-        {t("Description")}: <Text style={styles.value}>{item.description || "-"}</Text>
-      </Text>
-      <Text style={styles.row}>
-        {t("Amount")}: <Text style={styles.value}>{formatMoney(symbol, item.amount)}</Text>
-      </Text>
-      <Text style={styles.row}>
-        {t("Outstading")}:{" "}
-        <Text style={styles.value}>{formatMoney(symbol, item.outstading)}</Text>
-      </Text>
-
-      {expanded ? (
-        <View style={styles.details}>
-          <Text style={styles.detailTitle}>{item.pay_order_nr}</Text>
-          <DetailRow label={t("Paid")} value={formatMoney(symbol, item.paid)} />
-          <DetailRow
-            label={t("Date")}
-            value={item.pay_order_start_date || "-"}
-          />
-          <DetailRow
-            label={t("Due Date")}
-            value={item.pay_order_end_date || "-"}
-          />
-
-          {item.payments && item.payments.length > 0 ? (
-            <>
-              <Text style={styles.paymentsTitle}>{t("Payments")}</Text>
-              {item.payments.map((payment, index) => (
-                <View key={index} style={styles.paymentRow}>
-                  <Text style={styles.paymentCell}>{payment.payment_date || "-"}</Text>
-                  <Text style={[styles.paymentCell, styles.paymentCenter]}>
-                    {payment.description || "-"}
-                  </Text>
-                  <Text style={[styles.paymentCell, styles.paymentRight]}>
-                    {formatMoney(symbol, payment.amount)}
-                  </Text>
-                </View>
-              ))}
-            </>
-          ) : null}
-        </View>
-      ) : null}
     </Pressable>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
-    </View>
   );
 }
 
 export default function PayOrderListScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { top, scrollPadding } = useScreenInsets();
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const [items, setItems] = useState<PayOrderItem[]>([]);
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -151,6 +113,14 @@ export default function PayOrderListScreen() {
     );
   }, [items, search]);
 
+  const openDetails = (item: PayOrderItem) => {
+    if (item.id == null) return;
+    router.push({
+      pathname: "/(app)/pay-order/[id]",
+      params: { id: String(item.id) },
+    });
+  };
+
   return (
     <View style={[listScreenStyles.container, { paddingTop: top }]}>
       <ScreenHeader title={t("Pay order")} refreshOnPress={onRefresh} />
@@ -174,15 +144,12 @@ export default function PayOrderListScreen() {
           data={filteredItems}
           keyExtractor={(item, index) => String(item.id ?? index)}
           renderItem={({ item }) => (
-            <PayOrderCard
-              item={item}
-              expanded={expandedId === item.id}
-              onToggle={() =>
-                setExpandedId((prev) => (prev === item.id ? null : item.id ?? null))
-              }
-            />
+            <PayOrderCard item={item} onPress={() => openDetails(item)} />
           )}
-          contentContainerStyle={{ paddingBottom: scrollPadding, paddingHorizontal: LIST_UI.screenPadding }}
+          contentContainerStyle={{
+            paddingBottom: scrollPadding,
+            paddingHorizontal: LIST_UI.screenPadding,
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -194,7 +161,7 @@ export default function PayOrderListScreen() {
             loading,
             apiError,
             onRetry: loadData,
-            emptyMessage: t("No Data Found"),
+            emptyMessage: t("No Pay Order Found."),
           })}
         />
       </ListScreenBody>
@@ -222,18 +189,15 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 8,
-    marginBottom: 8,
   },
-  title: {
+  textWrap: {
     flex: 1,
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 15,
-    color: AppColors.black,
   },
   statusBadge: {
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    marginTop: 4,
   },
   statusText: {
     fontFamily: FONTS.LexendMedium,
@@ -248,55 +212,6 @@ const styles = StyleSheet.create({
   },
   value: {
     fontFamily: FONTS.LexendMedium,
-    color: AppColors.subtitle,
+    color: AppColors.primary,
   },
-  details: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: LIST_UI.cardBorder,
-  },
-  detailTitle: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 16,
-    color: AppColors.black,
-    marginBottom: 8,
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  detailLabel: {
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 14,
-    color: AppColors.black,
-  },
-  detailValue: {
-    fontFamily: FONTS.LexendMedium,
-    fontSize: 14,
-    color: AppColors.subtitle,
-    flex: 1,
-    textAlign: "right",
-    marginLeft: 12,
-  },
-  paymentsTitle: {
-    marginTop: 12,
-    marginBottom: 8,
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 14,
-    color: AppColors.black,
-  },
-  paymentRow: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  paymentCell: {
-    flex: 1,
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 13,
-    color: AppColors.black,
-  },
-  paymentCenter: { textAlign: "center" },
-  paymentRight: { textAlign: "right" },
 });

@@ -125,6 +125,7 @@ function AppStack() {
       <Stack.Screen name="performance-reviews/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="pay-job/index" options={{ headerShown: false }} />
       <Stack.Screen name="pay-order/index" options={{ headerShown: false }} />
+      <Stack.Screen name="pay-order/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="about/index" options={{ headerShown: false }} />
       <Stack.Screen name="events/[id]/scanner" options={{ headerShown: false }} />
       <Stack.Screen name="events/[id]/confirm" options={{ headerShown: false }} />

@@ -23,6 +23,7 @@ import {
   isAlreadyCheckedInError,
   performCheckIn,
   performCheckOut,
+  pickDefaultContract,
   type EmployeeContractOption,
   type ScheduleItem,
 } from "../services/checkInOutService";
@@ -89,7 +90,7 @@ export default function EmployeeCheckInOutModal({
     try {
       const employeeContracts = await fetchActiveEmployeeContracts();
       setContracts(employeeContracts);
-      const first = employeeContracts[0] ?? null;
+      const first = pickDefaultContract(employeeContracts);
       setSelectedContract(first);
       if (first) {
         const scheduleRes = await fetchContractSchedule(first.id, apiDate);
@@ -97,10 +98,10 @@ export default function EmployeeCheckInOutModal({
         setScheduleLabel(scheduleRes.scheduleLabel);
         const firstSchedule = scheduleRes.schedules[0] ?? null;
         setSelectedSchedule(firstSchedule);
-        if (!scheduleRes.schedules.length) {
-          setNoSchedule(t("EmployeeError"));
-        }
+        setNoSchedule(firstSchedule ? "" : t("EmployeeError"));
       } else {
+        setSchedules([]);
+        setSelectedSchedule(null);
         setNoSchedule(t("EmployeeError"));
       }
     } catch {
@@ -173,8 +174,8 @@ export default function EmployeeCheckInOutModal({
   };
 
   const handleCheckIn = async () => {
-    if (!selectedContract || !selectedSchedule) {
-      Alert.alert(t("Error"), t("Please select contract and schedule"));
+    if (!selectedContract?.id) {
+      Alert.alert(t("Error"), t("Please select a contract"));
       return;
     }
     setSubmitting(true);
@@ -281,8 +282,9 @@ export default function EmployeeCheckInOutModal({
                 );
               })
             ) : noSchedule ? (
-              <Text style={styles.emptyText}>
-                {noSchedule} <Text style={styles.dateHint}>{displayDate}.</Text>
+              <Text style={styles.noScheduleText}>
+                {noSchedule}{" "}
+                <Text style={styles.noScheduleDate}>{displayDate}.</Text>
               </Text>
             ) : null}
           </>
@@ -440,7 +442,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 12,
   },
-  dateHint: { fontFamily: FONTS.LexendSemiBold, color: AppColors.black },
+  noScheduleText: {
+    fontFamily: FONTS.LexendRegular,
+    color: Colors.red,
+    fontSize: 13,
+    marginVertical: 12,
+  },
+  noScheduleDate: {
+    fontFamily: FONTS.LexendMedium,
+    color: Colors.red,
+    fontSize: 13,
+  },
   primaryButton: {
     marginTop: 16,
     backgroundColor: AppColors.primary,

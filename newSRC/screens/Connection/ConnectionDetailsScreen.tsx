@@ -18,8 +18,13 @@ import { useApiErrorState } from "../../hooks/useApiErrorState";
 import { useScreenInsets } from "../../utils/screenInsets";
 import {
   fetchConnectionDetails,
+  fetchConnectionDocuments,
+  parseConnectionDocuments,
   type ConnectionDetail,
+  type ConnectionDocument,
 } from "../../services/connectionService";
+import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
+import { resolveDocumentFileType } from "../Documents/types";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
@@ -41,36 +46,92 @@ type DetailRow = {
   labels?: string[];
 };
 
+function emptyToDash(value?: string | null) {
+  if (!value || value === "null") return "-";
+  return value;
+}
+
 function buildDetailRows(data: ConnectionDetail, t: (key: string) => string): DetailRow[] {
   const type = data.bedrijf_particulier;
   const rows: DetailRow[] = [];
 
-  rows.push({
-    key: "status",
-    label: t("Status"),
-    statusName: data.leadstatus?.status_name || "-",
-    statusColor: data.leadstatus?.color_code || "#00D0FF",
-    icon: Images.ConnectionStatus,
-    iconBg: "#FFE6EF",
-    iconColor: "#FF005E",
-  });
+  const nameLabel =
+    type === 1
+      ? t("Bedrijfsnaam")
+      : type === 2
+        ? t("Volledige naam")
+        : type === 4
+          ? t("Voertuignaam")
+          : t("Name");
+  const nameValue =
+    type === 1
+      ? data.bedrijfsnaam
+      : type === 4
+        ? data.voertuig_project
+        : data.display_name;
 
   rows.push({
-    key: "labels",
-    label: t("Label"),
-    labels: data.labels?.length
-      ? data.labels.map((l) => l.label_name || l.name || "").filter(Boolean)
-      : [],
-    icon: Images.ConnectionLabel,
-    iconBg: "#F2E6FF",
-    iconColor: "#7C00FF",
+    key: "name",
+    label: nameLabel,
+    value: emptyToDash(nameValue),
+    icon: Images.userVector,
+    iconBg: "#E6EBFF",
+    iconColor: "#0037FF",
   });
 
-  if ([1, 2].includes(type || 0)) {
+  if ([1, 2, 3, 4].includes(type || 0)) {
+    rows.push({
+      key: "type",
+      label: t("Type"),
+      value: emptyToDash(data.soort_relatie),
+      icon: Images.BagVector,
+      iconBg: "#FFF4E6",
+      iconColor: "#F59E0B",
+    });
+
+    rows.push({
+      key: "status",
+      label: t("Status"),
+      statusName: data.leadstatus?.status_name || "-",
+      statusColor: data.leadstatus?.color_code || "#00D0FF",
+      icon: Images.ConnectionStatus,
+      iconBg: "#FFE6EF",
+      iconColor: "#FF005E",
+    });
+
+    rows.push({
+      key: "labels",
+      label: t("Label"),
+      labels: data.labels?.length
+        ? data.labels.map((l) => l.label_name || l.name || "").filter(Boolean)
+        : [],
+      icon: Images.ConnectionLabel,
+      iconBg: "#F2E6FF",
+      iconColor: "#7C00FF",
+    });
+  }
+
+  if (type === 2) {
+    const whatsapp = emptyToDash(data.whatsapp_number);
+    rows.push({
+      key: "whatsapp",
+      label: t("WhatsApp-nummer"),
+      value: whatsapp,
+      link:
+        whatsapp !== "-"
+          ? `https://wa.me/${whatsapp.replace(/[^\d+]/g, "")}`
+          : undefined,
+      icon: Images.ConnectionPhone,
+      iconBg: "#E7F7E8",
+      iconColor: "#06AC14",
+    });
+  }
+
+  if (type === 1 || type === 2) {
     rows.push({
       key: "phone",
-      label: t("Phone Number"),
-      value: data.contact_telefoon || "-",
+      label: t("Telefoon nummer"),
+      value: emptyToDash(data.contact_telefoon),
       icon: Images.ConnectionPhone,
       iconBg: "#E7F7E8",
       iconColor: "#06AC14",
@@ -78,12 +139,32 @@ function buildDetailRows(data: ConnectionDetail, t: (key: string) => string): De
 
     rows.push({
       key: "email",
-      label: t("Email Address"),
-      value: data.email_adres || "-",
+      label: t("E-mailadres"),
+      value: emptyToDash(data.email_adres),
       icon: Images.ConnectionMail,
       iconBg: "#FFFDEC",
       iconColor: "#FFEB3B",
     });
+
+    rows.push({
+      key: "document-nr",
+      label: t("Document nr (ID/Paspoort)"),
+      value: emptyToDash(data.document_nr),
+      icon: Images.documentlogo,
+      iconBg: "#EEF2F7",
+      iconColor: "#4B5563",
+    });
+
+    if (type === 2) {
+      rows.push({
+        key: "private-email",
+        label: t("Prive E-mailadres"),
+        value: emptyToDash(data.email_adres_private),
+        icon: Images.ConnectionMail,
+        iconBg: "#FFFDEC",
+        iconColor: "#FFEB3B",
+      });
+    }
 
     rows.push({
       key: "facebook",
@@ -106,11 +187,11 @@ function buildDetailRows(data: ConnectionDetail, t: (key: string) => string): De
     });
   }
 
-  if ([1, 2, 3].includes(type || 0)) {
+  if (type === 1 || type === 2 || type === 3) {
     rows.push({
       key: "address",
-      label: t("Address"),
-      value: data.google_maps || "-",
+      label: t("Adress"),
+      value: emptyToDash(data.google_maps),
       link: isOpenableAddress(data.google_maps) ? data.google_maps : undefined,
       isMap: true,
       icon: Images.ConnectionLocation,
@@ -119,7 +200,7 @@ function buildDetailRows(data: ConnectionDetail, t: (key: string) => string): De
     });
   }
 
-  if ([1, 2].includes(type || 0)) {
+  if (type === 1) {
     rows.push({
       key: "website",
       label: t("Website"),
@@ -128,6 +209,52 @@ function buildDetailRows(data: ConnectionDetail, t: (key: string) => string): De
       icon: Images.ConnectionWebsite,
       iconBg: "#F2E6FF",
       iconColor: "#7C00FF",
+    });
+  }
+
+  if (type === 3) {
+    rows.push({
+      key: "objectnr",
+      label: t("Objectnr"),
+      value: emptyToDash(data.object_nr),
+      icon: Images.documentlogo,
+      iconBg: "#EEF2F7",
+      iconColor: "#4B5563",
+    });
+    rows.push({
+      key: "project",
+      label: t("Project naam"),
+      value: emptyToDash(data.project_naam),
+      icon: Images.BagVector,
+      iconBg: "#FFF4E6",
+      iconColor: "#F59E0B",
+    });
+  }
+
+  if (type === 4) {
+    rows.push({
+      key: "kenteken",
+      label: t("Kenteken plaat"),
+      value: emptyToDash(data.voertuig_kenteken),
+      icon: Images.TabCar,
+      iconBg: "#E6FBFF",
+      iconColor: "#00D0FF",
+    });
+    rows.push({
+      key: "merk",
+      label: t("Merk"),
+      value: emptyToDash(data.voertuig_merk),
+      icon: Images.BagVector,
+      iconBg: "#FFF4E6",
+      iconColor: "#F59E0B",
+    });
+    rows.push({
+      key: "model",
+      label: t("Model"),
+      value: emptyToDash(data.voertuig_model),
+      icon: Images.documentlogo,
+      iconBg: "#EEF2F7",
+      iconColor: "#4B5563",
     });
   }
 
@@ -210,6 +337,8 @@ export default function ConnectionDetailsScreen() {
   const params = useLocalSearchParams<{ id: string; color?: string }>();
 
   const [data, setData] = useState<ConnectionDetail | null>(null);
+  const [documents, setDocuments] = useState<ConnectionDocument[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<ConnectionDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
@@ -218,10 +347,19 @@ export default function ConnectionDetailsScreen() {
     try {
       setLoading(true);
       clearApiError();
-      const response = await fetchConnectionDetails(params.id);
-      if (response?.status && response.data?.relaties) {
-        setData(response.data.relaties);
+      const [detailsRes, docsRes] = await Promise.allSettled([
+        fetchConnectionDetails(params.id),
+        fetchConnectionDocuments(params.id),
+      ]);
+      const details = detailsRes.status === "fulfilled" ? detailsRes.value : null;
+      const docs = docsRes.status === "fulfilled" ? docsRes.value : null;
+      if (detailsRes.status === "rejected") {
+        captureApiError(detailsRes.reason);
       }
+      if (details?.status && details.data?.relaties) {
+        setData(details.data.relaties);
+      }
+      setDocuments(parseConnectionDocuments(details, docs));
     } catch (error) {
       captureApiError(error);
     } finally {
@@ -294,8 +432,73 @@ export default function ConnectionDetailsScreen() {
               </View>
             ))}
           </View>
+
+          {documents.length ? (
+            <View style={styles.docsCard}>
+              <Text style={styles.docsTitle}>{t("Document")}</Text>
+              <View style={styles.docsGrid}>
+                {documents.map((doc, index) => {
+                  const uri = doc.view_url || doc.shared_link || doc.download_url || doc.file_path;
+                  const fileType = resolveDocumentFileType({
+                    file_type: doc.file_type,
+                    file_extension: doc.file_extension,
+                    filename: doc.filename,
+                    view_url: uri,
+                  });
+                  const isImage = fileType === "image";
+                  return (
+                    <Pressable
+                      key={String(doc.id || uri || index)}
+                      style={styles.docThumb}
+                      onPress={() => setPreviewDoc(doc)}
+                    >
+                      {isImage && uri ? (
+                        <FallBackImage
+                          source={{ uri }}
+                          style={styles.docImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Image
+                          source={fileType === "pdf" ? Images.PdfLogo : Images.documentlogo}
+                          style={styles.docIcon}
+                          resizeMode="contain"
+                        />
+                      )}
+                      <Text style={styles.docName} numberOfLines={2}>
+                        {doc.filename || doc.type || t("Document")}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
         </ScrollView>
       )}
+
+      <DocumentPreviewModal
+        visible={Boolean(previewDoc)}
+        title={previewDoc?.filename || previewDoc?.type || t("Document")}
+        imageUri={
+          previewDoc?.view_url ||
+          previewDoc?.shared_link ||
+          previewDoc?.file_path
+        }
+        downloadUrl={
+          previewDoc?.download_url ||
+          previewDoc?.view_url ||
+          previewDoc?.shared_link ||
+          previewDoc?.file_path
+        }
+        fileType={resolveDocumentFileType({
+          file_type: previewDoc?.file_type,
+          file_extension: previewDoc?.file_extension,
+          filename: previewDoc?.filename,
+          view_url: previewDoc?.view_url || previewDoc?.shared_link || previewDoc?.file_path,
+        })}
+        onClose={() => setPreviewDoc(null)}
+      />
     </View>
   );
 }
@@ -414,6 +617,44 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendMedium,
     fontSize: 11,
     color: AppColors.primary,
+  },
+  docsCard: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  docsTitle: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 15,
+    color: AppColors.black,
+    marginBottom: 12,
+  },
+  docsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  docThumb: {
+    width: 88,
+    alignItems: "center",
+    gap: 6,
+  },
+  docImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 8,
+    backgroundColor: "#EEF2F7",
+  },
+  docIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 8,
+    backgroundColor: "#EEF2F7",
+  },
+  docName: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 11,
+    color: AppColors.subtitle,
+    textAlign: "center",
   },
   loaderWrap: {
     flex: 1,

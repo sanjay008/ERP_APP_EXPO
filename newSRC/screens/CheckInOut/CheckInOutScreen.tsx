@@ -25,6 +25,7 @@ import {
   getTodayFormats,
   performCheckIn,
   performCheckOut,
+  pickDefaultContract,
   type EmployeeContractOption,
   type ScheduleItem,
 } from "../../services/checkInOutService";
@@ -71,7 +72,7 @@ export default function CheckInOutScreen() {
       const employeeContracts = await fetchActiveEmployeeContracts();
       setContracts(employeeContracts);
 
-      const first = employeeContracts[0] ?? null;
+      const first = pickDefaultContract(employeeContracts);
       setSelectedContract(first);
       if (first) {
         const scheduleRes = await fetchContractSchedule(first.id, apiDate);
@@ -122,8 +123,8 @@ export default function CheckInOutScreen() {
 
   const handleSubmit = async () => {
     if (!checkedIn) {
-      if (!selectedContract || !selectedSchedule) {
-        Alert.alert(t("Error"), t("Please select contract and schedule"));
+      if (!selectedContract?.id) {
+        Alert.alert(t("Error"), t("Please select a contract"));
         return;
       }
       setSubmitting(true);
@@ -232,7 +233,10 @@ export default function CheckInOutScreen() {
                     );
                   })
                 ) : (
-                  <Text style={styles.emptyText}>{t("EmployeeError")}</Text>
+                  <Text style={styles.noScheduleText}>
+                    {t("EmployeeError")}{" "}
+                    <Text style={styles.noScheduleDate}>{displayDate}.</Text>
+                  </Text>
                 )}
               </>
             ) : (
@@ -378,6 +382,17 @@ const styles = StyleSheet.create({
     color: Colors.placeholder,
     textAlign: "center",
     marginVertical: 12,
+  },
+  noScheduleText: {
+    fontFamily: FONTS.LexendRegular,
+    color: Colors.red,
+    fontSize: 13,
+    marginVertical: 12,
+  },
+  noScheduleDate: {
+    fontFamily: FONTS.LexendMedium,
+    color: Colors.red,
+    fontSize: 13,
   },
   primaryButton: {
     marginTop: 16,

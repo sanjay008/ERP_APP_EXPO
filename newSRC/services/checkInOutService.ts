@@ -99,52 +99,96 @@ export function getTodayFormats() {
   return { displayDate, apiDate, currentTime };
 }
 
-export async function fetchActiveEmployeeContracts() {
-  const response = await apiClient.post<
-    ApiBody<Array<{ contract: Record<string, unknown>; display_name?: string }>>
-  >(apiConstants.employee, { status_id: 33 });
+async function getUserContext() {
+  const userData = await getData("USERDATA");
+  return {
+    relaties_id: userData?.data?.relaties?.id,
+    user_id: userData?.data?.user?.id,
+    role: userData?.data?.user?.role,
+  };
+}
 
-  const body = response.data;
-  if (!body?.status || !Array.isArray(body.data)) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch contracts" });
-  }
-
+function isContractActiveToday(item: EmployeeContractOption) {
+  if (!item.from || !item.end) return true;
+  const fromDate = new Date(String(item.from));
+  const endDate = new Date(String(item.end));
+  if (Number.isNaN(fromDate.getTime()) || Number.isNaN(endDate.getTime())) return true;
   const today = new Date();
-  return body.data
-    .map((item) => {
-      const contract = item.contract as Record<string, unknown>;
+  today.setHours(0, 0, 0, 0);
+  fromDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+  return today >= fromDate && today <= endDate;
+}
+
+export function pickDefaultContract(contracts: EmployeeContractOption[]) {
+  return contracts.find(isContractActiveToday) ?? contracts[0] ?? null;
+}
+
+export async function fetchActiveEmployeeContracts() {
+  try {
+    const ctx = await getUserContext();
+    const response = await ApiService<
+      Array<{ contract: Record<string, unknown>; display_name?: string }>
+    >(apiConstants.employee, {
+      includeToken: true,
+      customData: {
+        relaties_id: ctx.relaties_id,
+        role: ctx.role,
+        status_id: 33,
+        user_id: ctx.user_id,
+      },
+    });
+
+    if (!response?.status || !Array.isArray(response.data)) {
+      return [] as EmployeeContractOption[];
+    }
+
+    return response.data.map((item) => {
+      const contract = (item.contract || {}) as Record<string, unknown>;
       return {
         ...contract,
-        title: String(contract.contract_name || ""),
+        title: String(contract.contract_name || item.display_name || ""),
         id: contract.id as string | number,
+        from: contract.from as string | undefined,
+        end: contract.end as string | undefined,
         contractDetails: contract,
         display_name: item.display_name,
       } as EmployeeContractOption;
-    })
-    .filter((item) => {
-      if (!item.from || !item.end) return true;
-      const fromDate = new Date(String(item.from));
-      const endDate = new Date(String(item.end));
-      return today >= fromDate && today <= endDate;
-    });
+    }).filter((item) => item.id != null && item.id !== "");
+  } catch {
+    return [] as EmployeeContractOption[];
+  }
 }
 
 export async function fetchContractSchedule(contractId: string | number, apiDate: string) {
   try {
-    const response = await apiClient.post<
-      ApiBody<{ success?: boolean; data?: ScheduleItem[] }>
-    >(apiConstants.getcontractschedule, {
-      contract_id: contractId,
-      contract_type: "employment_contract",
-      todays_date: apiDate,
-    });
+    const ctx = await getUserContext();
+    const response = await ApiService<{ success?: boolean; data?: ScheduleItem[] }>(
+      apiConstants.getcontractschedule,
+      {
+        includeToken: true,
+        customData: {
+          relaties_id: ctx.relaties_id,
+          user_id: ctx.user_id,
+          role: ctx.role,
+          contract_id: contractId,
+          contract_type: "employment_contract",
+          todays_date: apiDate,
+        },
+      },
+    );
 
-    const body = response.data;
-    if (!body?.status || !body.data?.success) {
+    const payload = response?.data;
+    const schedules = Array.isArray(payload?.data)
+      ? payload.data
+      : Array.isArray(payload)
+        ? (payload as ScheduleItem[])
+        : [];
+    const success = Boolean(response?.status && (payload?.success || schedules.length));
+    if (!success) {
       return { schedules: [] as ScheduleItem[], scheduleLabel: "" };
     }
 
-    const schedules = Array.isArray(body.data.data) ? body.data.data : [];
     let scheduleLabel = "Scheduled";
     const first = schedules[0];
     if (first?.schedule_status) {
@@ -152,6 +196,7 @@ export async function fetchContractSchedule(contractId: string | number, apiDate
       else if (first.schedule_status["Switch Date"]) scheduleLabel = "Switch Date";
       else if (first.schedule_status["Absence"]) scheduleLabel = "Absence";
       else if (first.schedule_status["Leave"]) scheduleLabel = "Leave";
+      else if (first.schedule_status["Scheduled"]) scheduleLabel = "Scheduled";
     }
 
     return { schedules, scheduleLabel };
@@ -194,34 +239,40 @@ export async function fetchCheckInOutState(currentDate: string) {
 
 export async function performCheckIn(params: {
   contractId: string | number;
-  scheduleItem: ScheduleItem;
+  scheduleItem?: ScheduleItem | null;
   scheduleLabel: string;
   currentDate: string;
   currentTime: string;
 }) {
   const { contractId, scheduleItem, scheduleLabel, currentDate, currentTime } = params;
-  const response = await apiClient.post<ApiBody<CheckInOutData & { id?: string | number }>>(
+  const ctx = await getUserContext();
+  const response = await ApiService<CheckInOutData & { id?: string | number }>(
     apiConstants.checkin,
     {
-      contract_id: contractId,
-      original_end_time: scheduleItem.end_time || "",
-      original_break_time: scheduleItem.break_time || "",
-      check_in_out: "1",
-      original_day: scheduleItem.day || "",
-      start_time: scheduleItem.start_time || "",
-      original_start_time: currentTime,
-      class_id: scheduleItem.class_id || "",
-      schedule_status: scheduleLabel,
-      current_date: currentDate,
-    }
+      includeToken: true,
+      customData: {
+        relaties___id: ctx.relaties_id,
+        user_id: ctx.user_id,
+        role: ctx.role,
+        contract_id: contractId || "",
+        original_end_time: scheduleItem?.end_time || "",
+        original_break_time: scheduleItem?.break_time || "",
+        check_in_out: "1",
+        original_day: scheduleItem?.day || "",
+        start_time: scheduleItem?.start_time || "",
+        original_start_time: currentTime,
+        class_id: scheduleItem?.class_id || "",
+        schedule_status: scheduleLabel || "",
+        current_date: currentDate,
+      },
+    },
   );
 
-  const body = response.data;
-  if (!body?.status) {
-    throw toAppApiError({ message: body?.message || "Check-in failed" });
+  if (!response?.status) {
+    throw toAppApiError({ message: response?.message || "Check-in failed" });
   }
 
-  const result = body.data;
+  const result = response.data;
   if (result?.id) {
     await storeData("CHECK_IN_ID", result.id);
   }

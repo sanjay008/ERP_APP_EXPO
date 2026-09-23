@@ -38,6 +38,20 @@ export type ConnectionDetail = {
   voertuig_kenteken?: string;
   voertuig_merk?: string;
   voertuig_model?: string;
+  document_nr?: string;
+  documents?: ConnectionDocument[];
+};
+
+export type ConnectionDocument = {
+  id?: number | string;
+  filename?: string;
+  type?: string;
+  shared_link?: string;
+  view_url?: string;
+  download_url?: string;
+  file_path?: string;
+  file_extension?: string;
+  file_type?: string;
 };
 
 async function getUserContext() {
@@ -64,13 +78,69 @@ export async function fetchConnections(type?: string) {
 
 export async function fetchConnectionDetails(id: string | number) {
   const ctx = await getUserContext();
-  return ApiService<{ relaties: ConnectionDetail }>(apiConstants.relatiesdata, {
-    includeToken: true,
-    customData: {
-      id,
-      relaties_id: ctx.relaties_id,
-      role: ctx.role,
-      user_id: ctx.user_id,
+  return ApiService<{ relaties: ConnectionDetail; documents?: ConnectionDocument[] }>(
+    apiConstants.relatiesdata,
+    {
+      includeToken: true,
+      customData: {
+        id,
+        relaties_id: ctx.relaties_id,
+        role: ctx.role,
+        user_id: ctx.user_id,
+      },
     },
+  );
+}
+
+export async function fetchConnectionDocuments(relatiesId: string | number) {
+  const ctx = await getUserContext();
+  return ApiService<{ documents?: ConnectionDocument[] } | ConnectionDocument[]>(
+    apiConstants.getRelatieDocuments,
+    {
+      includeToken: true,
+      customData: {
+        relaties_id: relatiesId,
+        role: ctx.role,
+        user_id: ctx.user_id,
+      },
+    },
+  );
+}
+
+function asDocumentList(data: unknown): ConnectionDocument[] {
+  if (Array.isArray(data)) return data as ConnectionDocument[];
+  if (data && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    const nested = record.documents || record.documenten || record.files;
+    if (Array.isArray(nested)) return nested as ConnectionDocument[];
+  }
+  return [];
+}
+
+export function parseConnectionDocuments(
+  detailsRes: unknown,
+  docsRes?: unknown,
+): ConnectionDocument[] {
+  const details = detailsRes as {
+    data?: {
+      documents?: ConnectionDocument[];
+      documenten?: ConnectionDocument[];
+      relaties?: ConnectionDetail;
+    };
+  } | null;
+  const extra = docsRes as { data?: unknown } | null;
+  const fromDetails = asDocumentList(
+    details?.data?.documents ||
+      details?.data?.documenten ||
+      details?.data?.relaties?.documents,
+  );
+  const fromDocsApi = asDocumentList(extra?.data);
+  const merged = [...fromDetails, ...fromDocsApi];
+  const seen = new Set<string>();
+  return merged.filter((item) => {
+    const key = String(item.id || item.view_url || item.shared_link || item.file_path || item.filename);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }

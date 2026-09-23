@@ -17,8 +17,6 @@ import { fetchTasks, type TaskItem } from "../../services/taskService";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
-import { Images } from "../../utils/Images";
-import FallBackImage from "../../Components/FallBackImage";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import { LIST_UI } from "../../utils/connectionTheme";
@@ -206,12 +204,7 @@ export default function TaskListScreen() {
         style={[styles.fab, { bottom: fabBottom }]}
         onPress={() => router.push("/(app)/tasks/create")}
       >
-        <FallBackImage
-          source={Images.plusIcon}
-          style={styles.fabIcon}
-          tintColor="#FFFFFF"
-          resizeMode="contain"
-        />
+        <Ionicons name="add" size={32} color="#FFFFFF" />
       </Pressable>
 
       <OptionBottomSheet
@@ -282,9 +275,5 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.primary,
     alignItems: "center",
     justifyContent: "center",
-  },
-  fabIcon: {
-    width: 22,
-    height: 22,
   },
 });

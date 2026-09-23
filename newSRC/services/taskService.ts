@@ -1,5 +1,6 @@
 import ApiService from "../utils/Apiservice";
 import { apiConstants } from "../utils/apiConstants";
+import { toAppApiError } from "../utils/apiError";
 import { getData } from "../utils/storeData";
 
 export type TaskStatus = {
@@ -33,6 +34,11 @@ export type TaskDetail = {
   quantity_type?: string | null;
   short_description?: string | null;
   file_path?: string;
+  file_extension?: string;
+  file_type?: string;
+  view_url?: string;
+  download_url?: string;
+  shared_link?: string;
   task_status_data?: TaskStatus;
   notes?: TaskNote[];
   relatie_data?: {
@@ -86,10 +92,23 @@ export type CurrencyOption = {
 async function getUserContext() {
   const userData = await getData("USERDATA");
   return {
+    token: userData?.data?.user?.verify_token,
     relaties_id: userData?.data?.relaties?.id,
     user_id: userData?.data?.user?.id,
     role: userData?.data?.user?.role,
   };
+}
+
+function stringifyTaskLog(payload: unknown) {
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch {
+    return payload;
+  }
+}
+
+function logTaskApi(label: string, payload: unknown) {
+  console.log(`📝 TASK API ${label}`, stringifyTaskLog(payload));
 }
 
 export async function fetchTasks() {
@@ -242,18 +261,54 @@ export async function createTask(payload: {
   title?: string;
   short_description?: string;
   priority?: string;
+  document?: { uri: string; name: string; type: string } | "";
 }) {
   const ctx = await getUserContext();
-  return ApiService(apiConstants.store_normal_task, {
-    includeToken: true,
-    customData: {
-      selected_relaties_id: payload.selected_relaties_id,
-      user_id: ctx.user_id,
-      role: ctx.role,
-      title: payload.title,
-      short_description: payload.short_description,
-      priority: payload.priority,
-      document: "",
-    },
-  });
+  const document = payload.document || "";
+  const request = {
+    url: apiConstants.store_normal_task,
+    token: ctx.token,
+    relaties_id: ctx.relaties_id,
+    selected_relaties_id: payload.selected_relaties_id,
+    user_id: ctx.user_id,
+    role: ctx.role,
+    title: payload.title,
+    short_description: payload.short_description,
+    priority: payload.priority,
+    document: document
+      ? { name: document.name, type: document.type, uri: document.uri }
+      : "",
+  };
+
+  logTaskApi("REQUEST => store_normal_task", request);
+
+  try {
+    const response = await ApiService(apiConstants.store_normal_task, {
+      includeToken: true,
+      customData: {
+        relaties_id: ctx.relaties_id,
+        selected_relaties_id: payload.selected_relaties_id,
+        user_id: ctx.user_id,
+        role: ctx.role,
+        title: payload.title,
+        short_description: payload.short_description,
+        priority: payload.priority ?? "",
+        document,
+      },
+    });
+
+    logTaskApi("RESPONSE => store_normal_task", response);
+
+    if (!response?.status) {
+      throw toAppApiError({
+        message: response?.message || "Failed to create task",
+      });
+    }
+
+    return response;
+  } catch (error) {
+    const err = error as { message?: string; response?: { data?: unknown } };
+    logTaskApi("ERROR => store_normal_task", err?.response?.data || err?.message || error);
+    throw error;
+  }
 }

@@ -26,6 +26,7 @@ export type PayOrderStatus = {
 
 export type PayOrderPayment = {
   payment_date?: string;
+  created_at?: string;
   description?: string;
   amount?: number | string;
 };
@@ -92,6 +93,11 @@ export async function fetchPayOrders() {
 
   const orders = response?.data?.pay_orders;
   return Array.isArray(orders) ? orders : [];
+}
+
+export async function fetchPayOrderById(id: string | number) {
+  const orders = await fetchPayOrders();
+  return orders.find((item) => String(item.id) === String(id)) ?? null;
 }
 
 export async function fetchPayOrderStatuses() {

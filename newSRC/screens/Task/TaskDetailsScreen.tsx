@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +30,9 @@ import { LIST_UI } from "../../utils/connectionTheme";
 import { listScreenStyles } from "../../utils/listScreenStyles";
 import { getData } from "../../utils/storeData";
 import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
+import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
+import { resolveDocumentFileType } from "../Documents/types";
+import { Images } from "../../utils/Images";
 
 export default function TaskDetailsScreen() {
   const { t } = useTranslation();
@@ -43,6 +47,7 @@ export default function TaskDetailsScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const loadDetails = useCallback(async () => {
@@ -93,6 +98,15 @@ export default function TaskDetailsScreen() {
     ],
     [data, t]
   );
+
+  const documentUri =
+    data?.view_url || data?.shared_link || data?.file_path || "";
+  const documentFileType = resolveDocumentFileType({
+    file_type: data?.file_type,
+    file_extension: data?.file_extension,
+    view_url: documentUri,
+    filename: data?.file_path,
+  });
 
   const submitComment = async () => {
     if (!comment.trim()) {
@@ -177,6 +191,29 @@ export default function TaskDetailsScreen() {
             ))}
           </View>
 
+          {documentUri ? (
+            <Pressable style={styles.docCard} onPress={() => setPreviewOpen(true)}>
+              {documentFileType === "image" ? (
+                <Image
+                  source={{ uri: documentUri }}
+                  style={styles.docImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={styles.docFileWrap}>
+                  <Image
+                    source={
+                      documentFileType === "pdf" ? Images.PdfLogo : Images.documentlogo
+                    }
+                    style={styles.docFileIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.docFileText}>{t("Document")}</Text>
+                </View>
+              )}
+            </Pressable>
+          ) : null}
+
           {data?.short_description ? (
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>{t("Omschrijving")}</Text>
@@ -258,6 +295,15 @@ export default function TaskDetailsScreen() {
           </Pressable>
         </View>
       </FormModal>
+
+      <DocumentPreviewModal
+        visible={previewOpen}
+        title={t("Document")}
+        imageUri={documentUri}
+        downloadUrl={data?.download_url || documentUri}
+        fileType={documentFileType}
+        onClose={() => setPreviewOpen(false)}
+      />
     </View>
   );
 }
@@ -361,6 +407,34 @@ const styles = StyleSheet.create({
   },
   commentWrap: {
     marginBottom: 8,
+  },
+  docCard: {
+    ...listScreenStyles.detailCard,
+    marginBottom: LIST_UI.cardGap,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 180,
+  },
+  docImage: {
+    width: "100%",
+    height: 200,
+    backgroundColor: "#F8FAFC",
+  },
+  docFileWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 28,
+    gap: 8,
+  },
+  docFileIcon: {
+    width: 48,
+    height: 48,
+  },
+  docFileText: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 13,
+    color: AppColors.black,
   },
   loaderWrap: {
     flex: 1,
