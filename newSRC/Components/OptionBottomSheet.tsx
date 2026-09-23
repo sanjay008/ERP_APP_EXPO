@@ -25,7 +25,7 @@ export type OptionItem = {
 type Props = {
   visible: boolean;
   title: string;
-  confirmText: string;
+  confirmText?: string;
   options: OptionItem[];
   onClose: () => void;
   onConfirm: (option: OptionItem) => void;
@@ -34,14 +34,12 @@ type Props = {
 function OptionBottomSheet({
   visible,
   title,
-  confirmText,
   options,
   onClose,
   onConfirm,
 }: Props) {
   const { footerPadding } = useScreenInsets();
   const [mounted, setMounted] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -49,7 +47,6 @@ function OptionBottomSheet({
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      setSelectedId(null);
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: 0,
@@ -83,14 +80,13 @@ function OptionBottomSheet({
     });
   }, [visible, translateY, backdropOpacity]);
 
-  const handleConfirm = useCallback(() => {
-    const selected = options.find((item) => item.id === selectedId);
-    if (!selected) {
-      return;
-    }
-    onConfirm(selected);
-    onClose();
-  }, [onClose, onConfirm, options, selectedId]);
+  const handleSelect = useCallback(
+    (item: OptionItem) => {
+      onConfirm(item);
+      onClose();
+    },
+    [onClose, onConfirm]
+  );
 
   if (!visible) {
     return null;
@@ -130,19 +126,11 @@ function OptionBottomSheet({
             <SelectionListItem
               key={item.id}
               label={item.label}
-              selected={selectedId === item.id}
-              onPress={() => setSelectedId(item.id)}
+              selected={false}
+              onPress={() => handleSelect(item)}
             />
           ))}
         </View>
-
-        <Pressable
-          style={[styles.confirmBtn, !selectedId && styles.confirmBtnDisabled]}
-          onPress={handleConfirm}
-          disabled={!selectedId}
-        >
-          <Text style={styles.confirmText}>{confirmText}</Text>
-        </Pressable>
       </Animated.View>
     </View>
   );
@@ -189,21 +177,5 @@ const styles = StyleSheet.create({
   },
   list: {
     flexGrow: 1,
-  },
-  confirmBtn: {
-    marginTop: 10,
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmBtnDisabled: {
-    opacity: 0.5,
-  },
-  confirmText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontFamily: FONTS.OutfitSemiBold,
   },
 });

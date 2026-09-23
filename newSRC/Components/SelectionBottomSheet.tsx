@@ -111,20 +111,20 @@ function SelectionBottomSheet({
   );
 
   const toggleItem = useCallback((option: SheetOption) => {
+    if (!multiSelect) {
+      onConfirm([option]);
+      onClose();
+      return;
+    }
+
     setDraftIds((prev) => {
       const exists = prev.some((id) => String(id) === String(option.id));
-      if (multiSelect) {
-        if (exists) {
-          return prev.filter((id) => String(id) !== String(option.id));
-        }
-        return [...prev, option.id];
-      }
       if (exists) {
-        return [];
+        return prev.filter((id) => String(id) !== String(option.id));
       }
-      return [option.id];
+      return [...prev, option.id];
     });
-  }, [multiSelect]);
+  }, [multiSelect, onClose, onConfirm]);
 
   const handleConfirm = useCallback(() => {
     const selected = options.filter((item) =>
@@ -200,9 +200,11 @@ function SelectionBottomSheet({
           )}
         />
 
-        <Pressable style={styles.confirmBtn} onPress={handleConfirm}>
-          <Text style={styles.confirmText}>{confirmText}</Text>
-        </Pressable>
+        {multiSelect ? (
+          <Pressable style={styles.confirmBtn} onPress={handleConfirm}>
+            <Text style={styles.confirmText}>{confirmText}</Text>
+          </Pressable>
+        ) : null}
       </Animated.View>
       </View>
     </Modal>
