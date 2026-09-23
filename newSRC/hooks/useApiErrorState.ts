@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { parseApiError, type ParsedApiError } from "../utils/apiError";
+import { parseApiError, isEmptyParsedError, type ParsedApiError } from "../utils/apiError";
 
 export function useApiErrorState() {
   const { t } = useTranslation();
@@ -10,7 +10,12 @@ export function useApiErrorState() {
 
   const captureApiError = useCallback(
     (error: unknown) => {
-      setApiError(parseApiError(error, t("Something went wrong")));
+      const parsed = parseApiError(error, t("Something went wrong"));
+      if (isEmptyParsedError(parsed)) {
+        setApiError(null);
+        return;
+      }
+      setApiError(parsed);
     },
     [t]
   );

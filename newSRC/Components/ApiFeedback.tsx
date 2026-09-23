@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import type { ParsedApiError } from "../utils/apiError";
+import { isEmptyParsedError } from "../utils/apiError";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 
@@ -24,6 +25,7 @@ export default function ApiFeedback({
   compact = false,
 }: ApiFeedbackProps) {
   const { t } = useTranslation();
+  const emptyError = isEmptyParsedError(error);
 
   if (loading) {
     return (
@@ -33,7 +35,7 @@ export default function ApiFeedback({
     );
   }
 
-  if (error) {
+  if (error && !emptyError) {
     const isOffline = error.kind === "offline";
     const iconName = isOffline ? "cloud-offline-outline" : "alert-circle-outline";
 
@@ -57,11 +59,11 @@ export default function ApiFeedback({
     );
   }
 
-  if (isEmpty) {
+  if (isEmpty || emptyError) {
     return (
       <View style={[styles.wrap, compact && styles.wrapCompact]}>
         <Text style={[styles.message, compact && styles.messageCompact]}>
-          {emptyMessage || t("No Data")}
+          {emptyMessage || t("No Data Found")}
         </Text>
       </View>
     );

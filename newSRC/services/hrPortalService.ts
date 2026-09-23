@@ -1,6 +1,6 @@
 import apiClient from "../utils/client";
 import { apiConstants } from "../utils/apiConstants";
-import { toAppApiError } from "../utils/apiError";
+import { isEmptyListResponse, takeApiItem, takeApiList, toAppApiError } from "../utils/apiError";
 
 type ApiBody<T> = {
   status?: boolean;
@@ -86,12 +86,11 @@ export async function fetchAnnouncements() {
     ApiBody<{ announcements?: AnnouncementItem[] } | AnnouncementItem[]>
   >(apiConstants.announcementsList);
 
-  const body = response.data;
-  if (!body?.status) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch announcements" });
-  }
-
-  return asArray<AnnouncementItem>(body.data, "announcements");
+  return takeApiList(
+    response.data,
+    (data) => asArray<AnnouncementItem>(data, "announcements"),
+    "Failed to fetch announcements"
+  );
 }
 
 export async function fetchAnnouncementDetails(announcementId: string | number) {
@@ -99,12 +98,11 @@ export async function fetchAnnouncementDetails(announcementId: string | number) 
     ApiBody<{ announcement?: AnnouncementItem } | AnnouncementItem>
   >(apiConstants.announcementsDetails, { announcement_id: announcementId });
 
-  const body = response.data;
-  if (!body?.status) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch announcement" });
-  }
-
-  return asObject<AnnouncementItem>(body.data, "announcement");
+  return takeApiItem(
+    response.data,
+    (data) => asObject<AnnouncementItem>(data, "announcement"),
+    "Failed to fetch announcement"
+  );
 }
 
 export async function fetchPayslips(year?: string | number) {
@@ -112,12 +110,11 @@ export async function fetchPayslips(year?: string | number) {
     ApiBody<{ payslips?: PayslipItem[] } | PayslipItem[]>
   >(apiConstants.payslipsList, year ? { year } : {});
 
-  const body = response.data;
-  if (!body?.status) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch payslips" });
-  }
-
-  return asArray<PayslipItem>(body.data, "payslips");
+  return takeApiList(
+    response.data,
+    (data) => asArray<PayslipItem>(data, "payslips"),
+    "Failed to fetch payslips"
+  );
 }
 
 export async function fetchPayslipDetails(payslipId: string | number) {
@@ -125,12 +122,11 @@ export async function fetchPayslipDetails(payslipId: string | number) {
     ApiBody<{ payslip?: PayslipItem } | PayslipItem>
   >(apiConstants.payslipsDetails, { payslip_id: payslipId });
 
-  const body = response.data;
-  if (!body?.status) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch payslip" });
-  }
-
-  return asObject<PayslipItem>(body.data, "payslip");
+  return takeApiItem(
+    response.data,
+    (data) => asObject<PayslipItem>(data, "payslip"),
+    "Failed to fetch payslip"
+  );
 }
 
 export async function fetchPerformanceReviews() {
@@ -143,6 +139,9 @@ export async function fetchPerformanceReviews() {
 
   const body = response.data;
   if (!body?.status) {
+    if (isEmptyListResponse(body)) {
+      return { reviews: [], tableReady: true };
+    }
     throw toAppApiError({
       message: body?.message || "Failed to fetch performance reviews",
     });
@@ -165,10 +164,9 @@ export async function fetchPerformanceReviewDetails(reviewId: string | number) {
     ApiBody<{ review?: PerformanceReviewItem } | PerformanceReviewItem>
   >(apiConstants.performanceReviewsDetails, { review_id: reviewId });
 
-  const body = response.data;
-  if (!body?.status) {
-    throw toAppApiError({ message: body?.message || "Failed to fetch review" });
-  }
-
-  return asObject<PerformanceReviewItem>(body.data, "review");
+  return takeApiItem(
+    response.data,
+    (data) => asObject<PerformanceReviewItem>(data, "review"),
+    "Failed to fetch review"
+  );
 }

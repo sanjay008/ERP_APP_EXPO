@@ -1,6 +1,6 @@
 import apiClient from "../utils/client";
 import { apiConstants } from "../utils/apiConstants";
-import { toAppApiError } from "../utils/apiError";
+import { isEmptyListResponse, toAppApiError } from "../utils/apiError";
 
 export type EventImage = {
   event_dropbox_shared_link?: string;
@@ -57,6 +57,9 @@ export async function fetchEvents(params: {
 
   const body = response.data;
   if (!body?.status) {
+    if (isEmptyListResponse(body)) {
+      return { items: [], lastPage: 1 };
+    }
     throw toAppApiError({ message: body?.message || "Failed to fetch events" });
   }
 
@@ -88,6 +91,9 @@ export async function fetchEventBookings(params: {
 
   const body = response.data;
   if (!body?.status) {
+    if (isEmptyListResponse(body)) {
+      return { items: [], lastPage: 1 };
+    }
     throw toAppApiError({ message: body?.message || "Failed to fetch event bookings" });
   }
 
@@ -114,6 +120,9 @@ export async function fetchEventGuests(params: {
 
   const body = response.data;
   if (!body?.status) {
+    if (isEmptyListResponse(body)) {
+      return { items: [], lastPage: 1 };
+    }
     throw toAppApiError({ message: body?.message || "Failed to fetch guest list" });
   }
 

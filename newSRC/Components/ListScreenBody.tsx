@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import ApiFeedback from "./ApiFeedback";
-import type { ParsedApiError } from "../utils/apiError";
+import { isEmptyParsedError, type ParsedApiError } from "../utils/apiError";
 
 type ListScreenBodyProps = {
   loading: boolean;
@@ -28,7 +28,7 @@ export default function ListScreenBody({
     );
   }
 
-  if (apiError && itemCount === 0) {
+  if (apiError && itemCount === 0 && !isEmptyParsedError(apiError)) {
     return (
       <View style={styles.fill}>
         <ApiFeedback error={apiError} onRetry={onRetry} />
@@ -47,12 +47,14 @@ export function listEmptyFeedback(props: {
 }) {
   if (props.loading) return null;
 
+  const emptyError = isEmptyParsedError(props.apiError);
+
   return (
     <ApiFeedback
-      error={props.apiError}
-      isEmpty={!props.apiError}
+      error={emptyError ? null : props.apiError}
+      isEmpty={!props.apiError || emptyError}
       emptyMessage={props.emptyMessage}
-      onRetry={props.onRetry}
+      onRetry={emptyError ? undefined : props.onRetry}
       compact
     />
   );

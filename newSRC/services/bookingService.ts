@@ -1,6 +1,6 @@
 import ApiService from "../utils/Apiservice";
 import { apiConstants } from "../utils/apiConstants";
-import { toAppApiError } from "../utils/apiError";
+import { isEmptyListResponse, toAppApiError } from "../utils/apiError";
 import { getData } from "../utils/storeData";
 
 export type BookingClientInfo = {
@@ -134,6 +134,9 @@ async function fetchDriverTripBookingsPayload(mode: BookingListMode) {
   )) as TripDetailsResponse;
 
   if (!response?.status) {
+    if (isEmptyListResponse(response)) {
+      return { items: [], currencies: [] };
+    }
     throw toAppApiError({
       message: response?.message || "Failed to fetch bookings",
     });

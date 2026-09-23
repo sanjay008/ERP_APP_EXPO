@@ -1,6 +1,6 @@
 import apiClient from "../utils/client";
 import { apiConstants } from "../utils/apiConstants";
-import { toAppApiError } from "../utils/apiError";
+import { isEmptyListResponse, toAppApiError } from "../utils/apiError";
 
 export type EmployeeStatus = {
   id: number | string;
@@ -65,6 +65,9 @@ export async function fetchEmployeeContracts() {
   const body = response.data;
 
   if (!body?.status || !Array.isArray(body.data)) {
+    if (isEmptyListResponse(body) || (body?.status && !Array.isArray(body.data))) {
+      return { ...body, data: [] };
+    }
     throw toAppApiError({ message: body?.message || "Failed to fetch employee contracts" });
   }
 
@@ -125,6 +128,9 @@ export async function fetchEmployeeTimeRegistration(year: number, month: string)
 
   const body = response.data;
   if (!body?.status || !Array.isArray(body.data)) {
+    if (isEmptyListResponse(body) || (body?.status && !Array.isArray(body.data))) {
+      return [];
+    }
     throw toAppApiError({ message: body?.message || "Failed to fetch timesheet" });
   }
   return body.data;

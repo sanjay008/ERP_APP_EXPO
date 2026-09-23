@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import i18n from "../translation/i18n";
 
-export type ApiErrorKind = "offline" | "network" | "server" | "auth" | "unknown";
+export type ApiErrorKind = "offline" | "network" | "server" | "auth" | "empty" | "unknown";
 
 export type ParsedApiError = {
   kind: ApiErrorKind;
@@ -50,14 +50,65 @@ function isTechnicalServerMessage(message: string): boolean {
 }
 
 export function isEmptyDataMessage(message: string): boolean {
-  const lower = message.toLowerCase();
+  const lower = message.toLowerCase().trim();
+  if (!lower) return false;
   return (
     lower.includes("not found") ||
     lower.includes("no leave") ||
     lower.includes("no absence") ||
     lower.includes("no data") ||
-    lower.includes("geen")
+    lower.includes("no record") ||
+    lower.includes("no result") ||
+    lower.includes("no items") ||
+    lower.includes("niet gevonden") ||
+    lower.includes("geen gegevens") ||
+    lower.includes("geen data") ||
+    lower.includes("geen resultaten") ||
+    /^no\s+.+\s+found/.test(lower)
   );
+}
+
+export function isEmptyApiBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const payload = body as {
+    status?: boolean | string;
+    message?: string;
+    error?: string;
+    data?: unknown;
+  };
+  const message = String(payload.message || payload.error || "").trim();
+  if (message && isEmptyDataMessage(message)) return true;
+
+  const statusFalse = payload.status === false || payload.status === "false";
+  if (!statusFalse) return false;
+  if (message) return false;
+
+  const data = payload.data;
+  if (data == null) return true;
+  if (Array.isArray(data) && data.length === 0) return true;
+  return false;
+}
+
+export function isEmptyParsedError(error?: ParsedApiError | null): boolean {
+  if (!error) return false;
+  return error.kind === "empty" || isEmptyDataMessage(error.message);
+}
+
+function emptyParsedError(statusCode?: number): ParsedApiError {
+  return {
+    kind: "empty",
+    message: i18n.t("No Data Found"),
+    statusCode,
+  };
+}
+
+function finalizeParsedError(parsed: ParsedApiError): ParsedApiError {
+  if (parsed.kind === "offline" || parsed.kind === "auth") return parsed;
+  if (parsed.statusCode && parsed.statusCode >= 500) return parsed;
+  if (parsed.kind === "empty" || isEmptyDataMessage(parsed.message)) {
+    return emptyParsedError(parsed.statusCode);
+  }
+  return parsed;
 }
 
 function translateApiMessage(message: string | undefined, fallback: string): string {
@@ -126,13 +177,21 @@ function isLikelyOffline(error: AxiosError): boolean {
 export function parseApiError(error: unknown, fallback?: string): ParsedApiError {
   const defaultFallback = fallback ?? i18n.t("Something went wrong");
 
+  if (isEmptyApiBody(error)) {
+    return emptyParsedError();
+  }
+
   if (error instanceof AppApiError) {
-    return error.toJSON();
+    return finalizeParsedError(error.toJSON());
   }
 
   if (axios.isAxiosError(error)) {
     const responseMessage = readResponseMessage(error.response?.data);
     const statusCode = error.response?.status;
+
+    if (isEmptyApiBody(error.response?.data) && !(statusCode && statusCode >= 500)) {
+      return emptyParsedError(statusCode);
+    }
 
     if (isLikelyOffline(error)) {
       return {
@@ -175,14 +234,14 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
       };
     }
 
-    return {
+    return finalizeParsedError({
       kind: statusCode ? "server" : "network",
       message: translateApiMessage(
         responseMessage,
         translateApiMessage(error.message, defaultFallback)
       ),
       statusCode,
-    };
+    });
   }
 
   if (error instanceof Error) {
@@ -190,23 +249,33 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
       error.message.toLowerCase().includes("internet") ||
       error.message.toLowerCase().includes("network");
 
-    return {
-      kind: offline ? "offline" : "unknown",
+    if (offline) {
+      return {
+        kind: "offline",
+        message: translateApiMessage(error.message, defaultFallback),
+      };
+    }
+
+    return finalizeParsedError({
+      kind: "unknown",
       message: translateApiMessage(error.message, defaultFallback),
-    };
+    });
   }
 
   if (typeof error === "string" && error.trim()) {
-    return { kind: "unknown", message: translateApiMessage(error, defaultFallback) };
+    return finalizeParsedError({
+      kind: "unknown",
+      message: translateApiMessage(error, defaultFallback),
+    });
   }
 
   if (error && typeof error === "object") {
     const responseMessage = readResponseMessage(error);
     if (responseMessage) {
-      return {
+      return finalizeParsedError({
         kind: "unknown",
         message: translateApiMessage(responseMessage, defaultFallback),
-      };
+      });
     }
   }
 
@@ -225,4 +294,34 @@ export function isOfflineError(error: unknown): boolean {
 export function toAppApiError(error: unknown, fallback?: string): AppApiError {
   if (error instanceof AppApiError) return error;
   return new AppApiError(parseApiError(error, fallback));
+}
+
+export function isEmptyListResponse(body: unknown): boolean {
+  if (isEmptyApiBody(body)) return true;
+  if (!body || typeof body !== "object") return false;
+  const payload = body as { status?: boolean | string; message?: string };
+  const statusFalse = payload.status === false || payload.status === "false";
+  if (!statusFalse) return false;
+  const message = String(payload.message || "").trim();
+  return !message || isEmptyDataMessage(message);
+}
+
+export function takeApiList<T>(
+  body: { status?: boolean; message?: string; data?: unknown } | undefined,
+  pick: (data: unknown) => T[],
+  fallbackMessage: string
+): T[] {
+  if (body?.status) return pick(body.data);
+  if (isEmptyListResponse(body)) return [];
+  throw toAppApiError({ message: body?.message || fallbackMessage });
+}
+
+export function takeApiItem<T>(
+  body: { status?: boolean; message?: string; data?: unknown } | undefined,
+  pick: (data: unknown) => T | null,
+  fallbackMessage: string
+): T | null {
+  if (body?.status) return pick(body.data);
+  if (isEmptyListResponse(body)) return null;
+  throw toAppApiError({ message: body?.message || fallbackMessage });
 }

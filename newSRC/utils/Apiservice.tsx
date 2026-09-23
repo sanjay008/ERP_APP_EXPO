@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getData } from "./storeData";
 import { checkNetworkConnection } from "./networkStatus";
-import { createOfflineError, parseApiError, toAppApiError } from "./apiError";
+import { createOfflineError, isEmptyListResponse, parseApiError, toAppApiError } from "./apiError";
 import { dedupeAsync } from "./requestDedupe";
 
 function buildApiServiceKey(endpoint: string, options: ApiOptions): string {
@@ -91,11 +91,17 @@ async function performApiRequest<T = unknown>(
     });
 
     if (response.status >= 400) {
+      if (isEmptyListResponse(response.data)) {
+        return response.data;
+      }
       throw toAppApiError(response.data);
     }
 
     const body = response.data;
     if (body && typeof body === "object" && "status" in body && body.status === false) {
+      if (isEmptyListResponse(body)) {
+        return body;
+      }
       throw toAppApiError(body);
     }
 

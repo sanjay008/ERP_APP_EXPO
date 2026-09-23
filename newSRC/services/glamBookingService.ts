@@ -1,6 +1,6 @@
 import apiClient from "../utils/client";
 import { apiConstants } from "../utils/apiConstants";
-import { toAppApiError } from "../utils/apiError";
+import { isEmptyListResponse, toAppApiError } from "../utils/apiError";
 
 export type GlamBookingDetails = {
   id?: number | string;
@@ -50,6 +50,7 @@ export async function fetchMyBookings() {
   const response = await apiClient.post<ApiBody<GlamBookingItem[]>>(apiConstants.getBookingDetails);
   const body = response.data;
   if (!body?.status) {
+    if (isEmptyListResponse(body)) return [];
     throw toAppApiError({ message: body?.message || "Failed to fetch bookings" });
   }
   return Array.isArray(body.data) ? body.data : [];

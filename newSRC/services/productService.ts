@@ -1,7 +1,7 @@
 import axios from "axios";
 import ApiService from "../utils/Apiservice";
 import { apiConstants } from "../utils/apiConstants";
-import { AppApiError, toAppApiError } from "../utils/apiError";
+import { AppApiError, isEmptyListResponse, toAppApiError } from "../utils/apiError";
 import { getData } from "../utils/storeData";
 import i18n from "../translation/i18n";
 
@@ -50,6 +50,7 @@ export async function fetchProducts() {
     });
 
     if (!response?.status) {
+      if (isEmptyListResponse(response)) return [];
       throw toAppApiError({ message: response?.message || "Failed to fetch products" });
     }
     return Array.isArray(response.data) ? response.data : [];
@@ -72,6 +73,7 @@ export async function fetchProductTemplates() {
   });
 
   if (!response?.status) {
+    if (isEmptyListResponse(response)) return [];
     throw toAppApiError({ message: response?.message || "Failed to fetch templates" });
   }
   return Array.isArray(response.data) ? response.data : [];
@@ -89,6 +91,7 @@ export async function fetchProductCategories() {
   );
 
   if (!response?.status) {
+    if (isEmptyListResponse(response)) return [];
     throw toAppApiError({ message: response?.message || "Failed to fetch categories" });
   }
   return Array.isArray(response.data) ? response.data : [];
