@@ -25,6 +25,8 @@ export function homeItemIcon(linkTo?: string) {
     case "PerformanceReviews":
     case "performance_reviews":
       return "ribbon-outline";
+    case "relation":
+      return "people-outline";
     default:
       return undefined;
   }
@@ -59,7 +61,8 @@ type HomeRoute = {
     | "/(app)/about"
     | "/(app)/announcements"
     | "/(app)/payslips"
-    | "/(app)/performance-reviews";
+    | "/(app)/performance-reviews"
+    | "/(app)/relation";
   params?: Record<string, string>;
 };
 
@@ -283,6 +286,13 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     params: {
       color: item.color_code || "",
       title: homeItemLabel(item) || "Performance reviews",
+    },
+  }),
+  relation: (item) => ({
+    pathname: "/(app)/relation",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Relation",
     },
   }),
 };

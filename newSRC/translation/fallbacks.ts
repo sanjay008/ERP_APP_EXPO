@@ -388,6 +388,8 @@ export const fallbackResources = {
       Summary: "Summary",
       Goals: "Goals",
       "Employee comments": "Employee comments",
+      Relation: "Relation",
+      "No quick relations": "No quick relations to show.",
     },
   },
   nl: {
@@ -776,6 +778,8 @@ export const fallbackResources = {
       Summary: "Samenvatting",
       Goals: "Doelen",
       "Employee comments": "Opmerkingen medewerker",
+      Relation: "Relatie",
+      "No quick relations": "Geen snelle relaties om te tonen.",
     },
   },
 };

@@ -137,6 +137,7 @@ export const apiConstants = {
   payslipsDetails: `${baseUrlnew}payslips/details`,
   performanceReviewsList: `${baseUrlnew}performance-reviews/list`,
   performanceReviewsDetails: `${baseUrlnew}performance-reviews/details`,
+  getQuickRelations: `${baseUrlnew}quick-relations/get-quick-relations`,
 };
 
 export default apiConstants;

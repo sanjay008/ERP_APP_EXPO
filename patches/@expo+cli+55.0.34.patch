@@ -1,0 +1,172 @@
+diff --git a/node_modules/@expo/cli/build/src/start/platforms/android/adb.js b/node_modules/@expo/cli/build/src/start/platforms/android/adb.js
+index a7daf02..c0f1af4 100644
+--- a/node_modules/@expo/cli/build/src/start/platforms/android/adb.js
++++ b/node_modules/@expo/cli/build/src/start/platforms/android/adb.js
+@@ -208,6 +208,20 @@ async function installAsync(device, { filePath }) {
+     // TODO: Handle the `INSTALL_FAILED_INSUFFICIENT_STORAGE` error.
+     return await getServer().runAsync(adbArgs(device.pid, 'install', '-r', '-d', '--user', _env.env.EXPO_ADB_USER, filePath));
+ }
++function parseAdbDeviceLine(line) {
++    // Serials from wireless debugging can contain spaces, e.g.
++    // "adb-XXXX (2)._adb-tls-connect._tcp". Do not split on the first space.
++    const match = line.match(/^(.*?)\s+(device|offline|unauthorized|no permissions|authorizing)(?:\s+(.*))?$/);
++    if (!match) {
++        return null;
++    }
++    return {
++        pid: match[1].trim(),
++        state: match[2],
++        deviceInfo: (match[3] || '').trim().split(/\s+/).filter(Boolean),
++        line
++    };
++}
+ function adbArgs(pid, ...options) {
+     const args = [];
+     if (pid) {
+@@ -221,7 +235,64 @@ function adbShellArgs(pid, ...command) {
+ function shellQuote(value) {
+     return `'${value.replace(/'/g, `'\\''`)}'`;
+ }
++let wirelessStabilizedAt = 0;
++function isMdnsAdbSerial(pid) {
++    return !!pid && (pid.includes('_adb-tls-connect.') || /^adb-/.test(pid) && !/^\d+\.\d+\.\d+\.\d+:\d+$/.test(pid));
++}
++function isIpAdbSerial(pid) {
++    return /^\d+\.\d+\.\d+\.\d+:\d+$/.test(pid || '');
++}
++async function stabilizeWirelessDevicesAsync() {
++    if (Date.now() - wirelessStabilizedAt < 8000) {
++        return;
++    }
++    wirelessStabilizedAt = Date.now();
++    let mdnsOutput = '';
++    try {
++        mdnsOutput = await getServer().runAsync([
++            'mdns',
++            'services'
++        ]);
++    } catch  {
++        return;
++    }
++    const services = mdnsOutput.split(/\r?\n/).map((line)=>{
++        const match = line.match(/(\d+\.\d+\.\d+\.\d+:\d+)\s*$/);
++        if (!match || !line.includes('_adb-tls-connect._tcp')) {
++            return null;
++        }
++        return {
++            name: line.replace(/\t_adb-tls-connect\._tcp.*/, '').trim(),
++            address: match[1]
++        };
++    }).filter(Boolean).sort((a, b)=>Number(b.name.includes('(2)')) - Number(a.name.includes('(2)')));
++    for (const service of services){
++        try {
++            await getServer().runAsync([
++                'connect',
++                service.address
++            ]);
++        } catch  {}
++    }
++    try {
++        const output = await getServer().runAsync([
++            'devices',
++            '-l'
++        ]);
++        for (const parsed of output.split(/\r?\n/).map(parseAdbDeviceLine).filter(Boolean)){
++            if (isMdnsAdbSerial(parsed.pid)) {
++                try {
++                    await getServer().runAsync([
++                        'disconnect',
++                        parsed.pid
++                    ]);
++                } catch  {}
++            }
++        }
++    } catch  {}
++}
+ async function getAttachedDevicesAsync() {
++    await stabilizeWirelessDevicesAsync();
+     const output = await getServer().runAsync([
+         'devices',
+         '-l'
+@@ -234,20 +305,30 @@ async function getAttachedDevicesAsync() {
+     // First line is `"List of devices attached"`, remove it
+     // @ts-ignore: todo
+     const attachedDevices = splitItems.slice(1, splitItems.length).map((line)=>{
++        const parsed = parseAdbDeviceLine(line);
++        if (!parsed) {
++            return null;
++        }
+         // unauthorized: ['FA8251A00719', 'unauthorized', 'usb:338690048X', 'transport_id:5']
+         // authorized: ['FA8251A00719', 'device', 'usb:336592896X', 'product:walleye', 'model:Pixel_2', 'device:walleye', 'transport_id:4']
+         // emulator: ['emulator-5554', 'offline', 'transport_id:1']
+-        const props = line.split(' ').filter(Boolean);
++        // wireless: ['adb-XXXX (2)._adb-tls-connect._tcp', 'device', 'product:...', 'model:moto_g35_5G']
++        const { pid, state, deviceInfo } = parsed;
++        const props = [
++            pid,
++            state,
++            ...deviceInfo
++        ];
+         const type = line.includes('emulator') ? 'emulator' : 'device';
+         let connectionType;
+         if (type === 'device' && line.includes('usb:')) {
+             connectionType = 'USB';
+-        } else if (type === 'device' && line.includes('_adb-tls-connect.')) {
++        } else if (type === 'device' && (line.includes('_adb-tls-connect.') || /^\d+\.\d+\.\d+\.\d+:\d+$/.test(pid) || pid.startsWith('adb-'))) {
+             connectionType = 'Network';
+         }
+-        const isBooted = type === 'emulator' || props[1] !== 'offline';
++        const isBooted = type === 'emulator' || state !== 'offline';
+         const isAuthorized = connectionType === 'Network' ? line.includes('model:') // Network connected devices show `model:<name>` when authorized
+-         : props[1] !== 'unauthorized';
++         : state !== 'unauthorized';
+         return {
+             props,
+             type,
+@@ -255,7 +336,7 @@ async function getAttachedDevicesAsync() {
+             isBooted,
+             connectionType
+         };
+-    }).filter(({ props: [pid] })=>!!pid);
++    }).filter((device)=>!!(device && device.props[0]));
+     const devicePromises = attachedDevices.map(async (props)=>{
+         const { type, props: [pid, ...deviceInfo], isAuthorized, isBooted } = props;
+         let name = null;
+@@ -331,7 +412,37 @@ async function getDeviceABIsAsync(device) {
+         abi
+     ];
+ }
++async function resolveConnectedAdbSerialAsync(pid) {
++    if (!pid) {
++        return pid;
++    }
++    try {
++        if (isMdnsAdbSerial(pid)) {
++            await stabilizeWirelessDevicesAsync();
++        }
++        const output = await getServer().runAsync([
++            'devices',
++            '-l'
++        ]);
++        const ready = output.split(/\r?\n/).map(parseAdbDeviceLine).filter(Boolean).filter((item)=>item.state === 'device' || item.state === 'unauthorized');
++        const serials = ready.map((item)=>item.pid);
++        if (serials.includes(pid) && !isMdnsAdbSerial(pid)) {
++            return pid;
++        }
++        const ipSerial = ready.find((item)=>isIpAdbSerial(item.pid) && item.state === 'device');
++        if (ipSerial) {
++            return ipSerial.pid;
++        }
++        const match = serials.find((serial)=>serial.startsWith(`${pid} `) || serial.startsWith(`${pid}.`) || serial.startsWith(`${pid}(`));
++        return match || pid;
++    } catch  {
++        return pid;
++    }
++}
+ async function getPropertyDataForDeviceAsync(device, prop) {
++    if (device.pid) {
++        device.pid = await resolveConnectedAdbSerialAsync(device.pid);
++    }
+     const propCommand = prop ? adbShellArgs(device.pid, 'getprop', prop) : adbShellArgs(device.pid, 'getprop');
+     try {
+         // Prevent reading as UTF8.
