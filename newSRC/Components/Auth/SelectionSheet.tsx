@@ -17,6 +17,7 @@ type SelectionSheetProps = {
   onClose: () => void;
   onSelect: (option: Option) => void;
   closeOnSelect?: boolean;
+  emptyText?: string;
 };
 
 export default function SelectionSheet({
@@ -26,6 +27,7 @@ export default function SelectionSheet({
   onClose,
   onSelect,
   closeOnSelect = true,
+  emptyText,
 }: SelectionSheetProps) {
   const { footerPadding } = useScreenInsets();
 
@@ -41,6 +43,9 @@ export default function SelectionSheet({
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={[styles.sheet, { paddingBottom: footerPadding }]}>
           <Text style={styles.title}>{title}</Text>
+          {options.length === 0 && emptyText ? (
+            <Text style={styles.emptyText}>{emptyText}</Text>
+          ) : null}
           <FlatList
             data={options}
             keyExtractor={(item) => item.value}
@@ -103,5 +108,12 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendRegular,
     fontSize: RFValue(14),
     color: AppColors.black,
+  },
+  emptyText: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: RFValue(14),
+    color: AppColors.subtitle,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
 });

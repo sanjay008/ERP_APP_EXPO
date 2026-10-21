@@ -33,6 +33,20 @@ async function getUserContext() {
   };
 }
 
+export function isRelationFlagOn(value?: boolean | number | string) {
+  return value === 1 || value === "1" || value === true || value === "true";
+}
+
+export function parseQuickRelationItem(raw?: string): QuickRelationItem | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as QuickRelationItem;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchQuickRelations() {
   const ctx = await getUserContext();
   return ApiService<QuickRelationItem[]>(apiConstants.getQuickRelations, {

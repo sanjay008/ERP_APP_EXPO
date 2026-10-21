@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
@@ -23,6 +23,7 @@ function iconColor(color?: string) {
 
 export default function RelationScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { top, scrollPadding } = useScreenInsets();
   const params = useLocalSearchParams<{ title?: string; color?: string }>();
 
@@ -57,8 +58,23 @@ export default function RelationScreen() {
     loadData();
   }, [loadData]);
 
+  const openForm = (item: QuickRelationItem) => {
+    router.push({
+      pathname: "/(app)/relation/form",
+      params: {
+        item: JSON.stringify(item),
+        category_id: String(item.category_id ?? ""),
+        popup_text: item.popup_text || item.title || "",
+        default_country_code: String(item.default_country_code ?? ""),
+        is_employee_client: String(item.is_employee_client ?? ""),
+        is_customer_client: String(item.is_customer_client ?? ""),
+        is_employee_of_company: String(item.is_employee_of_company ?? ""),
+      },
+    });
+  };
+
   const renderItem = ({ item }: { item: QuickRelationItem }) => (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={() => openForm(item)}>
       <View style={styles.iconBox}>
         <Ionicons name="people-outline" size={22} color={iconColor(item.color)} />
       </View>
@@ -82,7 +98,7 @@ export default function RelationScreen() {
           </Text>
         ) : null}
       </View>
-    </View>
+    </Pressable>
   );
 
   return (

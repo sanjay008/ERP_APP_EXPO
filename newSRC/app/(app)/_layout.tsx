@@ -130,6 +130,8 @@ function AppStack() {
       <Stack.Screen name="events/[id]/scanner" options={{ headerShown: false }} />
       <Stack.Screen name="events/[id]/confirm" options={{ headerShown: false }} />
       <Stack.Screen name="products/create" options={{ headerShown: false }} />
+      <Stack.Screen name="relation/index" options={{ headerShown: false }} />
+      <Stack.Screen name="relation/form" options={{ headerShown: false }} />
     </Stack>
   );
 }
