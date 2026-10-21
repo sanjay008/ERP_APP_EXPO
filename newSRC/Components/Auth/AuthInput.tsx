@@ -6,8 +6,10 @@ import {
   Text,
   TextInput,
   View,
+  type ImageSourcePropType,
   type TextInputProps,
 } from "react-native";
+import FallBackImage from "../FallBackImage";
 import { AUTH_PLACEHOLDER_COLOR, authTypography } from "../../utils/authTypography";
 import { AppColors } from "../../utils/theme";
 
@@ -16,6 +18,7 @@ type AuthInputProps = TextInputProps & {
   required?: boolean;
   error?: string;
   iconName?: keyof typeof Ionicons.glyphMap;
+  iconSource?: ImageSourcePropType;
   rightIcon?: ReactNode;
   onRightIconPress?: () => void;
 };
@@ -25,6 +28,7 @@ export default function AuthInput({
   required = false,
   error,
   iconName,
+  iconSource,
   rightIcon,
   onRightIconPress,
   ...inputProps
@@ -36,7 +40,14 @@ export default function AuthInput({
         {required ? <Text style={authTypography.required}> *</Text> : null}
       </Text>
       <View style={[styles.inputContainer, error ? styles.inputError : null]}>
-        {iconName ? (
+        {iconSource ? (
+          <FallBackImage
+            source={iconSource}
+            style={styles.leftImage}
+            tintColor={AppColors.subtitle}
+            resizeMode="contain"
+          />
+        ) : iconName ? (
           <Ionicons name={iconName} size={18} color={AppColors.subtitle} style={styles.leftIcon} />
         ) : null}
         <TextInput
@@ -73,6 +84,11 @@ const styles = StyleSheet.create({
     borderColor: "#EF4444",
   },
   leftIcon: {
+    marginRight: 10,
+  },
+  leftImage: {
+    width: 18,
+    height: 18,
     marginRight: 10,
   },
   input: {

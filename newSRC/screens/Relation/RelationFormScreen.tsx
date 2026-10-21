@@ -1,84 +1,49 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo } from "react";
 import {
-  KeyboardAvoidingView,
+  ActivityIndicator,
+  Dimensions,
+  Platform,
   Pressable,
-  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import ScreenHeader from "../../Components/ScreenHeader";
-import AuthInput from "../../Components/Auth/AuthInput";
-import AuthSelect from "../../Components/Auth/AuthSelect";
-import AuthButton from "../../Components/Auth/AuthButton";
+import BoxIcon from "../../Components/BoxIcon";
+import FormSelectField from "../../Components/FormSelectField";
 import CountryPicker from "../../Components/Auth/CountryPicker";
-import { GooglePlacesField, type GooglePlacePrediction } from "../../Components/GooglePlacesInput";
+import GooglePlacesInput, { type GooglePlacePrediction } from "../../Components/GooglePlacesInput";
 import AppDatePickerSheet from "../../Components/AppDatePickerSheet";
 import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
 import ApiFeedback from "../../Components/ApiFeedback";
+import FallBackImage from "../../Components/FallBackImage";
 import { RegisterBackContext } from "../../constants/GoBackContext";
-import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
-  fieldInitialValue,
-  fetchQuickRelationForm,
   findCountryCodeField,
+  formatDisplayDate,
   getQuickRelationFieldKind,
-  isDutchWhatsAppValid,
-  isPersonWhatsAppField,
   isQuickRelationFieldRequired,
-  isRelationFlagOn,
   optionLabel,
   optionValue,
-  parseQuickRelationItem,
-  saveQuickRelation,
+  parseRelationDate,
+  toDisplayDate,
   type QuickRelationField,
-  type QuickRelationFormData,
-  type QuickRelationItem,
   type QuickRelationOption,
 } from "../../services/relationService";
-import {
-  addressPartFieldsFor,
-  fetchGooglePlaceAddress,
-} from "../../utils/googlePlaceAddress";
+import { useRelationFormStore } from "../../store/relationFormStore";
 import { useAuthStore } from "../../store/authStore";
-import { AppApiError } from "../../utils/apiError";
-import { getApiErrorMessage } from "../../utils/validation";
 import { mergeApiCountries, normalizeCallingCode } from "../../utils/countryListHelper";
-import { getKeyboardAvoidBehavior, useScreenInsets } from "../../utils/screenInsets";
-import { authTypography } from "../../utils/authTypography";
-import { AppColors } from "../../utils/theme";
-
-function padDatePart(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function formatDisplayDate(value: Date) {
-  return `${padDatePart(value.getDate())}-${padDatePart(value.getMonth() + 1)}-${value.getFullYear()}`;
-}
-
-function toDisplayDate(value: string) {
-  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) return `${iso[3]}-${iso[2]}-${iso[1]}`;
-  return value;
-}
-
-function toApiDate(value: string) {
-  const display = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (display) return `${display[3]}-${display[2]}-${display[1]}`;
-  return value;
-}
-
-function parseDate(value: string) {
-  if (!value) return new Date();
-  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-  const [day, month, year] = value.split("-").map(Number);
-  if (!day || !month || !year) return new Date();
-  return new Date(year, month - 1, day);
-}
+import { useKeyboardHeight } from "../../utils/screenInsets";
+import { Colors } from "../../utils/colors";
+import { FONTS } from "../../utils/FONTS";
+import { Images } from "../../utils/Images";
+import { listScreenStyles } from "../../utils/listScreenStyles";
 
 function toSheetOptions(options: QuickRelationOption[]): SheetOption[] {
   return options
@@ -90,37 +55,27 @@ function toSheetOptions(options: QuickRelationOption[]): SheetOption[] {
     .filter((option) => option.id !== "" || option.label !== "");
 }
 
-function buildInitialValues(
-  fields: QuickRelationField[],
-  defaultCountryCode?: string
-) {
-  const values: Record<string, string> = {};
-  fields.forEach((field) => {
-    const initial = fieldInitialValue(field);
-    values[field.name] =
-      field.name === "voertuig_apk_datum" ? toDisplayDate(initial) : initial;
-  });
-
-  const fallbackCode = normalizeCallingCode(defaultCountryCode);
-  if (fallbackCode) {
-    fields
-      .filter((field) => String(field.name || "").toLowerCase().includes("country_code"))
-      .forEach((field) => {
-        if (!normalizeCallingCode(values[field.name])) {
-          values[field.name] = fallbackCode;
-        }
-      });
+function fieldIcon(field: QuickRelationField) {
+  const kind = getQuickRelationFieldKind(field);
+  const name = String(field.name || "").toLowerCase();
+  if (kind === "email") return Images.ConnectionMail;
+  if (kind === "address") return Images.ConnectionLocation;
+  if (kind === "date") return Images.date;
+  if (kind === "phone" || kind === "whatsapp") return Images.ConnectionPhone;
+  if (name.includes("bedrijf") || name.includes("company")) return Images.BagVector;
+  if (name.includes("voornaam") || name.includes("achternaam") || name.includes("name")) {
+    return Images.userVector;
   }
-
-  return values;
+  if (kind === "number") return Images.CalendarVector;
+  return Images.EditVector;
 }
 
 export default function RelationFormScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { top, scrollPadding } = useScreenInsets();
   const { setToast } = useContext(RegisterBackContext);
-  const { apiError, clearApiError, captureApiError } = useApiErrorState();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
   const params = useLocalSearchParams<{
     item?: string;
     category_id?: string;
@@ -131,166 +86,110 @@ export default function RelationFormScreen() {
     is_employee_of_company?: string;
   }>();
 
-  const item = useMemo<QuickRelationItem>(() => {
-    const parsed = parseQuickRelationItem(params.item);
-    return {
-      ...(parsed ?? {}),
-      category_id: parsed?.category_id ?? Number(params.category_id),
-      popup_text: parsed?.popup_text || params.popup_text,
-      default_country_code: parsed?.default_country_code || params.default_country_code,
-      is_employee_client: parsed?.is_employee_client ?? params.is_employee_client,
-      is_customer_client: parsed?.is_customer_client ?? params.is_customer_client,
-      is_employee_of_company: parsed?.is_employee_of_company ?? params.is_employee_of_company,
-    };
-  }, [params]);
+  const item = useRelationFormStore((state) => state.item);
+  const form = useRelationFormStore((state) => state.form);
+  const values = useRelationFormStore((state) => state.values);
+  const errors = useRelationFormStore((state) => state.errors);
+  const loading = useRelationFormStore((state) => state.loading);
+  const submitting = useRelationFormStore((state) => state.submitting);
+  const apiError = useRelationFormStore((state) => state.apiError);
+  const activeField = useRelationFormStore((state) => state.activeField);
+  const dateField = useRelationFormStore((state) => state.dateField);
+  const setItemFromParams = useRelationFormStore((state) => state.setItemFromParams);
+  const loadForm = useRelationFormStore((state) => state.loadForm);
+  const setFieldValue = useRelationFormStore((state) => state.setFieldValue);
+  const applyGoogleAddress = useRelationFormStore((state) => state.applyGoogleAddress);
+  const setActiveField = useRelationFormStore((state) => state.setActiveField);
+  const setDateField = useRelationFormStore((state) => state.setDateField);
+  const save = useRelationFormStore((state) => state.save);
+  const reset = useRelationFormStore((state) => state.reset);
 
-  const screenTitle = item.popup_text || item.title || t("Relation");
-  const defaultCountryCode = normalizeCallingCode(item.default_country_code) || "31";
   const countries = useAuthStore((state) => state.countries);
   const mergedCountries = useMemo(() => mergeApiCountries(countries), [countries]);
-
-  const [form, setForm] = useState<QuickRelationFormData | null>(null);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [activeField, setActiveField] = useState<string | null>(null);
-  const [dateField, setDateField] = useState<string | null>(null);
-
-  const loadForm = useCallback(async () => {
-    if (item.id == null || item.id === "") {
-      setForm(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      clearApiError();
-      const response = await fetchQuickRelationForm(item.id);
-      const data = response.data;
-      setForm(data);
-      setValues(buildInitialValues(data.fields, item.default_country_code));
-      setErrors({});
-    } catch (error) {
-      captureApiError(error);
-      setForm(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [captureApiError, clearApiError, item.default_country_code, item.id]);
-
-  useEffect(() => {
-    loadForm();
-  }, [loadForm]);
+  const defaultCountryCode = normalizeCallingCode(item?.default_country_code) || "31";
+  const screenTitle = item?.popup_text || item?.title || t("Relation");
+  const itemId = item?.id;
+  const badge = item?.category_name || item?.relation_type_name || "";
 
   const visibleFields = useMemo(
     () => (form?.fields ?? []).filter((field) => getQuickRelationFieldKind(field) !== "hidden"),
     [form]
   );
-
-  const setFieldValue = (name: string, value: string) => {
-    setValues((current) => ({ ...current, [name]: value }));
-    setErrors((current) => {
-      if (!current[name]) return current;
-      const next = { ...current };
-      delete next[name];
-      return next;
-    });
-  };
-
-  const applyGoogleAddress = async (fieldName: string, place: GooglePlacePrediction) => {
-    const details = await fetchGooglePlaceAddress(place.place_id);
-    const formatted = details?.formatted || place.description;
-    const partMap = addressPartFieldsFor(fieldName);
-    const fieldNames = new Set((form?.fields ?? []).map((field) => field.name));
-
-    setValues((current) => {
-      const next = { ...current, [fieldName]: formatted };
-      if (details) {
-        (Object.keys(partMap) as Array<keyof typeof partMap>).forEach((key) => {
-          const target = partMap[key];
-          if (fieldNames.has(target)) {
-            next[target] = details[key];
-          }
-        });
-      }
-      return next;
-    });
-    setErrors((current) => {
-      if (!current[fieldName]) return current;
-      const next = { ...current };
-      delete next[fieldName];
-      return next;
-    });
-  };
-
   const selectedSheetField = visibleFields.find((field) => field.name === activeField);
   const selectedSheetOptions = toSheetOptions(
     selectedSheetField?.options_key ? form?.options?.[selectedSheetField.options_key] ?? [] : []
   );
 
-  const validate = () => {
-    const nextErrors: Record<string, string> = {};
-    (form?.fields ?? []).forEach((field) => {
-      const kind = getQuickRelationFieldKind(field);
-      if (kind === "hidden") return;
-      const value = String(values[field.name] ?? "").trim();
-      if (isQuickRelationFieldRequired(field) && !value) {
-        nextErrors[field.name] = t("This field is required");
-      }
-      if (isPersonWhatsAppField(field.name)) {
-        const countryField = findCountryCodeField(form?.fields ?? [], field.name);
-        const countryCode = normalizeCallingCode(countryField ? values[countryField.name] : "");
-        if ((countryCode === "" || countryCode === "31") && !isDutchWhatsAppValid(value)) {
-          nextErrors[field.name] = t(
-            "A Dutch WhatsApp number must be 10 digits starting with 0."
-          );
-        }
-      }
+  const screenHeight = Dimensions.get("screen").height;
+  const windowHeight = Dimensions.get("window").height;
+  const windowAlreadyShrunk = Platform.OS === "android" && screenHeight - windowHeight > 80;
+  const keyboardLift = windowAlreadyShrunk ? 0 : keyboardHeight;
+
+  useEffect(() => {
+    setItemFromParams({
+      item: Array.isArray(params.item) ? params.item[0] : params.item,
+      category_id: Array.isArray(params.category_id) ? params.category_id[0] : params.category_id,
+      popup_text: Array.isArray(params.popup_text) ? params.popup_text[0] : params.popup_text,
+      default_country_code: Array.isArray(params.default_country_code)
+        ? params.default_country_code[0]
+        : params.default_country_code,
+      is_employee_client: Array.isArray(params.is_employee_client)
+        ? params.is_employee_client[0]
+        : params.is_employee_client,
+      is_customer_client: Array.isArray(params.is_customer_client)
+        ? params.is_customer_client[0]
+        : params.is_customer_client,
+      is_employee_of_company: Array.isArray(params.is_employee_of_company)
+        ? params.is_employee_of_company[0]
+        : params.is_employee_of_company,
     });
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
+  }, [
+    params.item,
+    params.category_id,
+    params.popup_text,
+    params.default_country_code,
+    params.is_employee_client,
+    params.is_customer_client,
+    params.is_employee_of_company,
+    setItemFromParams,
+  ]);
+
+  useEffect(() => {
+    if (itemId == null || itemId === "") return;
+    void loadForm();
+  }, [itemId, loadForm]);
+
+  useEffect(() => {
+    return () => reset();
+  }, [reset]);
 
   const handleSave = async () => {
-    if (!form || item.id == null || item.id === "") return;
-    if (!validate()) return;
-
-    try {
-      setSubmitting(true);
-      const payload: Record<string, string> = {};
-      form.fields.forEach((field) => {
-        const raw = values[field.name] ?? "";
-        payload[field.name] =
-          field.name === "voertuig_apk_datum" ? toApiDate(raw) : raw;
-      });
-
-      const response = await saveQuickRelation(item.id, payload);
-      const createdUser = isRelationFlagOn(response.data?.user_created);
+    const result = await save();
+    if (result.ok) {
       setToast({
         top: 45,
-        text: createdUser
-          ? t("User created. A welcome email was sent.")
-          : response.message || t("Relation saved"),
+        text: result.userCreated ? t("User created. A welcome email was sent.") : result.message,
         type: "success",
         visible: true,
       });
       router.back();
-    } catch (error) {
-      if (error instanceof AppApiError && error.fieldErrors) {
-        setErrors(error.fieldErrors);
-      }
-      setToast({
-        top: 45,
-        text: getApiErrorMessage(error, t("Something went wrong")),
-        type: "error",
-        visible: true,
-      });
-    } finally {
-      setSubmitting(false);
+      return;
     }
+    if (result.reason === "validation") return;
+    setToast({
+      top: 45,
+      text: result.message,
+      type: "error",
+      visible: true,
+    });
   };
+
+  const renderLabel = (field: QuickRelationField) => (
+    <Text style={styles.label}>
+      {field.label || field.name}
+      {isQuickRelationFieldRequired(field) ? <Text style={styles.required}> *</Text> : null}
+    </Text>
+  );
 
   const renderPhoneField = (field: QuickRelationField, kind: "phone" | "whatsapp") => {
     const countryField = findCountryCodeField(form?.fields ?? [], field.name);
@@ -299,30 +198,20 @@ export default function RelationFormScreen() {
       defaultCountryCode;
 
     return (
-      <View key={field.name} style={styles.field}>
-        <Text style={authTypography.label}>
-          {field.label || field.name}
-          {isQuickRelationFieldRequired(field) ? (
-            <Text style={authTypography.required}> *</Text>
-          ) : null}
-        </Text>
+      <View key={field.name} style={styles.fieldWrapper}>
+        {renderLabel(field)}
         <CountryPicker
           value={values[field.name] || ""}
           setValue={(text) => setFieldValue(field.name, text)}
           countryCode={countryCode}
           countries={mergedCountries}
-          placeholder={
-            kind === "whatsapp" ? t("Enter whatsapp number") : t("Enter phone number")
-          }
+          placeholder={kind === "whatsapp" ? t("Enter whatsapp number") : t("Enter phone number")}
+          containerStyle={[styles.phoneBox, errors[field.name] ? styles.errorBorder : null]}
           onSelect={(country) => {
-            if (countryField) {
-              setFieldValue(countryField.name, country.countrycode);
-            }
+            if (countryField) setFieldValue(countryField.name, country.countrycode);
           }}
         />
-        {errors[field.name] ? (
-          <Text style={[authTypography.error, styles.errorSpacing]}>{errors[field.name]}</Text>
-        ) : null}
+        {errors[field.name] ? <Text style={styles.errorText}>{errors[field.name]}</Text> : null}
       </View>
     );
   };
@@ -333,6 +222,7 @@ export default function RelationFormScreen() {
     const label = field.label || field.name;
     const value = values[field.name] || "";
     const error = errors[field.name];
+    const icon = fieldIcon(field);
 
     if (kind === "whatsapp" || kind === "phone") {
       return renderPhoneField(field, kind);
@@ -340,19 +230,20 @@ export default function RelationFormScreen() {
 
     if (kind === "address") {
       return (
-        <GooglePlacesField
-          key={field.name}
-          label={label}
-          required={required}
-          value={value}
-          onChangeText={(text) => setFieldValue(field.name, text)}
-          onSelect={(place) => {
-            void applyGoogleAddress(field.name, place);
-          }}
-          placeholder={t("Enter address")}
-          error={error}
-          containerStyle={{ marginBottom: 0 }}
-        />
+        <View key={field.name} style={styles.fieldWrapper}>
+          {renderLabel(field)}
+          <GooglePlacesInput
+            value={value}
+            onChangeText={(text) => setFieldValue(field.name, text)}
+            onSelect={(place: GooglePlacePrediction) => {
+              void applyGoogleAddress(field.name, place);
+            }}
+            placeholder={t("Enter address")}
+            showIcon
+            inputContainerStyle={[styles.inputWithIcon, error ? styles.errorBorder : null]}
+          />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </View>
       );
     }
 
@@ -360,11 +251,12 @@ export default function RelationFormScreen() {
       const options = toSheetOptions(form?.options?.[field.options_key || ""] ?? []);
       const selected = options.find((option) => String(option.id) === value);
       return (
-        <AuthSelect
+        <FormSelectField
           key={field.name}
           label={label}
-          value={selected?.label || ""}
+          required={required}
           placeholder={t("Select")}
+          value={selected?.label || ""}
           error={error}
           onPress={() => setActiveField(field.name)}
         />
@@ -373,68 +265,122 @@ export default function RelationFormScreen() {
 
     if (kind === "date") {
       return (
-        <View key={field.name} style={styles.field}>
-          <Text style={authTypography.label}>
-            {label}
-            {required ? <Text style={authTypography.required}> *</Text> : null}
-          </Text>
+        <View key={field.name} style={styles.fieldWrapper}>
+          {renderLabel(field)}
           <Pressable
-            style={[styles.dateField, error ? styles.dateFieldError : null]}
+            style={[styles.inputWithIcon, error ? styles.errorBorder : null]}
             onPress={() => setDateField(field.name)}
           >
-            <Ionicons name="calendar-outline" size={18} color={AppColors.subtitle} />
-            <Text style={[authTypography.input, styles.dateText, !value && authTypography.placeholder]}>
+            <FallBackImage source={Images.date} style={styles.fieldIcon} resizeMode="contain" />
+            <Text style={[styles.inputField, !value && styles.placeholder]}>
               {value ? toDisplayDate(value) : t("Select date")}
             </Text>
           </Pressable>
-          {error ? <Text style={[authTypography.error, styles.errorSpacing]}>{error}</Text> : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
       );
     }
 
+    const isYear =
+      kind === "number" &&
+      (field.name.toLowerCase().includes("year") || field.name.toLowerCase().includes("jaar"));
+
     return (
-      <AuthInput
-        key={field.name}
-        label={label}
-        required={required}
-        value={value}
-        onChangeText={(text) => {
-          if (kind === "number") {
-            setFieldValue(field.name, text.replace(/[^0-9]/g, ""));
-            return;
-          }
-          setFieldValue(field.name, text);
-        }}
-        placeholder={label}
-        error={error}
-        keyboardType={kind === "email" ? "email-address" : kind === "number" ? "number-pad" : "default"}
-        autoCapitalize={kind === "email" ? "none" : "sentences"}
-      />
+      <View key={field.name} style={styles.fieldWrapper}>
+        {renderLabel(field)}
+        <View style={[styles.inputWithIcon, error ? styles.errorBorder : null]}>
+          <FallBackImage source={icon} style={styles.fieldIcon} resizeMode="contain" />
+          <TextInput
+            style={styles.inputField}
+            value={value}
+            onChangeText={(text) => {
+              if (kind === "number") {
+                setFieldValue(field.name, text.replace(/[^0-9]/g, "").slice(0, isYear ? 4 : 12));
+                return;
+              }
+              setFieldValue(field.name, text);
+            }}
+            placeholder={label}
+            placeholderTextColor={Colors.placeholder}
+            keyboardType={kind === "email" ? "email-address" : kind === "number" ? "number-pad" : "default"}
+            autoCapitalize={kind === "email" ? "none" : "sentences"}
+            autoCorrect={false}
+            autoComplete={kind === "email" ? "email" : "off"}
+            multiline={false}
+            numberOfLines={1}
+            textAlignVertical="center"
+            underlineColorAndroid="transparent"
+          />
+        </View>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </View>
     );
   };
 
   return (
-    <View style={[styles.container, { paddingTop: top }]}>
-      <ScreenHeader title={screenTitle} onBack={() => router.back()} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <BoxIcon Icon={Images.BackIcon} onPress={() => router.back()} />
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {screenTitle}
+        </Text>
+        {badge ? (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeText} numberOfLines={1}>
+              {badge}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
+      </View>
 
       {loading ? (
         <ApiFeedback loading />
       ) : apiError && !form ? (
         <ApiFeedback error={apiError} onRetry={loadForm} />
       ) : (
-        <KeyboardAvoidingView style={styles.flex} behavior={getKeyboardAvoidBehavior()}>
-          <ScrollView
-            contentContainerStyle={[styles.content, { paddingBottom: scrollPadding }]}
-            keyboardShouldPersistTaps="handled"
+        <>
+          <View style={styles.body}>
+            <KeyboardAwareScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              enableOnAndroid
+              enableAutomaticScroll
+              extraScrollHeight={Platform.OS === "ios" ? 20 : 100}
+              keyboardOpeningTime={180}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {visibleFields.map(renderField)}
+            </KeyboardAwareScrollView>
+          </View>
+
+          <View
+            style={[
+              styles.footer,
+              {
+                paddingBottom: Math.max(insets.bottom, 12),
+                marginBottom: keyboardLift,
+              },
+            ]}
           >
-            {visibleFields.map(renderField)}
-            <AuthButton
-              title={submitting ? t("Loading...") : t("Save")}
-              onPress={handleSave}
+            <TouchableOpacity
+              style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+              onPress={() => {
+                void handleSave();
+              }}
               disabled={submitting || !form}
-            />
-          </ScrollView>
-        </KeyboardAvoidingView>
+            >
+              {submitting ? (
+                <ActivityIndicator color={Colors.white} size="small" />
+              ) : (
+                <Text style={styles.submitBtnText}>{t("Save")}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </>
       )}
 
       <SelectionBottomSheet
@@ -454,7 +400,7 @@ export default function RelationFormScreen() {
       />
       <AppDatePickerSheet
         visible={Boolean(dateField)}
-        value={parseDate(dateField ? values[dateField] || "" : "")}
+        value={parseRelationDate(dateField ? values[dateField] || "" : "")}
         onConfirm={(date) => {
           if (dateField) setFieldValue(dateField, formatDisplayDate(date));
           setDateField(null);
@@ -466,22 +412,135 @@ export default function RelationFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F7F9FB" },
-  flex: { flex: 1 },
-  content: { padding: 16, gap: 16 },
-  field: { marginBottom: 0 },
-  errorSpacing: { marginTop: 6 },
-  dateField: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: "#D8DEE6",
-    borderRadius: 10,
-    paddingHorizontal: 14,
+  container: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.white,
+    zIndex: 20,
+    elevation: 4,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: FONTS.OutfitSemiBold,
+    color: Colors.black,
+    marginLeft: 10,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  statusBadge: {
+    ...listScreenStyles.statusBadge,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: 130,
+  },
+  statusBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontFamily: FONTS.OutfitSemiBold,
+    textAlign: "center",
+  },
+  body: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 15,
+    paddingTop: 15,
+  },
+  contentContainer: {
+    gap: 18,
+    paddingBottom: 30,
+    flexGrow: 0,
+  },
+  fieldWrapper: {
+    gap: 8,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  label: {
+    fontSize: 14,
+    fontFamily: FONTS.OutfitSemiBold,
+    color: Colors.black,
+  },
+  required: {
+    color: Colors.dicline,
+  },
+  inputWithIcon: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: AppColors.white,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    height: 50,
+    backgroundColor: Colors.white,
+    overflow: "hidden",
   },
-  dateFieldError: { borderColor: "#EF4444" },
-  dateText: { flex: 1, paddingVertical: 12 },
+  phoneBox: {
+    borderRadius: 8,
+    borderColor: Colors.border,
+  },
+  fieldIcon: {
+    width: 16,
+    height: 16,
+    tintColor: Colors.placeholder,
+  },
+  inputField: {
+    flex: 1,
+    height: 50,
+    fontSize: 14,
+    fontFamily: FONTS.OutfitMedium,
+    color: Colors.black,
+    padding: 0,
+    margin: 0,
+    includeFontPadding: false,
+  },
+  placeholder: {
+    color: Colors.placeholder,
+    fontFamily: FONTS.OutfitRegular,
+  },
+  errorBorder: {
+    borderColor: Colors.dicline,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: FONTS.OutfitRegular,
+    color: Colors.dicline,
+  },
+  footer: {
+    paddingHorizontal: 15,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.white,
+  },
+  submitBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  submitBtnDisabled: {
+    opacity: 0.85,
+  },
+  submitBtnText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontFamily: FONTS.OutfitSemiBold,
+  },
 });

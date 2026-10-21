@@ -146,15 +146,24 @@ export function getQuickRelationFieldKind(field: QuickRelationField): QuickRelat
     return "phone";
   }
   if (
+    type === "email" ||
+    name.includes("email") ||
+    name.includes("e-mail") ||
+    name.includes("mailadres")
+  ) {
+    return "email";
+  }
+  if (
     type === "address" ||
     type === "google_maps" ||
-    name.includes("google_maps") ||
-    name.includes("address") ||
-    name.includes("adres")
+    name === "co_address" ||
+    name === "re_address" ||
+    name === "google_maps" ||
+    name.endsWith("_address") ||
+    (name.includes("adres") && !name.includes("mail"))
   ) {
     return "address";
   }
-  if (type === "email" || name.includes("email")) return "email";
   if (
     type === "number" ||
     type === "year" ||
@@ -170,6 +179,45 @@ export function getQuickRelationFieldKind(field: QuickRelationField): QuickRelat
 
 export function isDutchWhatsAppValid(value: string) {
   return /^0\d{9}$/.test(value.replace(/\s/g, ""));
+}
+
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+export function formatDisplayDate(value: Date) {
+  return `${padDatePart(value.getDate())}-${padDatePart(value.getMonth() + 1)}-${value.getFullYear()}`;
+}
+
+export function toDisplayDate(value: string) {
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[3]}-${iso[2]}-${iso[1]}`;
+  return value;
+}
+
+export function toApiDate(value: string) {
+  const display = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (display) return `${display[3]}-${display[2]}-${display[1]}`;
+  return value;
+}
+
+export function parseRelationDate(value: string) {
+  if (!value) return new Date();
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const [day, month, year] = value.split("-").map(Number);
+  if (!day || !month || !year) return new Date();
+  return new Date(year, month - 1, day);
+}
+
+export function isRelationDateValid(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed) || /^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    const date = parseRelationDate(trimmed);
+    return !Number.isNaN(date.getTime());
+  }
+  return false;
 }
 
 export function isPersonWhatsAppField(fieldName: string) {

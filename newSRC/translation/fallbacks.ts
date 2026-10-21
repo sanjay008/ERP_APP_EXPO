@@ -38,6 +38,8 @@ export const fallbackResources = {
       "Enter email address validation": "Enter email address",
       "Enter email address error": "Enter email address",
       "Enter email address valid": "Enter a valid email address",
+      "Enter a valid email address": "Enter a valid email address",
+      "Enter a valid phone number": "Enter a valid phone number",
       "Enter whatsapp number error": "Enter whatsapp number",
       "Enter valid phone": "Enter a valid phone number",
       "OTP resent successfully": "OTP resent successfully",

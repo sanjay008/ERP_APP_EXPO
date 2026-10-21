@@ -12,6 +12,7 @@ type Props = {
   onBack?: () => void;
   refreshOnPress?: () => void;
   filterOnPress?: () => void;
+  compact?: boolean;
   /** @deprecated use filterOnPress */
   sortOnPress?: () => void;
 };
@@ -21,6 +22,7 @@ export default function ScreenHeader({
   onBack,
   refreshOnPress,
   filterOnPress,
+  compact = false,
   sortOnPress,
 }: Props) {
   const router = useRouter();
@@ -38,7 +40,7 @@ export default function ScreenHeader({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.containerCompact]}>
       <View style={styles.left}>
         <Pressable style={styles.backBtn} onPress={handleBack}>
           <FallBackImage
@@ -47,7 +49,7 @@ export default function ScreenHeader({
             resizeMode="contain"
           />
         </Pressable>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
           {title}
         </Text>
       </View>
@@ -112,12 +114,18 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
   },
+  containerCompact: {
+    paddingVertical: 12,
+  },
   title: {
     flex: 1,
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 17,
     color: AppColors.black,
     textAlign: "left",
+  },
+  titleCompact: {
+    fontSize: 15,
   },
   actions: {
     flexDirection: "row",
