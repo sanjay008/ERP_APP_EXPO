@@ -7,17 +7,20 @@ export type ParsedApiError = {
   kind: ApiErrorKind;
   message: string;
   statusCode?: number;
+  fieldErrors?: Record<string, string>;
 };
 
 export class AppApiError extends Error {
   kind: ApiErrorKind;
   statusCode?: number;
+  fieldErrors?: Record<string, string>;
 
   constructor(parsed: ParsedApiError) {
     super(parsed.message);
     this.name = "AppApiError";
     this.kind = parsed.kind;
     this.statusCode = parsed.statusCode;
+    this.fieldErrors = parsed.fieldErrors;
   }
 
   toJSON(): ParsedApiError {
@@ -25,8 +28,30 @@ export class AppApiError extends Error {
       kind: this.kind,
       message: this.message,
       statusCode: this.statusCode,
+      fieldErrors: this.fieldErrors,
     };
   }
+}
+
+export function flattenFieldErrors(errors: unknown): Record<string, string> | undefined {
+  if (!errors || typeof errors !== "object" || Array.isArray(errors)) return undefined;
+
+  const next: Record<string, string> = {};
+  for (const [key, value] of Object.entries(errors)) {
+    if (typeof value === "string" && value.trim()) {
+      next[key] = value.trim();
+      continue;
+    }
+    if (Array.isArray(value) && value[0] != null) {
+      next[key] = String(value[0]).trim();
+      continue;
+    }
+    if (value && typeof value === "object" && "message" in value) {
+      const message = String((value as { message?: string }).message || "").trim();
+      if (message) next[key] = message;
+    }
+  }
+  return Object.keys(next).length ? next : undefined;
 }
 
 export function createOfflineError(message?: string): AppApiError {
@@ -123,6 +148,12 @@ function translateApiMessage(message: string | undefined, fallback: string): str
   return i18n.t(trimmed);
 }
 
+function readFieldErrorsFromData(data: unknown): Record<string, string> | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const payload = data as { errors?: unknown };
+  return flattenFieldErrors(payload.errors);
+}
+
 function readResponseMessage(data: unknown): string | undefined {
   if (typeof data === "string" && data.trim()) return data.trim();
 
@@ -182,12 +213,16 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
   }
 
   if (error instanceof AppApiError) {
-    return finalizeParsedError(error.toJSON());
+    return finalizeParsedError({
+      ...error.toJSON(),
+      fieldErrors: error.fieldErrors,
+    });
   }
 
   if (axios.isAxiosError(error)) {
     const responseMessage = readResponseMessage(error.response?.data);
     const statusCode = error.response?.status;
+    const fieldErrors = readFieldErrorsFromData(error.response?.data);
 
     if (isEmptyApiBody(error.response?.data) && !(statusCode && statusCode >= 500)) {
       return emptyParsedError(statusCode);
@@ -198,6 +233,7 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
         kind: "offline",
         message: i18n.t("No internet connection"),
         statusCode,
+        fieldErrors,
       };
     }
 
@@ -209,6 +245,7 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
           i18n.t("Session expired, please login again")
         ),
         statusCode,
+        fieldErrors,
       };
     }
 
@@ -241,6 +278,7 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
         translateApiMessage(error.message, defaultFallback)
       ),
       statusCode,
+      fieldErrors,
     });
   }
 
@@ -271,10 +309,12 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
 
   if (error && typeof error === "object") {
     const responseMessage = readResponseMessage(error);
-    if (responseMessage) {
+    const fieldErrors = readFieldErrorsFromData(error);
+    if (responseMessage || fieldErrors) {
       return finalizeParsedError({
         kind: "unknown",
         message: translateApiMessage(responseMessage, defaultFallback),
+        fieldErrors,
       });
     }
   }

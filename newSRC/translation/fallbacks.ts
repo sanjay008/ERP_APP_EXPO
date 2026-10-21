@@ -432,6 +432,10 @@ export const fallbackResources = {
       "Enter color": "Enter color",
       Driver: "Driver",
       "Enter driver": "Enter driver",
+      "Relation saved": "Relation saved",
+      "User created. A welcome email was sent.": "User created. A welcome email was sent.",
+      "A Dutch WhatsApp number must be 10 digits starting with 0.":
+        "A Dutch WhatsApp number must be 10 digits starting with 0.",
     },
   },
   nl: {
@@ -864,6 +868,10 @@ export const fallbackResources = {
       "Enter color": "Voer kleur in",
       Driver: "Bestuurder",
       "Enter driver": "Voer bestuurder in",
+      "Relation saved": "Relatie opgeslagen",
+      "User created. A welcome email was sent.": "Gebruiker aangemaakt. Er is een welkomstmail verstuurd.",
+      "A Dutch WhatsApp number must be 10 digits starting with 0.":
+        "Een Nederlands WhatsApp-nummer moet 10 cijfers zijn en met 0 beginnen.",
     },
   },
 };

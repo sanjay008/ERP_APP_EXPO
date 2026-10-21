@@ -138,6 +138,8 @@ export const apiConstants = {
   performanceReviewsList: `${baseUrlnew}performance-reviews/list`,
   performanceReviewsDetails: `${baseUrlnew}performance-reviews/details`,
   getQuickRelations: `${baseUrlnew}quick-relations/get-quick-relations`,
+  getQuickRelationForm: `${baseUrlnew}quick-relations/get-form`,
+  saveQuickRelation: `${baseUrlnew}quick-relations/save`,
 };
 
 export default apiConstants;
