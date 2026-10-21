@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
 import CustomTabBar from "../../../Components/CustomTabBar";
+import MultiAccountHost from "../../../Components/MultiAccount/MultiAccountHost";
 import { useAppData } from "../../../context/AppDataContext";
 import { useTabPermissions } from "../../../hooks/useTabPermissions";
 import { getData } from "../../../utils/storeData";
@@ -48,46 +49,49 @@ export default function TabsLayout() {
   }
 
   return (
-    <Tabs
-      initialRouteName={initialRouteName}
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        lazy: true,
-        sceneStyle: {
-          backgroundColor: "transparent",
-        },
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: "transparent",
-          borderTopWidth: 0,
-          elevation: 0,
-          height: 0,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t("Home"),
-          href: showHome ? undefined : null,
+    <View style={{ flex: 1 }}>
+      <Tabs
+        initialRouteName={initialRouteName}
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          lazy: true,
+          sceneStyle: {
+            backgroundColor: "transparent",
+          },
+          tabBarStyle: {
+            position: "absolute",
+            backgroundColor: "transparent",
+            borderTopWidth: 0,
+            elevation: 0,
+            height: 0,
+          },
         }}
-      />
-      <Tabs.Screen
-        name="timeline"
-        options={{
-          title: t("Schedule"),
-          href: showSchedule ? undefined : null,
-        }}
-      />
-      <Tabs.Screen name="menu" options={{ title: t("Menu") }} />
-      <Tabs.Screen
-        name="booking"
-        options={{
-          title: t("Booking"),
-          href: showBooking ? undefined : null,
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: t("Home"),
+            href: showHome ? undefined : null,
+          }}
+        />
+        <Tabs.Screen
+          name="timeline"
+          options={{
+            title: t("Schedule"),
+            href: showSchedule ? undefined : null,
+          }}
+        />
+        <Tabs.Screen name="menu" options={{ title: t("Menu") }} />
+        <Tabs.Screen
+          name="booking"
+          options={{
+            title: t("Booking"),
+            href: showBooking ? undefined : null,
+          }}
+        />
+      </Tabs>
+      <MultiAccountHost />
+    </View>
   );
 }

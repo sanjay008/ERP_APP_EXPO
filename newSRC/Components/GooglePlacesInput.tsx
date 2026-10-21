@@ -29,6 +29,7 @@ type GooglePlacesInputProps = {
   containerStyle?: StyleProp<ViewStyle>;
   inputContainerStyle?: StyleProp<ViewStyle>;
   showIcon?: boolean;
+  types?: string;
 };
 
 export default function GooglePlacesInput({
@@ -39,6 +40,7 @@ export default function GooglePlacesInput({
   containerStyle,
   inputContainerStyle,
   showIcon = true,
+  types,
 }: GooglePlacesInputProps) {
   const [apiKey, setApiKey] = useState("");
   const [suggestions, setSuggestions] = useState<GooglePlacePrediction[]>([]);
@@ -62,6 +64,7 @@ export default function GooglePlacesInput({
             params: {
               input: text,
               key: apiKey,
+              ...(types ? { types } : {}),
             },
           }
         );
@@ -70,7 +73,7 @@ export default function GooglePlacesInput({
         setSuggestions([]);
       }
     },
-    [apiKey]
+    [apiKey, types]
   );
 
   const handleChange = (text: string) => {

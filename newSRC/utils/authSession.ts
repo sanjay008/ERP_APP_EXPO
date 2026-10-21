@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { clearAllData, getData, storeData } from "./storeData";
+import { readLogoutPreserveBundle, writeLogoutPreserveBundle } from "./multiAccountSession";
 
 export type AuthRedirect =
   | "/(app)/(tabs)/menu"
@@ -58,16 +58,12 @@ export async function isLoggedIn(): Promise<boolean> {
   return Boolean(auth || login);
 }
 
-/** Clear login session but keep onboarding prefs (matches old Home/Profile logout). */
+/** Clear login session but keep onboarding prefs and saved accounts. */
 export async function logoutAndPreservePreferences(): Promise<void> {
-  const userLanguage = await AsyncStorage.getItem("userLanguage");
+  const preserve = await readLogoutPreserveBundle();
 
   await clearAllData();
-
-  if (userLanguage !== null) {
-    await AsyncStorage.setItem("userLanguage", userLanguage);
-  }
-
+  await writeLogoutPreserveBundle(preserve);
   await storeData("SELECT", true);
 }
 

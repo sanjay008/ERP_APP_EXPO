@@ -287,7 +287,7 @@ export default function NewUserSignupScreen() {
             iconName="person-outline"
             error={fieldErrors.lastName}
           />
-          <AuthInput
+          <GooglePlacesField
             label={t("Birth Place")}
             required
             value={birthPlace}
@@ -296,7 +296,7 @@ export default function NewUserSignupScreen() {
               clearError("birthPlace");
             }}
             placeholder={t("Enter birth place")}
-            iconName="location-outline"
+            types="(cities)"
             error={fieldErrors.birthPlace}
           />
           <View style={styles.field}>

@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import AuthButton from "../../Components/Auth/AuthButton";
 import AuthInput from "../../Components/Auth/AuthInput";
+import CountryPicker from "../../Components/Auth/CountryPicker";
 import FormSelectField from "../../Components/FormSelectField";
 import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
 import { GooglePlacesField } from "../../Components/GooglePlacesInput";
@@ -24,17 +25,20 @@ import {
   updateProfileDetails,
   type ProfileImageAsset,
 } from "../../services/profileService";
+import { fetchCountries, type CountryItem } from "../../services/authService";
 import ApiService from "../../utils/Apiservice";
 import apiConstants from "../../utils/apiConstants";
 import { getData } from "../../utils/storeData";
 import { pickProfileImage } from "../../utils/profileImagePicker";
 import { getApiErrorMessage, isValidEmail } from "../../utils/validation";
+import { mergeApiCountries } from "../../utils/countryListHelper";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
 import { LIST_UI } from "../../utils/connectionTheme";
 import { listScreenStyles } from "../../utils/listScreenStyles";
+import { authTypography } from "../../utils/authTypography";
 
 const formatDate = (value: Date) => {
   const day = String(value.getDate()).padStart(2, "0");
@@ -91,6 +95,7 @@ export default function EditProfileScreen() {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const [countries, setCountries] = useState<CountryOption[]>([]);
+  const [phoneCountries, setPhoneCountries] = useState<CountryItem[]>([]);
   const [maritalOptions, setMaritalOptions] = useState<MaritalOption[]>([]);
   const [activeSheet, setActiveSheet] = useState<"salutation" | "nationality" | "marital" | null>(
     null
@@ -115,6 +120,11 @@ export default function EditProfileScreen() {
     [maritalOptions]
   );
 
+  const mergedPhoneCountries = useMemo(
+    () => mergeApiCountries(phoneCountries),
+    [phoneCountries]
+  );
+
   const loadLookups = useCallback(async () => {
     try {
       const userdata = await getData("USERDATA");
@@ -123,7 +133,7 @@ export default function EditProfileScreen() {
       const role = userdata?.data?.user?.role;
       const uid = userdata?.data?.user?.id;
 
-      const [countryRes, maritalRes] = await Promise.all([
+      const [countryRes, maritalRes, phoneCountryRes] = await Promise.all([
         ApiService<CountryOption[]>(apiConstants.get_country_list, {
           customData: {
             token,
@@ -139,6 +149,7 @@ export default function EditProfileScreen() {
             user_id: uid,
           },
         }),
+        fetchCountries(),
       ]);
 
       if (countryRes?.status && Array.isArray(countryRes.data)) {
@@ -146,6 +157,9 @@ export default function EditProfileScreen() {
       }
       if (maritalRes?.status && Array.isArray(maritalRes.data)) {
         setMaritalOptions(maritalRes.data);
+      }
+      if (phoneCountryRes?.status && Array.isArray(phoneCountryRes.data)) {
+        setPhoneCountries(phoneCountryRes.data);
       }
     } catch {
       // Keep form usable without lookup lists.
@@ -193,6 +207,28 @@ export default function EditProfileScreen() {
     loadProfile();
     loadLookups();
   }, [loadProfile, loadLookups]);
+
+  useEffect(() => {
+    const code = countryCode.replace(/[^\d]/g, "");
+    if (code === "31" && whatsappNumber.length === 0) {
+      setWhatsappNumber("06");
+      return;
+    }
+    if (code !== "31" && whatsappNumber === "06") {
+      setWhatsappNumber("");
+    }
+  }, [countryCode, whatsappNumber]);
+
+  useEffect(() => {
+    const code = phoneCountryCode.replace(/[^\d]/g, "");
+    if (code === "31" && phoneNumber.length === 0) {
+      setPhoneNumber("06");
+      return;
+    }
+    if (code !== "31" && phoneNumber === "06") {
+      setPhoneNumber("");
+    }
+  }, [phoneCountryCode, phoneNumber]);
 
   const pickImage = async () => {
     const result = await pickProfileImage("gallery");
@@ -335,30 +371,28 @@ export default function EditProfileScreen() {
           keyboardType="email-address"
           autoCapitalize="none"
         />
-        <AuthInput
-          label={t("WhatsApp-nummer")}
-          value={whatsappNumber}
-          onChangeText={setWhatsappNumber}
-          keyboardType="phone-pad"
-        />
-        <AuthInput
-          label={t("Country code")}
-          value={countryCode}
-          onChangeText={setCountryCode}
-          keyboardType="phone-pad"
-        />
-        <AuthInput
-          label={t("Telefoon")}
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          keyboardType="phone-pad"
-        />
-        <AuthInput
-          label={t("Phone country code")}
-          value={phoneCountryCode}
-          onChangeText={setPhoneCountryCode}
-          keyboardType="phone-pad"
-        />
+        <View style={styles.phoneField}>
+          <Text style={authTypography.label}>{t("WhatsApp-nummer")}</Text>
+          <CountryPicker
+            value={whatsappNumber}
+            setValue={setWhatsappNumber}
+            countryCode={countryCode}
+            countries={mergedPhoneCountries}
+            placeholder={t("Enter whatsapp number")}
+            onSelect={(country) => setCountryCode(country.countrycode)}
+          />
+        </View>
+        <View style={styles.phoneField}>
+          <Text style={authTypography.label}>{t("Telefoon")}</Text>
+          <CountryPicker
+            value={phoneNumber}
+            setValue={setPhoneNumber}
+            countryCode={phoneCountryCode}
+            countries={mergedPhoneCountries}
+            placeholder={t("Telefoon")}
+            onSelect={(country) => setPhoneCountryCode(country.countrycode)}
+          />
+        </View>
         <GooglePlacesField
           label={t("Adres")}
           value={address}
@@ -366,7 +400,14 @@ export default function EditProfileScreen() {
           placeholder={t("Enter address")}
           containerStyle={{ marginBottom: 0 }}
         />
-        <AuthInput label={t("Geboorteplaats")} value={birthPlace} onChangeText={setBirthPlace} />
+        <GooglePlacesField
+          label={t("Geboorteplaats")}
+          value={birthPlace}
+          onChangeText={setBirthPlace}
+          placeholder={t("Enter birth place")}
+          types="(cities)"
+          containerStyle={{ marginBottom: 0 }}
+        />
 
         <Pressable style={styles.dateField} onPress={() => setDatePickerOpen(true)}>
           <Text style={styles.dateLabel}>{t("Geboortedatum")}</Text>
@@ -495,5 +536,8 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendMedium,
     fontSize: 15,
     color: AppColors.black,
+  },
+  phoneField: {
+    zIndex: 20,
   },
 });
