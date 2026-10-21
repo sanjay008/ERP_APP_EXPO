@@ -128,10 +128,14 @@ export function getQuickRelationFieldKind(field: QuickRelationField): QuickRelat
   const type = String(field.type || "").toLowerCase();
   const name = String(field.name || "").toLowerCase();
 
+  if (name === "contact_telefoon") return "whatsapp";
+  if (name === "contact_whatsapp") return "phone";
   if (type === "hidden") return "hidden";
   if (field.options_key || type === "select" || type === "dropdown") return "select";
   if (type === "date" || type === "datepicker") return "date";
-  if (type === "whatsapp" || name.includes("whatsapp")) return "whatsapp";
+  if (type === "whatsapp" || (name.includes("whatsapp") && name !== "contact_whatsapp")) {
+    return "whatsapp";
+  }
   if (
     type === "phone" ||
     type === "tel" ||
@@ -168,14 +172,23 @@ export function isDutchWhatsAppValid(value: string) {
   return /^0\d{9}$/.test(value.replace(/\s/g, ""));
 }
 
+export function isPersonWhatsAppField(fieldName: string) {
+  return String(fieldName || "").toLowerCase() === "contact_telefoon";
+}
+
 export function findCountryCodeField(
   fields: QuickRelationField[],
   phoneFieldName: string
 ) {
   const name = phoneFieldName.toLowerCase();
-  const preferred = name.includes("whatsapp")
-    ? ["whatsapp_country_code", "country_code_wh", "country_code"]
-    : ["telefoon_country_code", "phone_country_code", "country_code"];
+  const preferred =
+    name === "contact_telefoon"
+      ? ["contact_telefoon_country_code", "country_code"]
+      : name === "contact_whatsapp"
+        ? ["contact_whatsapp_country_code", "country_code"]
+        : name.includes("whatsapp")
+          ? ["whatsapp_country_code", "country_code_wh", "country_code"]
+          : ["telefoon_country_code", "phone_country_code", "country_code"];
 
   return (
     fields.find((field) => preferred.includes(String(field.name || "").toLowerCase())) ??

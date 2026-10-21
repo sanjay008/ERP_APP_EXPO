@@ -15,7 +15,7 @@ import AuthInput from "../../Components/Auth/AuthInput";
 import AuthSelect from "../../Components/Auth/AuthSelect";
 import AuthButton from "../../Components/Auth/AuthButton";
 import CountryPicker from "../../Components/Auth/CountryPicker";
-import { GooglePlacesField } from "../../Components/GooglePlacesInput";
+import { GooglePlacesField, type GooglePlacePrediction } from "../../Components/GooglePlacesInput";
 import AppDatePickerSheet from "../../Components/AppDatePickerSheet";
 import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
 import ApiFeedback from "../../Components/ApiFeedback";
@@ -27,6 +27,7 @@ import {
   findCountryCodeField,
   getQuickRelationFieldKind,
   isDutchWhatsAppValid,
+  isPersonWhatsAppField,
   isQuickRelationFieldRequired,
   isRelationFlagOn,
   optionLabel,
@@ -38,6 +39,10 @@ import {
   type QuickRelationItem,
   type QuickRelationOption,
 } from "../../services/relationService";
+import {
+  addressPartFieldsFor,
+  fetchGooglePlaceAddress,
+} from "../../utils/googlePlaceAddress";
 import { useAuthStore } from "../../store/authStore";
 import { AppApiError } from "../../utils/apiError";
 import { getApiErrorMessage } from "../../utils/validation";
@@ -46,15 +51,30 @@ import { getKeyboardAvoidBehavior, useScreenInsets } from "../../utils/screenIns
 import { authTypography } from "../../utils/authTypography";
 import { AppColors } from "../../utils/theme";
 
-function formatDate(value: Date) {
-  const day = String(value.getDate()).padStart(2, "0");
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const year = value.getFullYear();
-  return `${day}-${month}-${year}`;
+function padDatePart(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDisplayDate(value: Date) {
+  return `${padDatePart(value.getDate())}-${padDatePart(value.getMonth() + 1)}-${value.getFullYear()}`;
+}
+
+function toDisplayDate(value: string) {
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[3]}-${iso[2]}-${iso[1]}`;
+  return value;
+}
+
+function toApiDate(value: string) {
+  const display = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (display) return `${display[3]}-${display[2]}-${display[1]}`;
+  return value;
 }
 
 function parseDate(value: string) {
   if (!value) return new Date();
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
   const [day, month, year] = value.split("-").map(Number);
   if (!day || !month || !year) return new Date();
   return new Date(year, month - 1, day);
@@ -76,7 +96,9 @@ function buildInitialValues(
 ) {
   const values: Record<string, string> = {};
   fields.forEach((field) => {
-    values[field.name] = fieldInitialValue(field);
+    const initial = fieldInitialValue(field);
+    values[field.name] =
+      field.name === "voertuig_apk_datum" ? toDisplayDate(initial) : initial;
   });
 
   const fallbackCode = normalizeCallingCode(defaultCountryCode);
@@ -177,6 +199,32 @@ export default function RelationFormScreen() {
     });
   };
 
+  const applyGoogleAddress = async (fieldName: string, place: GooglePlacePrediction) => {
+    const details = await fetchGooglePlaceAddress(place.place_id);
+    const formatted = details?.formatted || place.description;
+    const partMap = addressPartFieldsFor(fieldName);
+    const fieldNames = new Set((form?.fields ?? []).map((field) => field.name));
+
+    setValues((current) => {
+      const next = { ...current, [fieldName]: formatted };
+      if (details) {
+        (Object.keys(partMap) as Array<keyof typeof partMap>).forEach((key) => {
+          const target = partMap[key];
+          if (fieldNames.has(target)) {
+            next[target] = details[key];
+          }
+        });
+      }
+      return next;
+    });
+    setErrors((current) => {
+      if (!current[fieldName]) return current;
+      const next = { ...current };
+      delete next[fieldName];
+      return next;
+    });
+  };
+
   const selectedSheetField = visibleFields.find((field) => field.name === activeField);
   const selectedSheetOptions = toSheetOptions(
     selectedSheetField?.options_key ? form?.options?.[selectedSheetField.options_key] ?? [] : []
@@ -191,16 +239,10 @@ export default function RelationFormScreen() {
       if (isQuickRelationFieldRequired(field) && !value) {
         nextErrors[field.name] = t("This field is required");
       }
-      if (kind === "whatsapp") {
+      if (isPersonWhatsAppField(field.name)) {
         const countryField = findCountryCodeField(form?.fields ?? [], field.name);
-        const countryCode =
-          normalizeCallingCode(countryField ? values[countryField.name] : defaultCountryCode) ||
-          defaultCountryCode;
-        const isNlPrefixOnly = countryCode === "31" && value === "06";
-        if (isNlPrefixOnly && !isQuickRelationFieldRequired(field)) {
-          return;
-        }
-        if (countryCode === "31" && value && !isDutchWhatsAppValid(value)) {
+        const countryCode = normalizeCallingCode(countryField ? values[countryField.name] : "");
+        if ((countryCode === "" || countryCode === "31") && !isDutchWhatsAppValid(value)) {
           nextErrors[field.name] = t(
             "A Dutch WhatsApp number must be 10 digits starting with 0."
           );
@@ -219,16 +261,9 @@ export default function RelationFormScreen() {
       setSubmitting(true);
       const payload: Record<string, string> = {};
       form.fields.forEach((field) => {
-        const kind = getQuickRelationFieldKind(field);
         const raw = values[field.name] ?? "";
-        const countryField = findCountryCodeField(form.fields, field.name);
-        const countryCode =
-          normalizeCallingCode(countryField ? values[countryField.name] : defaultCountryCode) ||
-          defaultCountryCode;
         payload[field.name] =
-          kind === "whatsapp" && countryCode === "31" && raw.trim() === "06" && !isQuickRelationFieldRequired(field)
-            ? ""
-            : raw;
+          field.name === "voertuig_apk_datum" ? toApiDate(raw) : raw;
       });
 
       const response = await saveQuickRelation(item.id, payload);
@@ -311,6 +346,9 @@ export default function RelationFormScreen() {
           required={required}
           value={value}
           onChangeText={(text) => setFieldValue(field.name, text)}
+          onSelect={(place) => {
+            void applyGoogleAddress(field.name, place);
+          }}
           placeholder={t("Enter address")}
           error={error}
           containerStyle={{ marginBottom: 0 }}
@@ -346,7 +384,7 @@ export default function RelationFormScreen() {
           >
             <Ionicons name="calendar-outline" size={18} color={AppColors.subtitle} />
             <Text style={[authTypography.input, styles.dateText, !value && authTypography.placeholder]}>
-              {value || t("Select date")}
+              {value ? toDisplayDate(value) : t("Select date")}
             </Text>
           </Pressable>
           {error ? <Text style={[authTypography.error, styles.errorSpacing]}>{error}</Text> : null}
@@ -418,7 +456,7 @@ export default function RelationFormScreen() {
         visible={Boolean(dateField)}
         value={parseDate(dateField ? values[dateField] || "" : "")}
         onConfirm={(date) => {
-          if (dateField) setFieldValue(dateField, formatDate(date));
+          if (dateField) setFieldValue(dateField, formatDisplayDate(date));
           setDateField(null);
         }}
         onClose={() => setDateField(null)}
