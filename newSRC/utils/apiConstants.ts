@@ -144,6 +144,8 @@ export const apiConstants = {
   quickCreateProject: `${baseUrlnew}projects/quick-create`,
   projectRelationOptions: `${baseUrlnew}projects/relation-options`,
   projectAddRelation: `${baseUrlnew}projects/add-relation`,
+  projectUpdate: `${baseUrlnew}projects/update`,
+  projectRemoveRelation: `${baseUrlnew}projects/remove-relation`,
 };
 
 export default apiConstants;

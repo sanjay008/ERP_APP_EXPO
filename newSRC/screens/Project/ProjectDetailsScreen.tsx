@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
@@ -18,6 +18,7 @@ import {
   addProjectRelation,
   fetchProjectDetails,
   fetchProjectRelationOptions,
+  formatProjectBudget,
   type ProjectActivity,
   type ProjectDetail,
   type ProjectPerson,
@@ -189,9 +190,11 @@ function TicketCard({ ticket }: { ticket: ProjectTicket }) {
 
 export default function ProjectDetailsScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { top, scrollPadding } = useScreenInsets();
   const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id: string; color?: string; title?: string }>();
+  const skipNextFocusLoad = React.useRef(true);
 
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -219,6 +222,16 @@ export default function ProjectDetailsScreen() {
   useEffect(() => {
     void loadDetails();
   }, [loadDetails]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (skipNextFocusLoad.current) {
+        skipNextFocusLoad.current = false;
+        return;
+      }
+      void loadDetails(true);
+    }, [loadDetails])
+  );
 
   const openRelationOptions = async (type: ProjectRelationType) => {
     if (!params.id || optionsBusy) return;
@@ -287,20 +300,37 @@ export default function ProjectDetailsScreen() {
                   resizeMode="cover"
                 />
               </View>
-              <Pressable
-                style={styles.summaryAddressPressable}
-                disabled={!isOpenableAddress(data?.gmaps_working_address)}
-                onPress={() => openMapsAddress(data?.gmaps_working_address)}
-              >
-                <Text
-                  style={
-                    isOpenableAddress(data?.gmaps_working_address)
-                      ? styles.summaryAddressLink
-                      : styles.summaryAddress
-                  }
+              <View style={styles.summaryMain}>
+                <Pressable
+                  style={styles.summaryAddressPressable}
+                  disabled={!isOpenableAddress(data?.gmaps_working_address)}
+                  onPress={() => openMapsAddress(data?.gmaps_working_address)}
                 >
-                  {data?.gmaps_working_address || "--"}
+                  <Text
+                    style={
+                      isOpenableAddress(data?.gmaps_working_address)
+                        ? styles.summaryAddressLink
+                        : styles.summaryAddress
+                    }
+                  >
+                    {data?.gmaps_working_address || "--"}
+                  </Text>
+                </Pressable>
+                <Text style={styles.summaryBudget}>
+                  {formatProjectBudget(data?.budject, data?.budject_currency_data) || "--"}
                 </Text>
+              </View>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/(app)/projects/edit",
+                    params: { id: String(params.id || data?.id || "") },
+                  })
+                }
+                hitSlop={8}
+                style={styles.editBtn}
+              >
+                <FallBackImage source={Images.EditVector} style={styles.editIcon} resizeMode="contain" />
               </Pressable>
             </View>
 
@@ -487,6 +517,28 @@ const styles = StyleSheet.create({
   summaryAvatar: {
     width: "100%",
     height: "100%",
+  },
+  summaryMain: {
+    flex: 1,
+    gap: 8,
+  },
+  summaryBudget: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 15,
+    color: AppColors.black,
+  },
+  editBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: AppColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editIcon: {
+    width: 14,
+    height: 14,
+    tintColor: AppColors.white,
   },
   summaryAddress: {
     flex: 1,

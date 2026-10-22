@@ -70,6 +70,7 @@ function AppStack() {
       <Stack.Screen name="connections/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="projects/index" options={{ headerShown: false }} />
       <Stack.Screen name="projects/create" options={{ headerShown: false }} />
+      <Stack.Screen name="projects/edit" options={{ headerShown: false }} />
       <Stack.Screen name="projects/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="tasks/index" options={{ headerShown: false }} />
       <Stack.Screen name="tasks/[id]" options={{ headerShown: false }} />

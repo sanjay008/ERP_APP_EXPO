@@ -23,9 +23,24 @@ export type ProjectLabel = {
 };
 
 export type ProjectPerson = {
+  id?: number | string;
+  relatie_id?: number | string;
   display_name?: string;
   telefoon?: string;
   profile_img?: string;
+};
+
+export type ProjectCurrency = {
+  id?: number | string;
+  code?: string;
+  symbol?: string;
+  name?: string;
+};
+
+export type ProjectImageFile = {
+  uri: string;
+  type: string;
+  name: string;
 };
 
 export type ProjectActivity = {
@@ -109,6 +124,9 @@ export type ProjectDetail = {
   project_name?: string;
   project_image?: string;
   deadline?: string;
+  budject?: string | number | null;
+  budject_currency?: string | number | null;
+  budject_currency_data?: ProjectCurrency | null;
   gmaps_working_address?: string;
   project_status_data_api?: ProjectStatus;
   project_labels_data_api?: ProjectLabel[];
@@ -119,6 +137,22 @@ export type ProjectDetail = {
   task_data?: ProjectTask[];
   ticket_data?: ProjectTicket[];
 };
+
+export function projectPersonId(person: ProjectPerson) {
+  return person.relatie_id ?? person.id;
+}
+
+export function formatProjectBudget(
+  amount?: string | number | null,
+  currency?: ProjectCurrency | null
+) {
+  const value = amount == null ? "" : String(amount).trim();
+  const symbol = String(currency?.symbol || currency?.code || "").trim();
+  if (!value && !symbol) return "";
+  if (!value) return symbol;
+  if (!symbol) return value;
+  return `${symbol} ${value}`;
+}
 
 async function getUserContext() {
   const userData = await getData("USERDATA");
@@ -292,6 +326,59 @@ export async function addProjectRelation(
 ) {
   const ctx = await getUserContext();
   const response = await ApiService(apiConstants.projectAddRelation, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+      project_id: projectId,
+      type,
+      relatie_id: relatieId,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return response;
+}
+
+export async function updateProject(
+  projectId: string | number,
+  changes: {
+    project_name?: string;
+    budject?: string;
+    budject_currency?: string;
+    project_image?: ProjectImageFile;
+  }
+) {
+  const ctx = await getUserContext();
+  const response = await ApiService(apiConstants.projectUpdate, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+      project_id: projectId,
+      ...changes,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return response;
+}
+
+export async function removeProjectRelation(
+  projectId: string | number,
+  type: ProjectRelationType,
+  relatieId: string | number
+) {
+  const ctx = await getUserContext();
+  const response = await ApiService(apiConstants.projectRemoveRelation, {
     includeToken: true,
     customData: {
       relaties_id: ctx.relaties_id,
