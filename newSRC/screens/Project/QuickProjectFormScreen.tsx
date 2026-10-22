@@ -124,7 +124,11 @@ export default function QuickProjectFormScreen() {
   const onSelectCompany = (company: QuickCreateCompany) => {
     setCompanyId(optionId(company.id));
     setPersonId("");
-    setErrors((prev) => ({ ...prev, company_id: "", person_id: "" }));
+    setErrors((prev) => ({
+      ...prev,
+      company_id: "",
+      person_id: company.persons.length ? "" : t("This field is required"),
+    }));
     applySuggestedName(company.name);
   };
 
@@ -142,6 +146,9 @@ export default function QuickProjectFormScreen() {
     if (companyEnabled && !companyId) {
       next.company_id = t("This field is required");
     }
+    if (companyEnabled && !personId) {
+      next.person_id = t("This field is required");
+    }
     if (createOrder && !orderTitle.trim()) {
       next.order_title = t("This field is required");
     }
@@ -149,8 +156,13 @@ export default function QuickProjectFormScreen() {
     return Object.keys(next).length === 0;
   };
 
+  const canSubmit =
+    Boolean(projectName.trim()) &&
+    (!createOrder || Boolean(orderTitle.trim())) &&
+    (!companyEnabled || Boolean(companyId && personId));
+
   const handleSave = async () => {
-    if (!validate()) return;
+    if (!canSubmit || !validate()) return;
 
     try {
       setSubmitting(true);
@@ -162,7 +174,7 @@ export default function QuickProjectFormScreen() {
 
       if (companyEnabled) {
         payload.company_id = companyId;
-        if (personId) payload.person_id = personId;
+        payload.person_id = personId;
       }
       if (createOrder) {
         payload.order_title = orderTitle.trim();
@@ -267,9 +279,11 @@ export default function QuickProjectFormScreen() {
                 {selectedCompany ? (
                   <FormSelectField
                     label={t("Person")}
+                    required
                     placeholder={t("Select person")}
                     value={selectedPerson?.name || ""}
                     error={errors.person_id}
+                    disabled={persons.length === 0}
                     onPress={() => setActiveSheet("person")}
                   />
                 ) : null}
@@ -295,11 +309,11 @@ export default function QuickProjectFormScreen() {
 
           <View style={[styles.footer, { paddingBottom: Math.max(footerPadding, 12) }]}>
             <TouchableOpacity
-              style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+              style={[styles.submitBtn, (submitting || !canSubmit) && styles.submitBtnDisabled]}
               onPress={() => {
                 void handleSave();
               }}
-              disabled={submitting}
+              disabled={submitting || !canSubmit}
             >
               {submitting ? (
                 <ActivityIndicator color={Colors.white} size="small" />
