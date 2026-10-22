@@ -140,6 +140,8 @@ export const apiConstants = {
   getQuickRelations: `${baseUrlnew}quick-relations/get-quick-relations`,
   getQuickRelationForm: `${baseUrlnew}quick-relations/get-form`,
   saveQuickRelation: `${baseUrlnew}quick-relations/save`,
+  quickCreateProjectForm: `${baseUrlnew}projects/quick-create-form`,
+  quickCreateProject: `${baseUrlnew}projects/quick-create`,
 };
 
 export default apiConstants;

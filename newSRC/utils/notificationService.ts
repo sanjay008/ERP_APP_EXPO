@@ -77,7 +77,7 @@ async function ensureAndroidNotificationChannel() {
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     lightColor: "#0066CC",
-    sound: "default",
+    sound: null,
   });
 
   if (Platform.Version >= 33) {

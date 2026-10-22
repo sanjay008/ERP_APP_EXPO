@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useContext, useEffect } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,10 +11,9 @@ import {
 import { getKeyboardAvoidBehavior, useScreenInsets } from "../../utils/screenInsets";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import AuthHeaderPattern from "./AuthHeaderPattern";
+import { RegisterBackContext } from "../../constants/GoBackContext";
 import { AppColors } from "../../utils/theme";
 import { authTypography } from "../../utils/authTypography";
-import { FONTS } from "../../utils/FONTS";
-import { RFValue } from "react-native-responsive-fontsize";
 
 type AuthLayoutProps = {
   title: string;
@@ -37,7 +36,18 @@ export default function AuthLayout({
   toastMessage,
   headerLogo = "company",
 }: AuthLayoutProps) {
-  const { top, footerPadding } = useScreenInsets();
+  const { footerPadding } = useScreenInsets();
+  const { setToast } = useContext(RegisterBackContext);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    setToast({
+      top: 45,
+      text: toastMessage,
+      type: "error",
+      visible: true,
+    });
+  }, [toastMessage, setToast]);
 
   return (
     <View style={styles.container}>
@@ -67,12 +77,6 @@ export default function AuthLayout({
           </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </View>
-
-      {toastMessage ? (
-        <View style={[styles.toast, { top: top + 8 }]}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </View>
-      ) : null}
 
       {loading ? (
         <View style={styles.loaderOverlay}>
@@ -123,22 +127,6 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 20,
     gap: 4,
-  },
-  toast: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    backgroundColor: "#FEE2E2",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    zIndex: 20,
-  },
-  toastText: {
-    color: "#B91C1C",
-    fontFamily: FONTS.LexendMedium,
-    fontSize: RFValue(12),
-    textAlign: "center",
   },
   loaderOverlay: {
     ...StyleSheet.absoluteFillObject,

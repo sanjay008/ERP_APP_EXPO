@@ -1,9 +1,12 @@
 import { createContext, type ReactNode, useCallback, useMemo, useState } from "react";
 
+export type ToastType = "success" | "error" | "warn" | "warning" | "info" | string;
+
 type ToastState = {
+  id?: number;
   top: number;
   text: string;
-  type: string;
+  type: ToastType;
   visible: boolean;
 };
 
@@ -23,7 +26,7 @@ export function RegisterBackProvider({ children }: { children: ReactNode }) {
   const [toast, setToastState] = useState<ToastState | null>(null);
 
   const setToast = useCallback((next: ToastState) => {
-    setToastState(next);
+    setToastState({ ...next, id: Date.now() });
   }, []);
 
   const clearToast = useCallback(() => {

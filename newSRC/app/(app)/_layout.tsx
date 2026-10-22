@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 import { AppDataProvider, useAppData } from "../../context/AppDataContext";
-import { RegisterBackProvider } from "../../constants/GoBackContext";
-import AppToast from "../../Components/AppToast";
 import { useNotificationBootstrap } from "../../hooks/useNotificationBootstrap";
 import { resolveInitialRoute, type AuthRedirect } from "../../utils/authSession";
 import { AppColors } from "../../utils/theme";
@@ -71,6 +69,7 @@ function AppStack() {
       <Stack.Screen name="connections/index" options={{ headerShown: false }} />
       <Stack.Screen name="connections/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="projects/index" options={{ headerShown: false }} />
+      <Stack.Screen name="projects/create" options={{ headerShown: false }} />
       <Stack.Screen name="projects/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="tasks/index" options={{ headerShown: false }} />
       <Stack.Screen name="tasks/[id]" options={{ headerShown: false }} />
@@ -139,10 +138,7 @@ function AppStack() {
 export default function AppLayout() {
   return (
     <AppDataProvider>
-      <RegisterBackProvider>
-        <AppStack />
-        <AppToast />
-      </RegisterBackProvider>
+      <AppStack />
     </AppDataProvider>
   );
 }

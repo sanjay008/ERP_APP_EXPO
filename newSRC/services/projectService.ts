@@ -1,5 +1,6 @@
 import ApiService from "../utils/Apiservice";
 import { apiConstants } from "../utils/apiConstants";
+import { toAppApiError } from "../utils/apiError";
 import { getData } from "../utils/storeData";
 
 export type ProjectStatus = {
@@ -55,6 +56,47 @@ export type ProjectTicket = {
   gmaps_working_address?: string;
 };
 
+export type QuickCreatePerson = {
+  id: number | string;
+  name: string;
+};
+
+export type QuickCreateCompany = {
+  id: number | string;
+  name: string;
+  persons: QuickCreatePerson[];
+};
+
+export type QuickCreateFormData = {
+  companies: QuickCreateCompany[];
+};
+
+export type QuickCreateSaveResult = {
+  project_id?: number | string | null;
+  order_id?: number | string | null;
+};
+
+export type QuickCreatePayload = {
+  company_enabled: 0 | 1;
+  company_id?: number | string;
+  person_id?: number | string;
+  project_name: string;
+  create_order: 0 | 1;
+  order_title?: string;
+};
+
+let refreshProjectsOnFocus = false;
+
+export function requestProjectsRefresh() {
+  refreshProjectsOnFocus = true;
+}
+
+export function consumeProjectsRefresh() {
+  const next = refreshProjectsOnFocus;
+  refreshProjectsOnFocus = false;
+  return next;
+}
+
 export type ProjectDetail = {
   id?: number;
   project_name?: string;
@@ -101,6 +143,91 @@ export async function fetchProjectStatuses() {
       user_id: ctx.user_id,
     },
   });
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function normalizePerson(raw: unknown): QuickCreatePerson | null {
+  const item = asRecord(raw);
+  if (!item) return null;
+  const id = item.id ?? item.person_id;
+  const name = String(item.name ?? item.display_name ?? item.person_name ?? "").trim();
+  if (id == null || id === "") return null;
+  return { id, name };
+}
+
+function normalizeCompany(raw: unknown): QuickCreateCompany | null {
+  const item = asRecord(raw);
+  if (!item) return null;
+  const id = item.id ?? item.company_id;
+  const name = String(item.name ?? item.company_name ?? "").trim();
+  if (id == null || id === "") return null;
+  const persons = Array.isArray(item.persons)
+    ? item.persons.map(normalizePerson).filter((person): person is QuickCreatePerson => person != null)
+    : [];
+  return { id, name, persons };
+}
+
+function parseQuickCreateForm(raw: unknown): QuickCreateFormData {
+  const root = asRecord(raw);
+  const nested = asRecord(root?.data);
+  const companiesRaw = Array.isArray(raw)
+    ? raw
+    : Array.isArray(root?.companies)
+      ? root.companies
+      : Array.isArray(nested?.companies)
+        ? nested.companies
+        : [];
+
+  return {
+    companies: companiesRaw
+      .map(normalizeCompany)
+      .filter((company): company is QuickCreateCompany => company != null),
+  };
+}
+
+export async function fetchQuickCreateForm() {
+  const ctx = await getUserContext();
+  const response = await ApiService<unknown>(apiConstants.quickCreateProjectForm, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return {
+    ...response,
+    data: parseQuickCreateForm(response.data),
+  };
+}
+
+export async function saveQuickCreateProject(payload: QuickCreatePayload) {
+  const ctx = await getUserContext();
+  const response = await ApiService<QuickCreateSaveResult>(apiConstants.quickCreateProject, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+      ...payload,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return response;
 }
 
 export async function fetchProjectDetails(projectId: string | number) {

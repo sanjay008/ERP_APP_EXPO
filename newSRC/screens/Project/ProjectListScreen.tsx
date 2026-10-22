@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import SearchBox from "../../Components/SearchBox";
@@ -18,6 +18,7 @@ import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBo
 import OptionBottomSheet, { type OptionItem } from "../../Components/OptionBottomSheet";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
+  consumeProjectsRefresh,
   fetchProjectStatuses,
   fetchProjects,
   type ProjectItem,
@@ -92,6 +93,14 @@ export default function ProjectListScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (consumeProjectsRefresh()) {
+        void loadData(true);
+      }
+    }, [loadData])
+  );
 
   const sortOptions: OptionItem[] = useMemo(
     () => [
@@ -173,6 +182,7 @@ export default function ProjectListScreen() {
           setDraftStatusIds(selectedStatusIds);
           setFilterVisible(true);
         }}
+        createOnPress={() => router.push("/(app)/projects/create")}
       />
 
       <View style={styles.searchWrap}>

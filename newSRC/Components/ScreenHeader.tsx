@@ -12,6 +12,7 @@ type Props = {
   onBack?: () => void;
   refreshOnPress?: () => void;
   filterOnPress?: () => void;
+  createOnPress?: () => void;
   compact?: boolean;
   /** @deprecated use filterOnPress */
   sortOnPress?: () => void;
@@ -22,12 +23,13 @@ export default function ScreenHeader({
   onBack,
   refreshOnPress,
   filterOnPress,
+  createOnPress,
   compact = false,
   sortOnPress,
 }: Props) {
   const router = useRouter();
   const onFilter = filterOnPress ?? sortOnPress;
-  const showActions = Boolean(refreshOnPress || onFilter);
+  const showActions = Boolean(refreshOnPress || onFilter || createOnPress);
 
   const handleBack = () => {
     if (onBack) {
@@ -70,6 +72,16 @@ export default function ScreenHeader({
             <Pressable style={styles.actionBtn} onPress={refreshOnPress}>
               <FallBackImage
                 source={Images.RefreshIcon}
+                style={styles.actionIcon}
+                resizeMode="contain"
+                tintColor="#FFFFFF"
+              />
+            </Pressable>
+          ) : null}
+          {createOnPress ? (
+            <Pressable style={styles.actionBtn} onPress={createOnPress}>
+              <FallBackImage
+                source={Images.plusIcon}
                 style={styles.actionIcon}
                 resizeMode="contain"
                 tintColor="#FFFFFF"
