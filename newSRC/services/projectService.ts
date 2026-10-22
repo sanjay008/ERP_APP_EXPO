@@ -76,6 +76,13 @@ export type QuickCreateSaveResult = {
   order_id?: number | string | null;
 };
 
+export type ProjectRelationType = "owner" | "contact";
+
+export type ProjectRelationRecord = {
+  id: number | string;
+  name: string;
+};
+
 export type QuickCreatePayload = {
   company_enabled: 0 | 1;
   company_id?: number | string;
@@ -220,6 +227,79 @@ export async function saveQuickCreateProject(payload: QuickCreatePayload) {
       role: ctx.role,
       user_id: ctx.user_id,
       ...payload,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return response;
+}
+
+function normalizeRelationRecord(raw: unknown): ProjectRelationRecord | null {
+  const item = asRecord(raw);
+  if (!item) return null;
+  const id = item.id ?? item.relatie_id;
+  const name = String(item.name ?? item.display_name ?? "").trim();
+  if (id == null || id === "") return null;
+  return { id, name };
+}
+
+function parseRelationRecords(raw: unknown): ProjectRelationRecord[] {
+  const root = asRecord(raw);
+  const nested = asRecord(root?.data);
+  const recordsRaw = Array.isArray(root?.records)
+    ? root.records
+    : Array.isArray(nested?.records)
+      ? nested.records
+      : Array.isArray(raw)
+        ? raw
+        : [];
+
+  return recordsRaw
+    .map(normalizeRelationRecord)
+    .filter((item): item is ProjectRelationRecord => item != null);
+}
+
+export async function fetchProjectRelationOptions(
+  projectId: string | number,
+  type: ProjectRelationType
+) {
+  const ctx = await getUserContext();
+  const response = await ApiService<unknown>(apiConstants.projectRelationOptions, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+      project_id: projectId,
+      type,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return parseRelationRecords(response.data);
+}
+
+export async function addProjectRelation(
+  projectId: string | number,
+  type: ProjectRelationType,
+  relatieId: string | number
+) {
+  const ctx = await getUserContext();
+  const response = await ApiService(apiConstants.projectAddRelation, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+      project_id: projectId,
+      type,
+      relatie_id: relatieId,
     },
   });
 

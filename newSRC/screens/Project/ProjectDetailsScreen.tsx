@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -11,22 +11,30 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
+import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
+import { RegisterBackContext } from "../../constants/GoBackContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
+  addProjectRelation,
   fetchProjectDetails,
+  fetchProjectRelationOptions,
   type ProjectActivity,
   type ProjectDetail,
   type ProjectPerson,
+  type ProjectRelationRecord,
+  type ProjectRelationType,
   type ProjectStatus,
   type ProjectTask,
   type ProjectTicket,
 } from "../../services/projectService";
+import { parseApiError } from "../../utils/apiError";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { CONNECTION_UI } from "../../utils/connectionTheme";
 import { LIST_CARD_SHADOW, listScreenStyles } from "../../utils/listScreenStyles";
 import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
+import { Images } from "../../utils/Images";
 
 function formatDisplayDate(dateString?: string) {
   if (!dateString) return "--";
@@ -55,8 +63,17 @@ function getScheduleStyle(schedule?: string) {
   return { backgroundColor: "#F3F4F6", color: AppColors.black };
 }
 
-function SectionTitle({ title }: { title: string }) {
-  return <Text style={styles.sectionTitle}>{title}</Text>;
+function SectionTitle({ title, onAdd }: { title: string; onAdd?: () => void }) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {onAdd ? (
+        <Pressable onPress={onAdd} hitSlop={8} style={styles.sectionAddBtn}>
+          <FallBackImage source={Images.plusIcon} style={styles.sectionAddIcon} resizeMode="contain" />
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
 function SectionCard({ children }: { children: React.ReactNode }) {
@@ -173,16 +190,20 @@ function TicketCard({ ticket }: { ticket: ProjectTicket }) {
 export default function ProjectDetailsScreen() {
   const { t } = useTranslation();
   const { top, scrollPadding } = useScreenInsets();
+  const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id: string; color?: string; title?: string }>();
 
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [optionType, setOptionType] = useState<ProjectRelationType | null>(null);
+  const [optionRecords, setOptionRecords] = useState<ProjectRelationRecord[]>([]);
+  const [optionsBusy, setOptionsBusy] = useState(false);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
-  const loadDetails = useCallback(async () => {
+  const loadDetails = useCallback(async (silent = false) => {
     if (!params.id) return;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       clearApiError();
       const response = await fetchProjectDetails(params.id);
       if (response?.status && Array.isArray(response.data) && response.data[0]) {
@@ -191,13 +212,55 @@ export default function ProjectDetailsScreen() {
     } catch (error) {
       captureApiError(error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [params.id, clearApiError, captureApiError]);
 
   useEffect(() => {
-    loadDetails();
+    void loadDetails();
   }, [loadDetails]);
+
+  const openRelationOptions = async (type: ProjectRelationType) => {
+    if (!params.id || optionsBusy) return;
+    try {
+      setOptionsBusy(true);
+      const records = await fetchProjectRelationOptions(params.id, type);
+      setOptionRecords(records);
+      setOptionType(type);
+    } catch (error) {
+      setToast({
+        top: 45,
+        text: parseApiError(error, t("Something went wrong")).message,
+        type: "error",
+        visible: true,
+      });
+    } finally {
+      setOptionsBusy(false);
+    }
+  };
+
+  const addRelation = async (record: ProjectRelationRecord) => {
+    if (!params.id || !optionType) return;
+    const type = optionType;
+    setOptionType(null);
+    try {
+      await addProjectRelation(params.id, type, record.id);
+      await loadDetails(true);
+    } catch (error) {
+      setToast({
+        top: 45,
+        text: parseApiError(error, t("Something went wrong")).message,
+        type: "error",
+        visible: true,
+      });
+    }
+  };
+
+  const optionSheetOptions: SheetOption[] = optionRecords.map((item) => ({
+    id: item.id,
+    label: item.name,
+    raw: item,
+  }));
 
   const headerTitle = data?.project_name || params.title || t("Projects");
 
@@ -263,27 +326,27 @@ export default function ProjectDetailsScreen() {
             </View>
           </SectionCard>
 
-          {data?.relaties_owners?.length ? (
-            <>
-              <SectionTitle title={t("Customer")} />
-              <SectionCard>
-                {data.relaties_owners.map((person, index) => (
-                  <PersonRow key={`owner-${index}`} person={person} />
-                ))}
-              </SectionCard>
-            </>
-          ) : null}
+          <SectionTitle title={t("Customer")} onAdd={() => void openRelationOptions("owner")} />
+          <SectionCard>
+            {data?.relaties_owners?.length ? (
+              data.relaties_owners.map((person, index) => (
+                <PersonRow key={`owner-${index}`} person={person} />
+              ))
+            ) : (
+              <Text style={styles.emptyMeta}>--</Text>
+            )}
+          </SectionCard>
 
-          {data?.connected_relaties?.length ? (
-            <>
-              <SectionTitle title={t("Contact")} />
-              <SectionCard>
-                {data.connected_relaties.map((person, index) => (
-                  <PersonRow key={`contact-${index}`} person={person} />
-                ))}
-              </SectionCard>
-            </>
-          ) : null}
+          <SectionTitle title={t("Contact")} onAdd={() => void openRelationOptions("contact")} />
+          <SectionCard>
+            {data?.connected_relaties?.length ? (
+              data.connected_relaties.map((person, index) => (
+                <PersonRow key={`contact-${index}`} person={person} />
+              ))
+            ) : (
+              <Text style={styles.emptyMeta}>--</Text>
+            )}
+          </SectionCard>
 
           {data?.relaties_members?.length ? (
             <>
@@ -330,6 +393,21 @@ export default function ProjectDetailsScreen() {
           </SectionCard>
         </ScrollView>
       )}
+
+      <SelectionBottomSheet
+        visible={Boolean(optionType)}
+        title={optionType === "contact" ? t("Select contact") : t("Select customer")}
+        searchPlaceholder={t("Search")}
+        confirmText={t("Done")}
+        options={optionSheetOptions}
+        selectedIds={[]}
+        onClose={() => setOptionType(null)}
+        onConfirm={(selected) => {
+          const record = selected[0]?.raw as ProjectRelationRecord | undefined;
+          if (record) void addRelation(record);
+          else setOptionType(null);
+        }}
+      />
     </View>
   );
 }
@@ -352,12 +430,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 16,
+    marginBottom: 10,
+    gap: 10,
+  },
   sectionTitle: {
+    flex: 1,
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 16,
     color: AppColors.black,
-    marginTop: 16,
-    marginBottom: 10,
+  },
+  sectionAddBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: AppColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionAddIcon: {
+    width: 14,
+    height: 14,
+    tintColor: AppColors.white,
   },
   sectionCard: {
     backgroundColor: AppColors.white,
