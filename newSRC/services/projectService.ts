@@ -76,7 +76,7 @@ export type QuickCreateSaveResult = {
   order_id?: number | string | null;
 };
 
-export type ProjectRelationType = "owner" | "contact";
+export type ProjectRelationType = "owner" | "contact" | "member";
 
 export type ProjectRelationRecord = {
   id: number | string;

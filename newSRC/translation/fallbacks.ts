@@ -446,6 +446,8 @@ export const fallbackResources = {
       Customer: "Customer",
       "Select customer": "Select customer",
       "Select contact": "Select contact",
+      Executor: "Executor",
+      "Select executor": "Select executor",
       "User created. A welcome email was sent.": "User created. A welcome email was sent.",
       "A Dutch WhatsApp number must be 10 digits starting with 0.":
         "A Dutch WhatsApp number must be 10 digits starting with 0.",
@@ -893,6 +895,8 @@ export const fallbackResources = {
       Customer: "Klant",
       "Select customer": "Selecteer klant",
       "Select contact": "Selecteer contact",
+      Executor: "Uitvoerder",
+      "Select executor": "Selecteer uitvoerder",
       "User created. A welcome email was sent.": "Gebruiker aangemaakt. Er is een welkomstmail verstuurd.",
       "A Dutch WhatsApp number must be 10 digits starting with 0.":
         "Een Nederlands WhatsApp-nummer moet 10 cijfers zijn en met 0 beginnen.",

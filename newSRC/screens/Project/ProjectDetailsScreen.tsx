@@ -348,16 +348,16 @@ export default function ProjectDetailsScreen() {
             )}
           </SectionCard>
 
-          {data?.relaties_members?.length ? (
-            <>
-              <SectionTitle title={t("Executor")} />
-              <SectionCard>
-                {data.relaties_members.map((person, index) => (
-                  <PersonRow key={`member-${index}`} person={person} />
-                ))}
-              </SectionCard>
-            </>
-          ) : null}
+          <SectionTitle title={t("Executor")} onAdd={() => void openRelationOptions("member")} />
+          <SectionCard>
+            {data?.relaties_members?.length ? (
+              data.relaties_members.map((person, index) => (
+                <PersonRow key={`member-${index}`} person={person} />
+              ))
+            ) : (
+              <Text style={styles.emptyMeta}>--</Text>
+            )}
+          </SectionCard>
 
           {data?.project_activity?.length ? (
             <>
@@ -396,7 +396,13 @@ export default function ProjectDetailsScreen() {
 
       <SelectionBottomSheet
         visible={Boolean(optionType)}
-        title={optionType === "contact" ? t("Select contact") : t("Select customer")}
+        title={
+          optionType === "contact"
+            ? t("Select contact")
+            : optionType === "member"
+              ? t("Select executor")
+              : t("Select customer")
+        }
         searchPlaceholder={t("Search")}
         confirmText={t("Done")}
         options={optionSheetOptions}
