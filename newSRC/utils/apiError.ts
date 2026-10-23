@@ -77,6 +77,7 @@ function isTechnicalServerMessage(message: string): boolean {
 export function isEmptyDataMessage(message: string): boolean {
   const lower = message.toLowerCase().trim();
   if (!lower) return false;
+  if (lower === "file not found on this project") return false;
   return (
     lower.includes("not found") ||
     lower.includes("no leave") ||

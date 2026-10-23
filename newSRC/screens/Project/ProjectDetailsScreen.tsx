@@ -1,11 +1,12 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
@@ -29,13 +30,14 @@ import {
   type ProjectTicket,
 } from "../../services/projectService";
 import { parseApiError } from "../../utils/apiError";
-import { useScreenInsets } from "../../utils/screenInsets";
+import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { CONNECTION_UI } from "../../utils/connectionTheme";
 import { LIST_CARD_SHADOW, listScreenStyles } from "../../utils/listScreenStyles";
 import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
 import { Images } from "../../utils/Images";
+import ProjectFilesSections from "./ProjectFilesSections";
 
 function formatDisplayDate(dateString?: string) {
   if (!dateString) return "--";
@@ -192,6 +194,7 @@ export default function ProjectDetailsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { top, scrollPadding } = useScreenInsets();
+  const keyboardHeight = useKeyboardHeight();
   const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id: string; color?: string; title?: string }>();
   const skipNextFocusLoad = React.useRef(true);
@@ -279,16 +282,33 @@ export default function ProjectDetailsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
-      <ScreenHeader title={headerTitle} />
+      <ScreenHeader
+        title={headerTitle}
+        editOnPress={() =>
+          router.push({
+            pathname: "/(app)/projects/edit",
+            params: { id: String(params.id || data?.id || "") },
+          })
+        }
+      />
 
       {loading && !data ? (
         <ApiFeedback loading />
       ) : apiError && !data ? (
         <ApiFeedback error={apiError} onRetry={loadDetails} />
       ) : (
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, { paddingBottom: scrollPadding }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: scrollPadding + Math.max(keyboardHeight, 80) },
+          ]}
+          enableOnAndroid
+          enableAutomaticScroll
+          extraHeight={Platform.OS === "ios" ? 60 : 140}
+          extraScrollHeight={Platform.OS === "ios" ? 120 : 200}
+          keyboardShouldPersistTaps="handled"
+          keyboardOpeningTime={180}
           showsVerticalScrollIndicator={false}
         >
           <SectionCard>
@@ -320,18 +340,6 @@ export default function ProjectDetailsScreen() {
                   {formatProjectBudget(data?.budject, data?.budject_currency_data) || "--"}
                 </Text>
               </View>
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/(app)/projects/edit",
-                    params: { id: String(params.id || data?.id || "") },
-                  })
-                }
-                hitSlop={8}
-                style={styles.editBtn}
-              >
-                <FallBackImage source={Images.EditVector} style={styles.editIcon} resizeMode="contain" />
-              </Pressable>
             </View>
 
             <View style={styles.summaryFooter}>
@@ -421,7 +429,9 @@ export default function ProjectDetailsScreen() {
               <Text style={styles.emptyMeta}>--</Text>
             )}
           </SectionCard>
-        </ScrollView>
+
+          <ProjectFilesSections projectId={params.id || data?.id} />
+        </KeyboardAwareScrollView>
       )}
 
       <SelectionBottomSheet
@@ -526,19 +536,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 15,
     color: AppColors.black,
-  },
-  editBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: AppColors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  editIcon: {
-    width: 14,
-    height: 14,
-    tintColor: AppColors.white,
   },
   summaryAddress: {
     flex: 1,

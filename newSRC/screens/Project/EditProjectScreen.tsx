@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -14,21 +15,30 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import SelectionBottomSheet from "../../Components/SelectionBottomSheet";
 import OptionBottomSheet from "../../Components/OptionBottomSheet";
+import ConfirmBottomSheet from "../../Components/ConfirmBottomSheet";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import {
+  collectProjectFolderNames,
   fetchProjectDetails,
+  fetchProjectFiles,
+  projectFileId,
+  projectFolderName,
   projectPersonId,
+  removeProjectFile,
   removeProjectRelation,
   requestProjectsRefresh,
   updateProject,
   type ProjectDetail,
+  type ProjectFileItem,
+  type ProjectFilesData,
   type ProjectImageFile,
   type ProjectPerson,
   type ProjectRelationType,
 } from "../../services/projectService";
+import { getDropboxDirectLink } from "../../services/eventService";
 import { fetchCompanyCurrencies, type CurrencyOption } from "../../services/taskService";
 import { pickProfileImage } from "../../utils/profileImagePicker";
 import { AppApiError, parseApiError, type ParsedApiError } from "../../utils/apiError";
@@ -39,6 +49,14 @@ import { Images } from "../../utils/Images";
 
 function sameValue(left: unknown, right: unknown) {
   return String(left ?? "").trim() === String(right ?? "").trim();
+}
+
+function fileLabel(item: ProjectFileItem) {
+  return item.title || item.name || item.folder_name || "--";
+}
+
+function fileUrl(item: ProjectFileItem) {
+  return getDropboxDirectLink(item.shared_link) || item.shared_link || "";
 }
 
 export default function EditProjectScreen() {
@@ -60,17 +78,32 @@ export default function EditProjectScreen() {
   const [budget, setBudget] = useState("");
   const [currencyCode, setCurrencyCode] = useState("");
   const [image, setImage] = useState<ProjectImageFile | null>(null);
+  const [files, setFiles] = useState<ProjectFilesData>({
+    folders: [],
+    documents: [],
+    photos: [],
+  });
   const [currencySheet, setCurrencySheet] = useState(false);
   const [imageSheet, setImageSheet] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{
+    type: "document" | "photo";
+    file: ProjectFileItem;
+  } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!params.id) return;
     try {
       if (!silent) setLoading(true);
       setApiError(null);
-      const [detailsRes, currencyRes] = await Promise.all([
+      const [detailsRes, currencyRes, filesRes] = await Promise.all([
         fetchProjectDetails(params.id),
         fetchCompanyCurrencies(),
+        fetchProjectFiles(params.id).catch(() => ({
+          folders: [],
+          documents: [],
+          photos: [],
+        })),
       ]);
       const next = Array.isArray(detailsRes?.data) ? detailsRes.data[0] : null;
       if (!next) throw new Error(t("Something went wrong"));
@@ -79,6 +112,7 @@ export default function EditProjectScreen() {
       setBudget(next.budject == null ? "" : String(next.budject));
       setCurrencyCode(String(next.budject_currency_data?.code || next.budject_currency || ""));
       setImage(null);
+      setFiles(filesRes);
       if (currencyRes?.status && Array.isArray(currencyRes.data)) {
         setCurrencies(currencyRes.data);
       }
@@ -175,7 +209,15 @@ export default function EditProjectScreen() {
   const handleRemove = async (person: ProjectPerson, type: ProjectRelationType) => {
     if (!params.id) return;
     const relatieId = projectPersonId(person);
-    if (relatieId == null || relatieId === "") return;
+    if (relatieId == null || relatieId === "") {
+      setToast({
+        top: 45,
+        text: t("Something went wrong"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
     try {
       setRemovingId(`${type}-${relatieId}`);
       await removeProjectRelation(params.id, type, relatieId);
@@ -190,6 +232,80 @@ export default function EditProjectScreen() {
       });
     } finally {
       setRemovingId("");
+    }
+  };
+
+  const photosByFolder = useMemo(() => {
+    const groups: Record<string, ProjectFileItem[]> = {};
+    collectProjectFolderNames(files).forEach((name) => {
+      groups[name] = [];
+    });
+    files.photos.forEach((photo) => {
+      const name = projectFolderName(photo) || t("Photos");
+      if (!groups[name]) groups[name] = [];
+      groups[name].push(photo);
+    });
+    return groups;
+  }, [files, t]);
+
+  const askRemoveFile = (type: "document" | "photo", file: ProjectFileItem) => {
+    const fileId = projectFileId(file);
+    if (fileId == null || fileId === "") {
+      setToast({
+        top: 45,
+        text: t("Something went wrong"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+    setPendingFile({ type, file });
+  };
+
+  const handleRemoveFile = async () => {
+    if (!params.id || !pendingFile) return;
+    const fileId = projectFileId(pendingFile.file);
+    if (fileId == null || fileId === "") return;
+    const removedType = pendingFile.type;
+    const removedId = String(fileId);
+    try {
+      setDeleteLoading(true);
+      await removeProjectFile(params.id, fileId, removedType);
+      setPendingFile(null);
+      setFiles((prev) => ({
+        folders: prev.folders,
+        documents:
+          removedType === "document"
+            ? prev.documents.filter((item) => String(projectFileId(item) ?? "") !== removedId)
+            : prev.documents,
+        photos:
+          removedType === "photo"
+            ? prev.photos.filter((item) => String(projectFileId(item) ?? "") !== removedId)
+            : prev.photos,
+      }));
+      const next = await fetchProjectFiles(params.id);
+      setFiles((prev) => ({
+        folders: next.folders.length ? next.folders : prev.folders,
+        documents: next.documents,
+        photos: next.photos,
+      }));
+    } catch (error) {
+      const fieldErrors = error instanceof AppApiError ? error.fieldErrors : undefined;
+      const text =
+        fieldErrors?.project_id ||
+        fieldErrors?.file_id ||
+        fieldErrors?.type ||
+        (error instanceof AppApiError
+          ? error.message
+          : parseApiError(error, t("Something went wrong")).message);
+      setToast({
+        top: 45,
+        text,
+        type: "error",
+        visible: true,
+      });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -216,24 +332,22 @@ export default function EditProjectScreen() {
               <Text style={styles.personName} numberOfLines={1}>
                 {person.display_name || "-"}
               </Text>
-              {relatieId != null && relatieId !== "" ? (
-                <Pressable
-                  onPress={() => void handleRemove(person, type)}
-                  disabled={Boolean(removingId)}
-                  hitSlop={8}
-                  style={styles.removeBtn}
-                >
-                  {busy ? (
-                    <ActivityIndicator size="small" color={Colors.dicline} />
-                  ) : (
-                    <FallBackImage
-                      source={Images.CloseIcon}
-                      style={styles.removeIcon}
-                      resizeMode="contain"
-                    />
-                  )}
-                </Pressable>
-              ) : null}
+              <Pressable
+                onPress={() => void handleRemove(person, type)}
+                disabled={Boolean(removingId)}
+                hitSlop={8}
+                style={styles.removeBtn}
+              >
+                {busy ? (
+                  <ActivityIndicator size="small" color={Colors.dicline} />
+                ) : (
+                  <FallBackImage
+                    source={Images.CloseIcon}
+                    style={styles.removeIcon}
+                    resizeMode="contain"
+                  />
+                )}
+              </Pressable>
             </View>
           );
         })
@@ -336,6 +450,80 @@ export default function EditProjectScreen() {
             {renderPeople(t("Customer"), detail?.relaties_owners, "owner")}
             {renderPeople(t("Contact"), detail?.connected_relaties, "contact")}
             {renderPeople(t("Executor"), detail?.relaties_members, "member")}
+
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>{t("Documents")}</Text>
+              {files.documents.length ? (
+                files.documents.map((item, index) => (
+                  <View key={`doc-${projectFileId(item) ?? index}`} style={styles.personRow}>
+                    <Text style={styles.personName} numberOfLines={2}>
+                      {fileLabel(item)}
+                    </Text>
+                    <Pressable
+                      onPress={() => askRemoveFile("document", item)}
+                      disabled={deleteLoading}
+                      hitSlop={8}
+                      style={styles.removeBtn}
+                    >
+                      <FallBackImage
+                        source={Images.CloseIcon}
+                        style={styles.removeIcon}
+                        resizeMode="contain"
+                      />
+                    </Pressable>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>{t("No documents")}</Text>
+              )}
+            </View>
+
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>{t("Photos")}</Text>
+              {Object.keys(photosByFolder).length ? (
+                Object.entries(photosByFolder).map(([name, photos]) => (
+                  <View key={name} style={styles.folderBlock}>
+                    <Text style={styles.folderTitle}>{name}</Text>
+                    {photos.length ? (
+                      <View style={styles.photoGrid}>
+                        {photos.map((photo, index) => {
+                          const url = fileUrl(photo);
+                          return (
+                            <View key={`photo-${projectFileId(photo) ?? index}`} style={styles.photoCell}>
+                              {url ? (
+                                <Image source={{ uri: url }} style={styles.photo} />
+                              ) : (
+                                <View style={styles.photoFallback}>
+                                  <Text style={styles.emptyText} numberOfLines={2}>
+                                    {fileLabel(photo)}
+                                  </Text>
+                                </View>
+                              )}
+                              <Pressable
+                                onPress={() => askRemoveFile("photo", photo)}
+                                disabled={deleteLoading}
+                                hitSlop={6}
+                                style={styles.photoRemove}
+                              >
+                                <FallBackImage
+                                  source={Images.CloseIcon}
+                                  style={styles.photoRemoveIcon}
+                                  resizeMode="contain"
+                                />
+                              </Pressable>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : (
+                      <Text style={styles.emptyText}>--</Text>
+                    )}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>{t("No photos")}</Text>
+              )}
+            </View>
           </KeyboardAwareScrollView>
 
           <View style={[styles.footer, { paddingBottom: Math.max(footerPadding, 12) }]}>
@@ -372,6 +560,21 @@ export default function EditProjectScreen() {
           const next = selected[0]?.id;
           if (next != null && next !== "") setCurrencyCode(String(next));
           setCurrencySheet(false);
+        }}
+      />
+      <ConfirmBottomSheet
+        visible={Boolean(pendingFile)}
+        title={t("Delete File")}
+        message={t("Are you sure you want to delete this file?")}
+        confirmText={t("Yes, Delete")}
+        cancelText={t("Cancel")}
+        loading={deleteLoading}
+        onClose={() => {
+          if (deleteLoading) return;
+          setPendingFile(null);
+        }}
+        onConfirm={() => {
+          void handleRemoveFile();
         }}
       />
       <OptionBottomSheet
@@ -533,16 +736,16 @@ const styles = StyleSheet.create({
     color: Colors.black,
   },
   removeBtn: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.diclinelite,
   },
   removeIcon: {
-    width: 10,
-    height: 10,
+    width: 12,
+    height: 12,
     tintColor: Colors.dicline,
   },
   emptyText: {
@@ -580,5 +783,51 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontFamily: FONTS.OutfitSemiBold,
+  },
+  folderBlock: {
+    gap: 8,
+  },
+  folderTitle: {
+    fontSize: 13,
+    fontFamily: FONTS.OutfitMedium,
+    color: Colors.black,
+  },
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  photoCell: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: Colors.gray,
+  },
+  photo: {
+    width: "100%",
+    height: "100%",
+  },
+  photoFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 6,
+  },
+  photoRemove: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: Colors.diclinelite,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoRemoveIcon: {
+    width: 10,
+    height: 10,
+    tintColor: Colors.dicline,
   },
 });

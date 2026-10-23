@@ -69,6 +69,17 @@ async function performApiRequest<T = unknown>(
       Object.entries(options.customData ?? {}).forEach(([key, value]) => {
         if (value === undefined || value === null) return;
 
+        if (Array.isArray(value)) {
+          value.forEach((item) => {
+            if (item && typeof item === "object" && "uri" in item) {
+              requestData!.append(key, item as never);
+              return;
+            }
+            if (item != null) requestData!.append(key, String(item));
+          });
+          return;
+        }
+
         if (typeof value === "object" && "uri" in (value as object)) {
           requestData!.append(key, value as never);
           return;

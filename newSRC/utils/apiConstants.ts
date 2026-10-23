@@ -146,6 +146,11 @@ export const apiConstants = {
   projectAddRelation: `${baseUrlnew}projects/add-relation`,
   projectUpdate: `${baseUrlnew}projects/update`,
   projectRemoveRelation: `${baseUrlnew}projects/remove-relation`,
+  projectFiles: `${baseUrlnew}projects/files`,
+  projectUploadDocument: `${baseUrlnew}projects/upload-document`,
+  projectPhotoFolders: `${baseUrlnew}projects/photo-folders`,
+  projectUploadPhoto: `${baseUrlnew}projects/upload-photo`,
+  projectRemoveFile: `${baseUrlnew}projects/remove-file`,
 };
 
 export default apiConstants;
