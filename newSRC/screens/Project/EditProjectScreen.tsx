@@ -39,6 +39,7 @@ import {
   type ProjectRelationType,
 } from "../../services/projectService";
 import {
+  projectFileComment,
   projectFileLabel,
   projectFileShortLabel,
   projectFileThumb,
@@ -465,7 +466,8 @@ export default function EditProjectScreen() {
                       pendingFile?.type === "document" &&
                       String(projectFileId(pendingFile.file) ?? "") === String(fileId ?? "");
                     const thumb = projectFileThumb(item);
-                    const shortName = projectFileShortLabel(item, 10);
+                    const title = projectFileShortLabel(item, 10);
+                    const comment = projectFileComment(item);
                     return (
                       <View key={`doc-${fileId ?? index}`} style={styles.docCell}>
                         <View style={styles.docThumb}>
@@ -498,9 +500,14 @@ export default function EditProjectScreen() {
                             )}
                           </Pressable>
                         </View>
-                        {shortName ? (
+                        {title ? (
                           <Text style={styles.docName} numberOfLines={1}>
-                            {shortName}
+                            {title}
+                          </Text>
+                        ) : null}
+                        {comment ? (
+                          <Text style={styles.fileComment} numberOfLines={2}>
+                            {comment}
                           </Text>
                         ) : null}
                       </View>
@@ -523,37 +530,51 @@ export default function EditProjectScreen() {
                         {photos.map((photo, index) => {
                           const url = projectFileUrl(photo);
                           const fileId = projectFileId(photo);
+                          const title = projectFileShortLabel(photo, 10);
+                          const comment = projectFileComment(photo);
                           const removing =
                             deleteLoading &&
                             pendingFile?.type === "photo" &&
                             String(projectFileId(pendingFile.file) ?? "") === String(fileId ?? "");
                           return (
                             <View key={`photo-${fileId ?? index}`} style={styles.photoCell}>
-                              {url ? (
-                                <Image source={{ uri: url }} style={styles.photo} />
-                              ) : (
-                                <View style={styles.photoFallback}>
-                                  <Text style={styles.emptyText} numberOfLines={2}>
-                                    {projectFileLabel(photo, t("Photos"))}
-                                  </Text>
-                                </View>
-                              )}
-                              <Pressable
-                                onPress={() => askRemoveFile("photo", photo)}
-                                disabled={deleteLoading}
-                                hitSlop={6}
-                                style={styles.photoRemove}
-                              >
-                                {removing ? (
-                                  <ActivityIndicator size="small" color={Colors.dicline} />
+                              <View style={styles.photoThumb}>
+                                {url ? (
+                                  <Image source={{ uri: url }} style={styles.photo} />
                                 ) : (
-                                  <FallBackImage
-                                    source={Images.CloseIcon}
-                                    style={styles.photoRemoveIcon}
-                                    resizeMode="contain"
-                                  />
+                                  <View style={styles.photoFallback}>
+                                    <Text style={styles.emptyText} numberOfLines={2}>
+                                      {projectFileLabel(photo, t("Photos"))}
+                                    </Text>
+                                  </View>
                                 )}
-                              </Pressable>
+                                <Pressable
+                                  onPress={() => askRemoveFile("photo", photo)}
+                                  disabled={deleteLoading}
+                                  hitSlop={6}
+                                  style={styles.photoRemove}
+                                >
+                                  {removing ? (
+                                    <ActivityIndicator size="small" color={Colors.dicline} />
+                                  ) : (
+                                    <FallBackImage
+                                      source={Images.CloseIcon}
+                                      style={styles.photoRemoveIcon}
+                                      resizeMode="contain"
+                                    />
+                                  )}
+                                </Pressable>
+                              </View>
+                              {title ? (
+                                <Text style={styles.docName} numberOfLines={1}>
+                                  {title}
+                                </Text>
+                              ) : null}
+                              {comment ? (
+                                <Text style={styles.fileComment} numberOfLines={2}>
+                                  {comment}
+                                </Text>
+                              ) : null}
                             </View>
                           );
                         })}
@@ -798,6 +819,14 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.OutfitMedium,
     color: Colors.black,
   },
+  fileComment: {
+    width: "100%",
+    textAlign: "center",
+    fontSize: 10,
+    lineHeight: 13,
+    fontFamily: FONTS.OutfitRegular,
+    color: Colors.placeholder,
+  },
   personAvatar: {
     width: 40,
     height: 40,
@@ -879,8 +908,13 @@ const styles = StyleSheet.create({
   },
   photoCell: {
     width: 72,
+    alignItems: "center",
+    gap: 6,
+  },
+  photoThumb: {
+    width: 72,
     height: 72,
-    borderRadius: 8,
+    borderRadius: 4,
     overflow: "hidden",
     backgroundColor: Colors.gray,
   },

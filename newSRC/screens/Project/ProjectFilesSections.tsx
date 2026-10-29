@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import FallBackImage from "../../Components/FallBackImage";
 import OptionBottomSheet from "../../Components/OptionBottomSheet";
 import SimpleBox from "../../Components/SimpleBox";
+import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import {
   collectProjectFolderNames,
@@ -33,8 +34,8 @@ import {
 import { getDropboxDirectLink } from "../../services/eventService";
 import { parseApiError } from "../../utils/apiError";
 import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
-import { pickTicketDocuments, pickTicketGallery } from "../../utils/ticketFilePicker";
-import { pickProfileImage } from "../../utils/profileImagePicker";
+import { pickTicketDocuments } from "../../utils/ticketFilePicker";
+import { pickProjectPhotos } from "../../utils/projectPhotoPicker";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { CONNECTION_UI } from "../../utils/connectionTheme";
@@ -58,7 +59,9 @@ export function projectFileUrl(item: ProjectFileItem) {
 }
 
 export function projectFileLabel(item: ProjectFileItem, fallback = "Document") {
-  const raw = String(item.title || item.name || "").trim();
+  const title = String(item.title || "").trim();
+  if (title) return title;
+  const raw = String(item.name || "").trim();
   if (raw && !/^https?:\/\//i.test(raw) && !raw.includes("/")) return raw;
   const fromUrl = String(item.shared_link || raw)
     .split("?")[0]
@@ -72,6 +75,10 @@ export function projectFileLabel(item: ProjectFileItem, fallback = "Document") {
     }
   }
   return fallback;
+}
+
+export function projectFileComment(item: ProjectFileItem) {
+  return String(item.comment || "").trim();
 }
 
 export function projectFileShortLabel(item: ProjectFileItem, max = 10) {
@@ -158,6 +165,11 @@ export default function ProjectFilesSections({ projectId }: Props) {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [uploadFolder, setUploadFolder] = useState("");
   const [sourceSheet, setSourceSheet] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<ProjectFileItem | null>(null);
+  const [pendingPhotos, setPendingPhotos] = useState<ProjectUploadFile[]>([]);
+  const [photoMetaOpen, setPhotoMetaOpen] = useState(false);
+  const [photoTitle, setPhotoTitle] = useState("");
+  const [photoComment, setPhotoComment] = useState("");
 
   const busy = Boolean(busyKey);
   const folderNames = useMemo(() => collectProjectFolderNames(files), [files]);
@@ -265,55 +277,62 @@ export default function ProjectFilesSections({ projectId }: Props) {
     setSourceSheet(true);
   };
 
-  const uploadPhotos = async (source: "camera" | "gallery", folder: string) => {
+  const pickPhotos = async (source: "camera" | "gallery", folder: string) => {
     if (projectId == null || projectId === "" || !folder) return;
-    let filesToSend: ProjectUploadFile[] = [];
 
-    if (source === "camera") {
-      const picked = await pickProfileImage("camera");
-      if (!picked.ok) {
-        if (picked.reason === "permission") {
-          setToast({
-            top: 45,
-            text: t("Permission required to access photos"),
-            type: "error",
-            visible: true,
-          });
-        }
-        return;
+    const picked = await pickProjectPhotos(source);
+    if (!picked.ok) {
+      if (picked.reason === "permission") {
+        setToast({
+          top: 45,
+          text: t("Permission required to access photos"),
+          type: "error",
+          visible: true,
+        });
       }
-      filesToSend = [
-        {
-          uri: picked.asset.uri,
-          type: picked.asset.type || "image/jpeg",
-          name: picked.asset.name || `camera_${Date.now()}.jpg`,
-        },
-      ];
-    } else {
-      const picked = await pickTicketGallery();
-      if (!picked.ok) {
-        if (picked.reason === "permission") {
-          setToast({
-            top: 45,
-            text: t("Permission required to access photos"),
-            type: "error",
-            visible: true,
-          });
-        }
-        return;
-      }
-      filesToSend = picked.assets;
+      return;
     }
 
+    setPendingPhotos(
+      picked.assets.map((asset) => ({
+        uri: asset.uri,
+        type: asset.type || "image/jpeg",
+        name: asset.name || `photo_${Date.now()}.jpg`,
+      }))
+    );
+    setUploadFolder(folder);
+    setPhotoTitle("");
+    setPhotoComment("");
+    setPhotoMetaOpen(true);
+  };
+
+  const confirmPhotoUpload = async () => {
+    if (projectId == null || projectId === "" || !uploadFolder || !pendingPhotos.length) return;
+
     try {
-      setBusyKey(`photo:${folder}`);
-      await uploadProjectPhoto(projectId, folder, filesToSend);
+      setBusyKey(`photo:${uploadFolder}`);
+      setPhotoMetaOpen(false);
+      await uploadProjectPhoto(projectId, uploadFolder, pendingPhotos, {
+        title: photoTitle,
+        comment: photoComment,
+      });
+      setPendingPhotos([]);
+      setPhotoTitle("");
+      setPhotoComment("");
       await loadFiles(true);
     } catch (error) {
       showError(error);
     } finally {
       setBusyKey(null);
     }
+  };
+
+  const closePhotoMeta = () => {
+    if (busyKey?.startsWith("photo:")) return;
+    setPhotoMetaOpen(false);
+    setPendingPhotos([]);
+    setPhotoTitle("");
+    setPhotoComment("");
   };
 
   return (
@@ -334,7 +353,8 @@ export default function ProjectFilesSections({ projectId }: Props) {
             {files.documents.map((item, index) => {
               const url = projectFileUrl(item);
               const thumb = projectFileThumb(item);
-              const shortName = projectFileShortLabel(item, 10);
+              const title = projectFileShortLabel(item, 10);
+              const comment = projectFileComment(item);
               return (
                 <Pressable
                   key={`doc-${item.id ?? index}`}
@@ -356,9 +376,14 @@ export default function ProjectFilesSections({ projectId }: Props) {
                       resizeMode={thumb.kind === "image" ? "cover" : "contain"}
                     />
                   </View>
-                  {shortName ? (
+                  {title ? (
                     <Text style={styles.docName} numberOfLines={1}>
-                      {shortName}
+                      {title}
+                    </Text>
+                  ) : null}
+                  {comment ? (
+                    <Text style={styles.fileComment} numberOfLines={2}>
+                      {comment}
                     </Text>
                   ) : null}
                 </Pressable>
@@ -404,19 +429,36 @@ export default function ProjectFilesSections({ projectId }: Props) {
                 <View style={styles.photoGrid}>
                   {photos.map((photo, photoIndex) => {
                     const url = projectFileUrl(photo);
+                    const title = projectFileShortLabel(photo, 10);
+                    const comment = projectFileComment(photo);
                     return (
                       <Pressable
                         key={`photo-${photo.id ?? photoIndex}`}
                         style={styles.photoCell}
-                        onPress={() => void openSharedLink(url)}
+                        onPress={() => {
+                          if (!url) return;
+                          setPreviewPhoto(photo);
+                        }}
                       >
-                        {url ? (
-                          <Image source={{ uri: url }} style={styles.photo} />
-                        ) : (
-                          <View style={styles.photoFallback}>
-                            <Ionicons name="image-outline" size={18} color={AppColors.subtitle} />
-                          </View>
-                        )}
+                        <View style={styles.photoThumb}>
+                          {url ? (
+                            <Image source={{ uri: url }} style={styles.photo} />
+                          ) : (
+                            <View style={styles.photoFallback}>
+                              <Ionicons name="image-outline" size={18} color={AppColors.subtitle} />
+                            </View>
+                          )}
+                        </View>
+                        {title ? (
+                          <Text style={styles.docName} numberOfLines={1}>
+                            {title}
+                          </Text>
+                        ) : null}
+                        {comment ? (
+                          <Text style={styles.fileComment} numberOfLines={2}>
+                            {comment}
+                          </Text>
+                        ) : null}
                       </Pressable>
                     );
                   })}
@@ -517,9 +559,70 @@ export default function ProjectFilesSections({ projectId }: Props) {
         onConfirm={(option) => {
           setSourceSheet(false);
           if (option.id === "camera" || option.id === "gallery") {
-            void uploadPhotos(option.id, uploadFolder);
+            void pickPhotos(option.id, uploadFolder);
           }
         }}
+      />
+
+      <Modal
+        visible={photoMetaOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={closePhotoMeta}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={closePhotoMeta} />
+          <View
+            style={[
+              styles.modalSheet,
+              { paddingBottom: footerPadding + (Platform.OS === "android" ? keyboardHeight : 0) },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t("Photo details")}</Text>
+              <SimpleBox
+                Icon={Images.CloseIcon}
+                onPress={closePhotoMeta}
+                style={styles.closeBtn}
+                IconStyle={{ width: 14, height: 14, tintColor: Colors.white }}
+              />
+            </View>
+            <Text style={styles.label}>{t("Title")}</Text>
+            <TextInput
+              style={styles.input}
+              value={photoTitle}
+              onChangeText={setPhotoTitle}
+              placeholder={t("Optional")}
+              placeholderTextColor={Colors.placeholder}
+            />
+            <Text style={styles.label}>{t("Comment")}</Text>
+            <TextInput
+              style={[styles.input, styles.commentInput]}
+              value={photoComment}
+              onChangeText={setPhotoComment}
+              placeholder={t("Optional")}
+              placeholderTextColor={Colors.placeholder}
+              multiline
+              textAlignVertical="top"
+            />
+            <Pressable style={styles.saveBtn} onPress={() => void confirmPhotoUpload()}>
+              <Text style={styles.saveBtnText}>{t("Upload")}</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <DocumentPreviewModal
+        visible={Boolean(previewPhoto)}
+        title={previewPhoto ? projectFileLabel(previewPhoto, t("Photo")) : t("Photo")}
+        imageUri={previewPhoto ? projectFileUrl(previewPhoto) : null}
+        downloadUrl={previewPhoto ? projectFileUrl(previewPhoto) : null}
+        onClose={() => setPreviewPhoto(null)}
       />
     </>
   );
@@ -604,6 +707,19 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendMedium,
     fontSize: 11,
     color: AppColors.black,
+  },
+  fileComment: {
+    width: "100%",
+    textAlign: "center",
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 10,
+    lineHeight: 13,
+    color: AppColors.subtitle,
+  },
+  commentInput: {
+    height: 88,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   modalRoot: {
     flex: 1,
@@ -708,6 +824,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   photoCell: {
+    width: 72,
+    alignItems: "center",
+    gap: 6,
+  },
+  photoThumb: {
     width: 72,
     height: 72,
     borderRadius: 4,
