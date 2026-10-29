@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 import { AppColors } from "../../utils/theme";
 import { authTypography } from "../../utils/authTypography";
 
@@ -6,20 +6,32 @@ type AuthButtonProps = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  loading?: boolean;
 };
 
-export default function AuthButton({ title, onPress, disabled = false }: AuthButtonProps) {
+export default function AuthButton({
+  title,
+  onPress,
+  disabled = false,
+  loading = false,
+}: AuthButtonProps) {
+  const isDisabled = disabled || loading;
+
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
+      disabled={isDisabled}
       style={({ pressed }) => [
         styles.button,
-        disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        isDisabled && styles.disabled,
+        pressed && !isDisabled && styles.pressed,
       ]}
     >
-      <Text style={authTypography.button}>{title}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={AppColors.white} />
+      ) : (
+        <Text style={authTypography.button}>{title}</Text>
+      )}
     </Pressable>
   );
 }

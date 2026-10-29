@@ -48,13 +48,12 @@ export default function PasswordScreen() {
     <AuthLayout
       title={t("Registration")}
       subtitle={t("Smart solutions for modern businesses")}
-      loading={isLoading}
       toastMessage={toastMessage}
       headerLogo="company"
       backLink={<BackLink label={t("Change Email")} onPress={() => router.back()} />}
       footer={
         <>
-          <AuthButton title={t("Verify & Proceed")} onPress={handleVerify} />
+          <AuthButton title={t("Verify & Proceed")} onPress={handleVerify} loading={isLoading} />
           <SwitchMethodButton
             label={t("Switch to WhatsApp Number")}
             iconName="logo-whatsapp"

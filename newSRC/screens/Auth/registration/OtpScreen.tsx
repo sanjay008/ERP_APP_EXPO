@@ -89,7 +89,6 @@ export default function OtpScreen() {
       subtitle={t("We've sent a verification code to your {{contact}}", {
         contact: otpContactLabel,
       })}
-      loading={isLoading}
       toastMessage={toastMessage}
       headerLogo="company"
       backLink={
@@ -112,7 +111,7 @@ export default function OtpScreen() {
             </Text>
             <Ionicons name="chevron-forward" size={16} color={AppColors.subtitle} />
           </Pressable>
-          <AuthButton title={t("Verify & Proceed")} onPress={handleVerify} />
+          <AuthButton title={t("Verify & Proceed")} onPress={handleVerify} loading={isLoading} />
           {authMethod === "whatsapp" ? (
             <AuthSecondaryButton
               label={t("Open WhatsApp")}

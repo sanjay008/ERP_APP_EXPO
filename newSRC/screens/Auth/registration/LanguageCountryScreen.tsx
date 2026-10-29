@@ -68,10 +68,9 @@ export default function LanguageCountryScreen() {
     <AuthLayout
       title={t("Registration")}
       subtitle={t("Smart solutions for modern businesses")}
-      loading={isLoading}
       toastMessage={toastMessage}
       headerLogo="default"
-      footer={<AuthButton title={t("Continue")} onPress={handleContinue} />}
+      footer={<AuthButton title={t("Continue")} onPress={handleContinue} loading={isLoading} />}
     >
       <AuthSelect
         label={t("Language")}

@@ -295,13 +295,13 @@ export default function ProfileCompletionScreen() {
     <AuthLayout
       title={stepTitle}
       subtitle={stepSubtitle}
-      loading={loading || initialLoading}
       toastMessage={toastMessage}
       backLink={<BackLink label={t("Back")} onPress={handleBack} />}
       footer={
         <AuthButton
           title={step === 3 ? t("Verify & Proceed") : t("Continue")}
           onPress={step === 3 ? handleSubmit : handleNext}
+          loading={loading}
         />
       }
     >

@@ -70,7 +70,7 @@ export const listScreenStyles = StyleSheet.create({
     textAlign: "center",
   },
   statusBadge: {
-    borderRadius: LIST_UI.iconRadius,
+    borderRadius: 2,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },

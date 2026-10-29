@@ -166,9 +166,19 @@ function TaskCard({ task }: { task: ProjectTask }) {
   );
 }
 
-function TicketCard({ ticket }: { ticket: ProjectTicket }) {
+function TicketCard({
+  ticket,
+  onPress,
+}: {
+  ticket: ProjectTicket;
+  onPress?: () => void;
+}) {
   return (
-    <View style={styles.ticketCard}>
+    <Pressable
+      style={styles.ticketCard}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.ticketTopRow}>
         <View style={styles.ticketIdBox}>
           <Text style={styles.ticketId}>{ticket.id ?? "-"}</Text>
@@ -182,18 +192,23 @@ function TicketCard({ ticket }: { ticket: ProjectTicket }) {
         <Text style={styles.ticketMeta}>{ticket.action_relatie_data.display_name}</Text>
       ) : null}
       {ticket.gmaps_working_address ? (
-        <Pressable onPress={() => openMapsAddress(ticket.gmaps_working_address)}>
+        <Pressable
+          onPress={(event) => {
+            event.stopPropagation?.();
+            openMapsAddress(ticket.gmaps_working_address);
+          }}
+        >
           <Text style={styles.ticketAddressLink}>{ticket.gmaps_working_address}</Text>
         </Pressable>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
 export default function ProjectDetailsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { top, scrollPadding } = useScreenInsets();
+  const { top, bottom } = useScreenInsets();
   const keyboardHeight = useKeyboardHeight();
   const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id: string; color?: string; title?: string }>();
@@ -301,7 +316,7 @@ export default function ProjectDetailsScreen() {
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: scrollPadding + Math.max(keyboardHeight, 80) },
+            { paddingBottom: bottom + 16 + keyboardHeight },
           ]}
           enableOnAndroid
           enableAutomaticScroll
@@ -423,7 +438,22 @@ export default function ProjectDetailsScreen() {
           <SectionCard>
             {data?.ticket_data?.length ? (
               data.ticket_data.map((ticket, index) => (
-                <TicketCard key={`ticket-${index}`} ticket={ticket} />
+                <TicketCard
+                  key={`ticket-${ticket.id ?? index}`}
+                  ticket={ticket}
+                  onPress={
+                    ticket.id != null
+                      ? () =>
+                          router.push({
+                            pathname: "/(app)/tickets/[id]",
+                            params: {
+                              id: String(ticket.id),
+                              item: JSON.stringify(ticket),
+                            },
+                          })
+                      : undefined
+                  }
+                />
               ))
             ) : (
               <Text style={styles.emptyMeta}>--</Text>
@@ -493,7 +523,7 @@ const styles = StyleSheet.create({
   sectionAddBtn: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: AppColors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -505,7 +535,7 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     backgroundColor: AppColors.white,
-    borderRadius: CONNECTION_UI.cardRadius,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: CONNECTION_UI.cardBorder,
     padding: CONNECTION_UI.cardPadding,
@@ -569,7 +599,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   labelChip: {
-    borderRadius: 6,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -624,7 +654,7 @@ const styles = StyleSheet.create({
   activityCard: {
     borderWidth: 1,
     borderColor: CONNECTION_UI.borderCard,
-    borderRadius: 10,
+    borderRadius: 7,
     padding: 12,
     marginBottom: 10,
     gap: 10,
@@ -636,7 +666,7 @@ const styles = StyleSheet.create({
   },
   grayTag: {
     backgroundColor: "#EEF1F5",
-    borderRadius: 6,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -646,7 +676,7 @@ const styles = StyleSheet.create({
     color: AppColors.black,
   },
   scheduleTag: {
-    borderRadius: 6,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -656,7 +686,7 @@ const styles = StyleSheet.create({
   },
   dayTag: {
     backgroundColor: "#F3F4F6",
-    borderRadius: 6,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -668,7 +698,7 @@ const styles = StyleSheet.create({
   taskCard: {
     borderWidth: 1,
     borderColor: CONNECTION_UI.borderCard,
-    borderRadius: 10,
+    borderRadius: 7,
     padding: 12,
     marginBottom: 10,
     gap: 6,
@@ -693,7 +723,7 @@ const styles = StyleSheet.create({
   ticketCard: {
     borderWidth: 1,
     borderColor: CONNECTION_UI.borderCard,
-    borderRadius: 10,
+    borderRadius: 7,
     padding: 12,
     marginBottom: 10,
     gap: 6,
@@ -706,7 +736,7 @@ const styles = StyleSheet.create({
   ticketIdBox: {
     minWidth: 42,
     height: 34,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: "#EEF1F5",
     alignItems: "center",
     justifyContent: "center",

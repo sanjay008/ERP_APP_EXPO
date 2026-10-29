@@ -417,6 +417,10 @@ export type ProjectFileItem = {
   title?: string;
   comment?: string;
   shared_link?: string;
+  view_url?: string;
+  file_path?: string;
+  file_extension?: string;
+  file_type?: string;
 };
 
 export type ProjectFilesData = {
@@ -436,13 +440,28 @@ function normalizeFileItem(raw: unknown): ProjectFileItem | null {
   if (!item) return null;
   const name = String(item.name || item.title || item.folder_name || "").trim();
   const folderName = String(item.folder_name || item.name || "").trim();
+  const firstUrl = [
+    item.shared_link,
+    item.view_url,
+    item.file_path,
+    item.preview,
+    item.thumbnail,
+    item.download_url,
+    item.url,
+  ]
+    .map((value) => String(value || "").trim())
+    .find(Boolean);
   return {
     id: item.id,
     name,
     folder_name: folderName || undefined,
     title: item.title != null ? String(item.title) : undefined,
     comment: item.comment != null ? String(item.comment) : undefined,
-    shared_link: item.shared_link != null ? String(item.shared_link) : undefined,
+    shared_link: firstUrl,
+    view_url: item.view_url != null ? String(item.view_url) : undefined,
+    file_path: item.file_path != null ? String(item.file_path) : undefined,
+    file_extension: item.file_extension != null ? String(item.file_extension) : undefined,
+    file_type: item.file_type != null ? String(item.file_type) : undefined,
   };
 }
 

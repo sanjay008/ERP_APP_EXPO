@@ -1,7 +1,8 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageSourcePropType,
+  LayoutChangeEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -9,9 +10,13 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { ANDROID_MIN_BOTTOM_INSET } from "../utils/screenInsets";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useAppData } from "../context/AppDataContext";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
@@ -30,10 +35,13 @@ const TAB_UI = {
   horizontalInset: 24,
   height: 87,
   radius: 100,
+  barPaddingH: 8,
   iconCircle: 40,
   activeGlow: "rgba(78, 131, 231, 0.28)",
   glassBorder: "rgba(255, 255, 255, 0.75)",
   glassOverlay: Platform.OS === "android" ? "rgba(255, 255, 255, 0.92)" : "rgba(255, 255, 255, 0.45)",
+  indicatorTop: 12,
+  animDuration: 220,
 } as const;
 
 const TAB_CONFIG: Record<string, Omit<TabConfig, "label"> & { labelKey: string }> = {
@@ -102,17 +110,54 @@ export default function CustomTabBar({
   const { t } = useTranslation();
   const { permissions } = useAppData();
   const insets = useSafeAreaInsets();
-  const bottomInset =
-    Platform.OS === "android"
-      ? Math.max(insets.bottom, ANDROID_MIN_BOTTOM_INSET)
-      : Math.max(insets.bottom, 10);
+  const bottomInset = Math.max(insets.bottom, 8);
+  const [barWidth, setBarWidth] = useState(0);
+  const indicatorX = useSharedValue(0);
+  const hasPositioned = useSharedValue(0);
 
-  const visibleRoutes = state.routes.filter((route) => {
-    const { options } = descriptors[route.key];
-    if ((options as { href?: string | null }).href === null) return false;
-    if (!canShowTab(route.name, permissions)) return false;
-    return Boolean(TAB_CONFIG[route.name]);
-  });
+  const visibleRoutes = useMemo(
+    () =>
+      state.routes.filter((route) => {
+        const { options } = descriptors[route.key];
+        if ((options as { href?: string | null }).href === null) return false;
+        if (!canShowTab(route.name, permissions)) return false;
+        return Boolean(TAB_CONFIG[route.name]);
+      }),
+    [descriptors, permissions, state.routes]
+  );
+
+  const focusedVisibleIndex = useMemo(() => {
+    const focusedRoute = state.routes[state.index];
+    const idx = visibleRoutes.findIndex((route) => route.key === focusedRoute?.key);
+    return idx >= 0 ? idx : 0;
+  }, [state.index, state.routes, visibleRoutes]);
+
+  const tabCount = visibleRoutes.length;
+  const tabWidth =
+    tabCount > 0 && barWidth > 0
+      ? (barWidth - TAB_UI.barPaddingH * 2) / tabCount
+      : 0;
+
+  useEffect(() => {
+    if (tabWidth <= 0) return;
+    const nextX =
+      TAB_UI.barPaddingH + tabWidth * focusedVisibleIndex + (tabWidth - TAB_UI.iconCircle) / 2;
+    if (hasPositioned.value === 0) {
+      indicatorX.value = nextX;
+      hasPositioned.value = 1;
+      return;
+    }
+    indicatorX.value = withTiming(nextX, { duration: TAB_UI.animDuration });
+  }, [focusedVisibleIndex, hasPositioned, indicatorX, tabWidth]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.value }],
+  }));
+
+  const onBarLayout = (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    if (width > 0 && width !== barWidth) setBarWidth(width);
+  };
 
   const tabs = visibleRoutes.map((route) => {
     const index = state.routes.findIndex((item) => item.key === route.key);
@@ -155,11 +200,6 @@ export default function CustomTabBar({
             },
           ]}
         >
-          {isFocused ? (
-            <View
-              style={[styles.activeGlow, { borderRadius: TAB_UI.iconCircle / 2 }]}
-            />
-          ) : null}
           <TabIcon source={config.icon} size={config.iconSize} focused={isFocused} />
         </View>
         <Text style={[styles.label, isFocused && styles.labelFocused]}>{label}</Text>
@@ -177,7 +217,24 @@ export default function CustomTabBar({
     >
       <View style={styles.shadowHost}>
         <GlassTabShell>
-          <View style={styles.bar}>{tabs}</View>
+          <View style={styles.bar} onLayout={onBarLayout}>
+            {tabWidth > 0 ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.activeIndicator,
+                  {
+                    width: TAB_UI.iconCircle,
+                    height: TAB_UI.iconCircle,
+                    borderRadius: TAB_UI.iconCircle / 2,
+                    top: TAB_UI.indicatorTop,
+                  },
+                  indicatorStyle,
+                ]}
+              />
+            ) : null}
+            {tabs}
+          </View>
         </GlassTabShell>
       </View>
     </View>
@@ -220,7 +277,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: 8,
+    paddingHorizontal: TAB_UI.barPaddingH,
+  },
+  activeIndicator: {
+    position: "absolute",
+    left: 0,
+    backgroundColor: TAB_UI.activeGlow,
+    zIndex: 0,
   },
   tab: {
     flex: 1,
@@ -229,16 +292,12 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingTop: 12,
     paddingBottom: 10,
+    zIndex: 1,
   },
   iconContainer: {
     alignItems: "center",
     justifyContent: "center",
     overflow: "visible",
-  },
-  activeGlow: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: TAB_UI.activeGlow,
-    transform: [{ scale: 1.1 }],
   },
   label: {
     fontFamily: FONTS.LexendMedium,

@@ -462,6 +462,8 @@ export const fallbackResources = {
       "How many folders": "How many folders",
       "Folder name": "Folder name",
       "Select folder": "Select folder",
+      "Create folder": "Create folder",
+      OR: "OR",
       "User created. A welcome email was sent.": "User created. A welcome email was sent.",
       "A Dutch WhatsApp number must be 10 digits starting with 0.":
         "A Dutch WhatsApp number must be 10 digits starting with 0.",
@@ -925,6 +927,8 @@ export const fallbackResources = {
       "How many folders": "Aantal mappen",
       "Folder name": "Mapnaam",
       "Select folder": "Selecteer map",
+      "Create folder": "Map aanmaken",
+      OR: "OF",
       "User created. A welcome email was sent.": "Gebruiker aangemaakt. Er is een welkomstmail verstuurd.",
       "A Dutch WhatsApp number must be 10 digits starting with 0.":
         "Een Nederlands WhatsApp-nummer moet 10 cijfers zijn en met 0 beginnen.",

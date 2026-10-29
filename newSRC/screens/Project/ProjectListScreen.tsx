@@ -166,9 +166,16 @@ export default function ProjectListScreen() {
           resizeMode="cover"
         />
       </View>
-      <Text style={styles.name} numberOfLines={2}>
-        {t(item.project_name)}
-      </Text>
+      <View style={styles.cardMain}>
+        <Text style={styles.name} numberOfLines={1}>
+          {t(item.project_name)}
+        </Text>
+        {item.deadline ? (
+          <Text style={styles.meta} numberOfLines={1}>
+            {item.deadline}
+          </Text>
+        ) : null}
+      </View>
       <StatusBadge status={item.project_status_data_api} />
     </Pressable>
   );
@@ -314,6 +321,7 @@ const styles = StyleSheet.create({
   listContent: listScreenStyles.listContent,
   card: {
     ...listScreenStyles.rowCard,
+    borderRadius: 7,
     gap: CONNECTION_UI.iconTextGap,
   },
   avatarFrame: listScreenStyles.avatarFrame,
@@ -321,12 +329,20 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  name: {
+  cardMain: {
     flex: 1,
+    gap: 4,
+  },
+  name: {
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 16,
     lineHeight: 22,
     color: AppColors.black,
+  },
+  meta: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 12,
+    color: AppColors.subtitle,
   },
   statusBadge: {
     ...listScreenStyles.statusBadge,
@@ -367,7 +383,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: CONNECTION_UI.border,
     alignItems: "center",
@@ -396,7 +412,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: CONNECTION_UI.border,
-    borderRadius: 10,
+    borderRadius: 7,
     paddingVertical: 12,
     alignItems: "center",
   },

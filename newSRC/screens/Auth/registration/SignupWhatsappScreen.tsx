@@ -72,7 +72,6 @@ export default function SignupWhatsappScreen() {
     <AuthLayout
       title={t("Create Account")}
       subtitle={t("Register with your WhatsApp number")}
-      loading={isLoading}
       toastMessage={toastMessage}
       backLink={
         <BackLink label={t("Change Company")} onPress={() => router.back()} />
@@ -83,6 +82,7 @@ export default function SignupWhatsappScreen() {
             title={t("Verify & Proceed")}
             onPress={handleContinue}
             disabled={!canSubmit}
+            loading={isLoading}
           />
           <Pressable onPress={() => router.replace("/registration/credentials")} style={styles.linkWrap}>
             <Text style={authTypography.link}>{t("Already have an account? Log in")}</Text>

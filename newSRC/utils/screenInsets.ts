@@ -17,24 +17,29 @@ export function useScreenInsets(options: ScreenInsetsOptions = {}) {
   const insets = useSafeAreaInsets();
   const { includeTabBar = false } = options;
 
+  const safeBottom = insets.bottom;
   const bottom =
     Platform.OS === "android"
-      ? Math.max(insets.bottom, ANDROID_MIN_BOTTOM_INSET)
-      : insets.bottom;
+      ? safeBottom > 0
+        ? safeBottom
+        : ANDROID_MIN_BOTTOM_INSET
+      : safeBottom;
 
   const tabBarSpace = includeTabBar ? FLOATING_TAB_BAR_HEIGHT : 0;
+  /** Fixed footers only need real safe-area, not the Android list fallback. */
+  const footerBottom = Math.max(safeBottom, 8);
 
   return {
     top: insets.top,
     bottom,
     /** Use on ScrollView / FlatList contentContainerStyle paddingBottom */
-    scrollPadding: bottom + tabBarSpace + 24,
+    scrollPadding: bottom + tabBarSpace + 16,
     /** Use on floating action buttons */
-    fabBottom: bottom + tabBarSpace + 16,
+    fabBottom: bottom + tabBarSpace + 12,
     /** Use on bottom-fixed footers inside stack screens */
-    footerPadding: bottom + 16,
+    footerPadding: footerBottom,
     /** Use inside modals / bottom sheets */
-    modalPadding: bottom + 16,
+    modalPadding: footerBottom,
   };
 }
 

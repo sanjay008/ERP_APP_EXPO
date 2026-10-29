@@ -46,7 +46,6 @@ export default function EmailScreen() {
     <AuthLayout
       title={t("Registration")}
       subtitle={t("Smart solutions for modern businesses")}
-      loading={isLoading}
       toastMessage={toastMessage}
       backLink={
         <BackLink label={t("Change Company")} onPress={() => router.back()} />
@@ -57,6 +56,7 @@ export default function EmailScreen() {
             title={t("Continue")}
             onPress={handleContinue}
             disabled={!canSubmit}
+            loading={isLoading}
           />
           <SwitchMethodButton
             label={t("Switch to WhatsApp Number")}

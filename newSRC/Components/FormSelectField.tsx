@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     minHeight: 50,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 8,
+    borderRadius: 7,
     paddingHorizontal: 14,
     backgroundColor: Colors.white,
     flexDirection: "row",

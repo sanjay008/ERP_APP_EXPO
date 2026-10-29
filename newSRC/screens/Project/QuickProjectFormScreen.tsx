@@ -307,7 +307,7 @@ export default function QuickProjectFormScreen() {
               : null}
           </KeyboardAwareScrollView>
 
-          <View style={[styles.footer, { paddingBottom: Math.max(footerPadding, 12) }]}>
+          <View style={[styles.footer, { paddingBottom: footerPadding }]}>
             <TouchableOpacity
               style={[styles.submitBtn, (submitting || !canSubmit) && styles.submitBtnDisabled]}
               onPress={() => {

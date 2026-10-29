@@ -18,7 +18,10 @@ function SelectionListItem({ label, selected, onPress, showCheckbox = true }: Pr
           {selected ? <Text style={styles.checkMark}>✓</Text> : null}
         </View>
       ) : null}
-      <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={2}>
+      <Text
+        style={[styles.label, (selected || !showCheckbox) && styles.labelSelected]}
+        numberOfLines={2}
+      >
         {label}
       </Text>
       <View style={styles.divider} />
@@ -40,12 +43,12 @@ const styles = StyleSheet.create({
   },
   rowSelected: {
     backgroundColor: Colors.lightprimary1,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: 3,
+    borderRadius: 4,
     borderWidth: 1.5,
     borderColor: Colors.SearchBorder,
     backgroundColor: Colors.white,

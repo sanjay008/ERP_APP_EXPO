@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -15,7 +16,6 @@ import { FONTS } from "../utils/FONTS";
 import { Images } from "../utils/Images";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.42;
 
 export type OptionItem = {
   id: string;
@@ -40,13 +40,14 @@ function OptionBottomSheet({
 }: Props) {
   const { footerPadding } = useScreenInsets();
   const [mounted, setMounted] = useState(false);
-
-  const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const sheetHeight = Math.min(SCREEN_HEIGHT * 0.42, 88 + options.length * 52);
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
+      translateY.setValue(sheetHeight);
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: 0,
@@ -63,22 +64,20 @@ function OptionBottomSheet({
     }
 
     Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: SHEET_HEIGHT,
-          duration: 140,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 140,
-          useNativeDriver: true,
-        }),
+      Animated.timing(translateY, {
+        toValue: sheetHeight,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 140,
+        useNativeDriver: true,
+      }),
     ]).start(({ finished }) => {
-      if (finished) {
-        setMounted(false);
-      }
+      if (finished) setMounted(false);
     });
-  }, [visible, translateY, backdropOpacity]);
+  }, [visible, sheetHeight, translateY, backdropOpacity]);
 
   const handleSelect = useCallback(
     (item: OptionItem) => {
@@ -88,51 +87,55 @@ function OptionBottomSheet({
     [onClose, onConfirm]
   );
 
-  if (!visible) {
-    return null;
-  }
-
-  if (!mounted) {
-    return null;
-  }
+  if (!visible && !mounted) return null;
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.backdrop, { opacity: backdropOpacity }]}
-        />
-      </Pressable>
-
-      <Animated.View
-        style={[
-          styles.sheet,
-          { paddingBottom: footerPadding, transform: [{ translateY }] },
-        ]}
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <SimpleBox
-            Icon={Images.CloseIcon}
-            onPress={onClose}
-            style={styles.closeBtn}
-            IconStyle={{ width: 14, height: 14, tintColor: Colors.white }}
+    <Modal
+      visible={visible || mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay} pointerEvents="box-none">
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.backdrop, { opacity: backdropOpacity }]}
           />
-        </View>
+        </Pressable>
 
-        <View style={styles.list}>
-          {options.map((item) => (
-            <SelectionListItem
-              key={item.id}
-              label={item.label}
-              selected={false}
-              onPress={() => handleSelect(item)}
+        <Animated.View
+          style={[
+            styles.sheet,
+            { paddingBottom: footerPadding, transform: [{ translateY }] },
+          ]}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <SimpleBox
+              Icon={Images.CloseIcon}
+              onPress={onClose}
+              style={styles.closeBtn}
+              IconStyle={{ width: 14, height: 14, tintColor: Colors.white }}
             />
-          ))}
-        </View>
-      </Animated.View>
-    </View>
+          </View>
+
+          <View>
+            {options.map((item) => (
+              <SelectionListItem
+                key={item.id}
+                label={item.label}
+                selected={false}
+                showCheckbox={false}
+                onPress={() => handleSelect(item)}
+              />
+            ))}
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -140,9 +143,7 @@ export default React.memo(OptionBottomSheet);
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
-    elevation: 20,
+    flex: 1,
     justifyContent: "flex-end",
   },
   backdrop: {
@@ -151,17 +152,16 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: Colors.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
     paddingHorizontal: 16,
     paddingTop: 16,
-    minHeight: SHEET_HEIGHT,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 8,
   },
   title: {
     flex: 1,
@@ -174,8 +174,5 @@ const styles = StyleSheet.create({
     height: 36,
     backgroundColor: Colors.dicline,
     borderColor: Colors.dicline,
-  },
-  list: {
-    flexGrow: 1,
   },
 });

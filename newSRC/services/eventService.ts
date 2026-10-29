@@ -135,10 +135,21 @@ export async function fetchEventGuests(params: {
 
 export function getDropboxDirectLink(url?: string) {
   if (!url) return "";
-  return url
-    .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-    .replace("?dl=0", "")
-    .replace("?dl=1", "");
+  try {
+    if (url.includes("dropboxusercontent.com")) return url;
+    if (url.includes("db.tt")) return url.replace("db.tt", "dl.dropboxusercontent.com");
+    if (url.includes("dropbox.com")) {
+      let cleaned = url
+        .replace("www.dropbox.com", "dl.dropboxusercontent.com")
+        .replace("dropbox.com", "dl.dropboxusercontent.com")
+        .replace(/[?&](dl|raw)=[^&]*/g, "");
+      cleaned += cleaned.includes("?") ? "&raw=1" : "?raw=1";
+      return cleaned;
+    }
+    return url;
+  } catch {
+    return url;
+  }
 }
 
 export function stripHtmlTags(input?: string) {

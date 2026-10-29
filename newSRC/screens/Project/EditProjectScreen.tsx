@@ -38,7 +38,12 @@ import {
   type ProjectPerson,
   type ProjectRelationType,
 } from "../../services/projectService";
-import { getDropboxDirectLink } from "../../services/eventService";
+import {
+  projectFileLabel,
+  projectFileShortLabel,
+  projectFileThumb,
+  projectFileUrl,
+} from "./ProjectFilesSections";
 import { fetchCompanyCurrencies, type CurrencyOption } from "../../services/taskService";
 import { pickProfileImage } from "../../utils/profileImagePicker";
 import { AppApiError, parseApiError, type ParsedApiError } from "../../utils/apiError";
@@ -49,14 +54,6 @@ import { Images } from "../../utils/Images";
 
 function sameValue(left: unknown, right: unknown) {
   return String(left ?? "").trim() === String(right ?? "").trim();
-}
-
-function fileLabel(item: ProjectFileItem) {
-  return item.title || item.name || item.folder_name || "--";
-}
-
-function fileUrl(item: ProjectFileItem) {
-  return getDropboxDirectLink(item.shared_link) || item.shared_link || "";
 }
 
 export default function EditProjectScreen() {
@@ -138,6 +135,15 @@ export default function EditProjectScreen() {
   const originalBudget = detail?.budject == null ? "" : String(detail.budject);
   const originalName = detail?.project_name || "";
 
+  const hasChanges = useMemo(() => {
+    if (!detail) return false;
+    if (!sameValue(projectName.trim(), originalName)) return true;
+    if (!sameValue(budget, originalBudget)) return true;
+    if (!sameValue(currencyCode, originalCurrency)) return true;
+    if (image) return true;
+    return false;
+  }, [budget, currencyCode, detail, image, originalBudget, originalCurrency, originalName, projectName]);
+
   const pickImage = async (source: "camera" | "gallery") => {
     const result = await pickProfileImage(source);
     if (result.ok) {
@@ -180,10 +186,7 @@ export default function EditProjectScreen() {
     if (!sameValue(currencyCode, originalCurrency)) changes.budject_currency = currencyCode;
     if (image) changes.project_image = image;
 
-    if (!Object.keys(changes).length) {
-      router.back();
-      return;
-    }
+    if (!Object.keys(changes).length) return;
 
     try {
       setSaving(true);
@@ -454,25 +457,56 @@ export default function EditProjectScreen() {
             <View style={styles.block}>
               <Text style={styles.blockTitle}>{t("Documents")}</Text>
               {files.documents.length ? (
-                files.documents.map((item, index) => (
-                  <View key={`doc-${projectFileId(item) ?? index}`} style={styles.personRow}>
-                    <Text style={styles.personName} numberOfLines={2}>
-                      {fileLabel(item)}
-                    </Text>
-                    <Pressable
-                      onPress={() => askRemoveFile("document", item)}
-                      disabled={deleteLoading}
-                      hitSlop={8}
-                      style={styles.removeBtn}
-                    >
-                      <FallBackImage
-                        source={Images.CloseIcon}
-                        style={styles.removeIcon}
-                        resizeMode="contain"
-                      />
-                    </Pressable>
-                  </View>
-                ))
+                <View style={styles.docGrid}>
+                  {files.documents.map((item, index) => {
+                    const fileId = projectFileId(item);
+                    const removing =
+                      deleteLoading &&
+                      pendingFile?.type === "document" &&
+                      String(projectFileId(pendingFile.file) ?? "") === String(fileId ?? "");
+                    const thumb = projectFileThumb(item);
+                    const shortName = projectFileShortLabel(item, 10);
+                    return (
+                      <View key={`doc-${fileId ?? index}`} style={styles.docCell}>
+                        <View style={styles.docThumb}>
+                          <FallBackImage
+                            source={
+                              thumb.kind === "image" && thumb.uri
+                                ? { uri: thumb.uri }
+                                : thumb.kind === "pdf"
+                                  ? Images.PdfLogo
+                                  : Images.documentlogo
+                            }
+                            fallbackImage={thumb.kind === "pdf" ? Images.PdfLogo : Images.documentlogo}
+                            style={thumb.kind === "image" ? styles.docThumbImage : styles.docThumbIcon}
+                            resizeMode={thumb.kind === "image" ? "cover" : "contain"}
+                          />
+                          <Pressable
+                            onPress={() => askRemoveFile("document", item)}
+                            disabled={deleteLoading}
+                            hitSlop={6}
+                            style={styles.photoRemove}
+                          >
+                            {removing ? (
+                              <ActivityIndicator size="small" color={Colors.dicline} />
+                            ) : (
+                              <FallBackImage
+                                source={Images.CloseIcon}
+                                style={styles.photoRemoveIcon}
+                                resizeMode="contain"
+                              />
+                            )}
+                          </Pressable>
+                        </View>
+                        {shortName ? (
+                          <Text style={styles.docName} numberOfLines={1}>
+                            {shortName}
+                          </Text>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
               ) : (
                 <Text style={styles.emptyText}>{t("No documents")}</Text>
               )}
@@ -487,15 +521,20 @@ export default function EditProjectScreen() {
                     {photos.length ? (
                       <View style={styles.photoGrid}>
                         {photos.map((photo, index) => {
-                          const url = fileUrl(photo);
+                          const url = projectFileUrl(photo);
+                          const fileId = projectFileId(photo);
+                          const removing =
+                            deleteLoading &&
+                            pendingFile?.type === "photo" &&
+                            String(projectFileId(pendingFile.file) ?? "") === String(fileId ?? "");
                           return (
-                            <View key={`photo-${projectFileId(photo) ?? index}`} style={styles.photoCell}>
+                            <View key={`photo-${fileId ?? index}`} style={styles.photoCell}>
                               {url ? (
                                 <Image source={{ uri: url }} style={styles.photo} />
                               ) : (
                                 <View style={styles.photoFallback}>
                                   <Text style={styles.emptyText} numberOfLines={2}>
-                                    {fileLabel(photo)}
+                                    {projectFileLabel(photo, t("Photos"))}
                                   </Text>
                                 </View>
                               )}
@@ -505,18 +544,22 @@ export default function EditProjectScreen() {
                                 hitSlop={6}
                                 style={styles.photoRemove}
                               >
-                                <FallBackImage
-                                  source={Images.CloseIcon}
-                                  style={styles.photoRemoveIcon}
-                                  resizeMode="contain"
-                                />
+                                {removing ? (
+                                  <ActivityIndicator size="small" color={Colors.dicline} />
+                                ) : (
+                                  <FallBackImage
+                                    source={Images.CloseIcon}
+                                    style={styles.photoRemoveIcon}
+                                    resizeMode="contain"
+                                  />
+                                )}
                               </Pressable>
                             </View>
                           );
                         })}
                       </View>
                     ) : (
-                      <Text style={styles.emptyText}>--</Text>
+                      <Text style={styles.emptyText}>{t("No photos")}</Text>
                     )}
                   </View>
                 ))
@@ -526,13 +569,16 @@ export default function EditProjectScreen() {
             </View>
           </KeyboardAwareScrollView>
 
-          <View style={[styles.footer, { paddingBottom: Math.max(footerPadding, 12) }]}>
+          <View style={[styles.footer, { paddingBottom: footerPadding }]}>
             <TouchableOpacity
-              style={[styles.submitBtn, saving && styles.submitBtnDisabled]}
+              style={[
+                styles.submitBtn,
+                (saving || !hasChanges) && styles.submitBtnDisabled,
+              ]}
               onPress={() => {
                 void handleSave();
               }}
-              disabled={saving}
+              disabled={saving || !hasChanges}
             >
               {saving ? (
                 <ActivityIndicator color={Colors.white} size="small" />
@@ -608,7 +654,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     gap: 18,
-    paddingBottom: 30,
+    paddingBottom: 16,
   },
   imageWrap: {
     width: 88,
@@ -718,6 +764,40 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     paddingVertical: 8,
   },
+  docGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  docCell: {
+    width: 72,
+    alignItems: "center",
+    gap: 6,
+  },
+  docThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 4,
+    backgroundColor: Colors.gray,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  docThumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  docThumbIcon: {
+    width: 28,
+    height: 28,
+  },
+  docName: {
+    width: "100%",
+    textAlign: "center",
+    fontSize: 11,
+    fontFamily: FONTS.OutfitMedium,
+    color: Colors.black,
+  },
   personAvatar: {
     width: 40,
     height: 40,
@@ -763,21 +843,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 15,
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     backgroundColor: Colors.white,
   },
   submitBtn: {
     backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
+    borderRadius: 7,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 52,
+    minHeight: 48,
   },
   submitBtnDisabled: {
-    opacity: 0.85,
+    opacity: 0.45,
   },
   submitBtnText: {
     color: Colors.white,

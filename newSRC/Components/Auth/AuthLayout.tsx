@@ -1,6 +1,5 @@
 import { type ReactNode, useContext, useEffect } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -21,7 +20,6 @@ type AuthLayoutProps = {
   children: ReactNode;
   footer?: ReactNode;
   backLink?: ReactNode;
-  loading?: boolean;
   toastMessage?: string | null;
   headerLogo?: "default" | "company";
 };
@@ -32,7 +30,6 @@ export default function AuthLayout({
   children,
   footer,
   backLink,
-  loading = false,
   toastMessage,
   headerLogo = "company",
 }: AuthLayoutProps) {
@@ -77,12 +74,6 @@ export default function AuthLayout({
           </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </View>
-
-      {loading ? (
-        <View style={styles.loaderOverlay}>
-          <ActivityIndicator size="large" color={AppColors.white} />
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -127,12 +118,5 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: 20,
     gap: 4,
-  },
-  loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 30,
   },
 });

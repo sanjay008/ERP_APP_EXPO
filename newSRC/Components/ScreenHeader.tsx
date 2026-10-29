@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   backBtn: {
     width: LIST_UI.buttonSize,
     height: LIST_UI.buttonSize,
-    borderRadius: LIST_UI.radiusButton,
+    borderRadius: 4,
     backgroundColor: LIST_UI.surface,
     borderWidth: 1,
     borderColor: LIST_UI.border,
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   actionBtn: {
     width: LIST_UI.buttonSize,
     height: LIST_UI.buttonSize,
-    borderRadius: LIST_UI.radiusButton,
+    borderRadius: 4,
     backgroundColor: AppColors.primary,
     alignItems: "center",
     justifyContent: "center",

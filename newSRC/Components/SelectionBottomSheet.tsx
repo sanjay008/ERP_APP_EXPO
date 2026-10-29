@@ -35,6 +35,8 @@ type Props = {
   options: SheetOption[];
   selectedIds: Array<string | number>;
   multiSelect?: boolean;
+  showSearch?: boolean;
+  compact?: boolean;
   onClose: () => void;
   onConfirm: (selected: SheetOption[]) => void;
 };
@@ -47,6 +49,8 @@ function SelectionBottomSheet({
   options,
   selectedIds,
   multiSelect = false,
+  showSearch = true,
+  compact = false,
   onClose,
   onConfirm,
 }: Props) {
@@ -158,6 +162,7 @@ function SelectionBottomSheet({
       <Animated.View
         style={[
           styles.sheet,
+          compact ? styles.sheetCompact : null,
           { paddingBottom: footerPadding, transform: [{ translateY }] },
         ]}
       >
@@ -171,18 +176,20 @@ function SelectionBottomSheet({
         />
         </View>
 
-        <SearchBox
-          value={search}
-          onChangeText={setSearch}
-          placeholder={searchPlaceholder}
-          onClear={() => setSearch("")}
-          containerStyle={styles.searchBox}
-        />
+        {showSearch ? (
+          <SearchBox
+            value={search}
+            onChangeText={setSearch}
+            placeholder={searchPlaceholder}
+            onClear={() => setSearch("")}
+            containerStyle={styles.searchBox}
+          />
+        ) : null}
 
         <FlatList
           data={filteredOptions}
           keyExtractor={(item) => String(item.id)}
-          style={styles.list}
+          style={compact ? styles.listCompact : styles.list}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -195,6 +202,7 @@ function SelectionBottomSheet({
             <SelectionListItem
               label={item.label}
               selected={isSelected(item.id)}
+              showCheckbox={multiSelect}
               onPress={() => toggleItem(item)}
             />
           )}
@@ -225,10 +233,14 @@ const styles = StyleSheet.create({
   sheet: {
     height: SHEET_HEIGHT,
     backgroundColor: Colors.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  sheetCompact: {
+    height: undefined,
+    maxHeight: SCREEN_HEIGHT * 0.5,
   },
   header: {
     flexDirection: "row",
@@ -255,6 +267,9 @@ const styles = StyleSheet.create({
   list: {
     flex: 1,
   },
+  listCompact: {
+    flexGrow: 0,
+  },
   listContent: {
     paddingBottom: 8,
   },
@@ -270,7 +285,7 @@ const styles = StyleSheet.create({
   confirmBtn: {
     marginTop: 10,
     backgroundColor: Colors.primary,
-    borderRadius: 10,
+    borderRadius: 7,
     minHeight: 52,
     alignItems: "center",
     justifyContent: "center",

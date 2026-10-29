@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: "#EEEEEE",
-    borderRadius: 8,
+    borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 10,
     minHeight: 40,
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: AppColors.white,
-    borderRadius: 12,
+    borderRadius: 4,
     maxHeight: 280,
     overflow: "hidden",
   },

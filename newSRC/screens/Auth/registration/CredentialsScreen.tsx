@@ -100,7 +100,6 @@ export default function CredentialsScreen() {
     <AuthLayout
       title={t("Registration")}
       subtitle={t("Smart solutions for modern businesses")}
-      loading={isLoading}
       toastMessage={toastMessage}
       headerLogo="company"
       backLink={
@@ -112,6 +111,7 @@ export default function CredentialsScreen() {
             title={isWhatsapp ? t("Get OTP") : t("Continue")}
             onPress={handleContinue}
             disabled={!canSubmit}
+            loading={isLoading}
           />
           <SwitchMethodButton
             label={isWhatsapp ? t("Switch to Email Address") : t("Switch to WhatsApp Number")}
