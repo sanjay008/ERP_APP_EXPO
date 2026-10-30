@@ -229,6 +229,7 @@ export default function ProjectDetailsScreen() {
   const canReadProjects = hasPermission(permissions, "project_mobile", "read");
   const canUpdateProject = hasPermission(permissions, "project_mobile", "update");
   const canReadTasks = hasPermission(permissions, "tasks_mobile", "read");
+  const canReadTickets = hasPermission(permissions, "project_ticket_mobile", "read");
 
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -402,7 +403,7 @@ export default function ProjectDetailsScreen() {
             </View>
           </SectionCard>
 
-          <SectionTitle title={t("Customer")} onAdd={() => void openRelationOptions("owner")} />
+          <SectionTitle title={t("Customer")} onAdd={canUpdateProject ? () => void openRelationOptions("owner") : undefined} />
           <SectionCard>
             {data?.relaties_owners?.length ? (
               data.relaties_owners.map((person, index) => (
@@ -413,7 +414,7 @@ export default function ProjectDetailsScreen() {
             )}
           </SectionCard>
 
-          <SectionTitle title={t("Contact")} onAdd={() => void openRelationOptions("contact")} />
+          <SectionTitle title={t("Contact")} onAdd={canUpdateProject ? () => void openRelationOptions("contact") : undefined} />
           <SectionCard>
             {data?.connected_relaties?.length ? (
               data.connected_relaties.map((person, index) => (
@@ -424,7 +425,7 @@ export default function ProjectDetailsScreen() {
             )}
           </SectionCard>
 
-          <SectionTitle title={t("Executor")} onAdd={() => void openRelationOptions("member")} />
+          <SectionTitle title={t("Executor")} onAdd={canUpdateProject ? () => void openRelationOptions("member") : undefined} />
           <SectionCard>
             {data?.relaties_members?.length ? (
               data.relaties_members.map((person, index) => (
@@ -461,31 +462,35 @@ export default function ProjectDetailsScreen() {
             </>
           ) : null}
 
-          <SectionTitle title={t("Ticket")} />
-          <SectionCard>
-            {data?.ticket_data?.length ? (
-              data.ticket_data.map((ticket, index) => (
-                <TicketCard
-                  key={`ticket-${ticket.id ?? index}`}
-                  ticket={ticket}
-                  onPress={
-                    ticket.id != null
-                      ? () =>
-                          router.push({
-                            pathname: "/(app)/tickets/[id]",
-                            params: {
-                              id: String(ticket.id),
-                              item: JSON.stringify(ticket),
-                            },
-                          })
-                      : undefined
-                  }
-                />
-              ))
-            ) : (
-              <Text style={styles.emptyMeta}>--</Text>
-            )}
-          </SectionCard>
+          {canReadTickets ? (
+            <>
+              <SectionTitle title={t("Ticket")} />
+              <SectionCard>
+                {data?.ticket_data?.length ? (
+                  data.ticket_data.map((ticket, index) => (
+                    <TicketCard
+                      key={`ticket-${ticket.id ?? index}`}
+                      ticket={ticket}
+                      onPress={
+                        ticket.id != null
+                          ? () =>
+                              router.push({
+                                pathname: "/(app)/tickets/[id]",
+                                params: {
+                                  id: String(ticket.id),
+                                  item: JSON.stringify(ticket),
+                                },
+                              })
+                          : undefined
+                      }
+                    />
+                  ))
+                ) : (
+                  <Text style={styles.emptyMeta}>--</Text>
+                )}
+              </SectionCard>
+            </>
+          ) : null}
 
           <ProjectFilesSections projectId={params.id || data?.id} />
           <View style={styles.bottomSpacer} />
