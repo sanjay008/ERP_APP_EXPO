@@ -1,5 +1,6 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   StyleSheet,
@@ -20,8 +21,12 @@ import { hasPermission } from "../../utils/permissionFlags";
 import {
   addProjectRelation,
   fetchProjectDetails,
+  fetchProjectFiles,
   fetchProjectRelationOptions,
   formatProjectBudget,
+  projectFileId,
+  projectPersonId,
+  sendProjectMail,
   type ProjectActivity,
   type ProjectDetail,
   type ProjectPerson,
@@ -43,7 +48,7 @@ import { CONNECTION_UI } from "../../utils/connectionTheme";
 import { LIST_CARD_SHADOW, listScreenStyles } from "../../utils/listScreenStyles";
 import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
 import { Images } from "../../utils/Images";
-import ProjectFilesSections from "./ProjectFilesSections";
+import ProjectFilesSections, { projectFileLabel } from "./ProjectFilesSections";
 
 function formatDisplayDate(dateString?: string) {
   if (!dateString) return "--";
@@ -230,12 +235,19 @@ export default function ProjectDetailsScreen() {
   const canUpdateProject = hasPermission(permissions, "project_mobile", "update");
   const canReadTasks = hasPermission(permissions, "tasks_mobile", "read");
   const canReadTickets = hasPermission(permissions, "project_ticket_mobile", "read");
+  const canSendMail =
+    hasPermission(permissions, "project_send_mail_mobile", "create") || canUpdateProject;
 
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [optionType, setOptionType] = useState<ProjectRelationType | null>(null);
   const [optionRecords, setOptionRecords] = useState<ProjectRelationRecord[]>([]);
   const [optionsBusy, setOptionsBusy] = useState(false);
+  const [mailContactSheetVisible, setMailContactSheetVisible] = useState(false);
+  const [mailDocumentSheetVisible, setMailDocumentSheetVisible] = useState(false);
+  const [mailContactId, setMailContactId] = useState<string | number | null>(null);
+  const [mailFileOptions, setMailFileOptions] = useState<SheetOption[]>([]);
+  const [mailBusy, setMailBusy] = useState(false);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const loadDetails = useCallback(async (silent = false) => {
@@ -309,6 +321,131 @@ export default function ProjectDetailsScreen() {
     label: item.name,
     raw: item,
   }));
+
+  const mailContactOptions: SheetOption[] = useMemo(
+    () =>
+      (data?.connected_relaties ?? [])
+        .map((person) => {
+          const id = projectPersonId(person);
+          if (id == null || id === "") return null;
+          return {
+            id,
+            label: person.display_name || String(id),
+            raw: person,
+          };
+        })
+        .filter((item): item is SheetOption => item != null),
+    [data?.connected_relaties]
+  );
+
+  const openSendMail = () => {
+    if (mailBusy) return;
+    if (!mailContactOptions.length) {
+      setToast({
+        top: 45,
+        text: t("No contact available"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+    setMailContactId(null);
+    setMailFileOptions([]);
+    setMailDocumentSheetVisible(false);
+    setMailContactSheetVisible(true);
+  };
+
+  const openMailDocuments = async (contactId: string | number) => {
+    if (!params.id) return;
+    try {
+      setMailBusy(true);
+      setMailContactId(contactId);
+      const files = await fetchProjectFiles(params.id);
+      const options: SheetOption[] = [
+        ...files.documents.map((item) => {
+          const id = projectFileId(item);
+          return id == null || id === ""
+            ? null
+            : {
+                id,
+                label: projectFileLabel(item, t("Document")),
+                raw: item,
+              };
+        }),
+        ...files.photos.map((item) => {
+          const id = projectFileId(item);
+          return id == null || id === ""
+            ? null
+            : {
+                id,
+                label: projectFileLabel(item, t("Photo")),
+                raw: item,
+              };
+        }),
+      ].filter((item): item is SheetOption => item != null);
+
+      if (!options.length) {
+        setToast({
+          top: 45,
+          text: t("No documents available"),
+          type: "error",
+          visible: true,
+        });
+        setMailContactId(null);
+        return;
+      }
+
+      setMailFileOptions(options);
+      setMailDocumentSheetVisible(true);
+    } catch (error) {
+      setMailContactId(null);
+      setToast({
+        top: 45,
+        text: parseApiError(error, t("Something went wrong")).message,
+        type: "error",
+        visible: true,
+      });
+    } finally {
+      setMailBusy(false);
+    }
+  };
+
+  const submitSendMail = async (
+    contactId: string | number,
+    documentIds: Array<string | number>
+  ) => {
+    if (!params.id || mailBusy) return;
+    if (!documentIds.length) {
+      setToast({
+        top: 45,
+        text: t("Select at least one document"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+    try {
+      setMailBusy(true);
+      const response = await sendProjectMail(params.id, contactId, documentIds);
+      setToast({
+        top: 45,
+        text: response.message || t("Mail sent"),
+        type: "success",
+        visible: true,
+      });
+      setMailContactId(null);
+      setMailFileOptions([]);
+    } catch (error) {
+      setToast({
+        top: 45,
+        text: parseApiError(error, t("Something went wrong")).message,
+        type: "error",
+        visible: true,
+      });
+    } finally {
+      setMailBusy(false);
+    }
+  };
 
   const headerTitle = data?.project_name || params.title || t("Projects");
 
@@ -403,7 +540,7 @@ export default function ProjectDetailsScreen() {
             </View>
           </SectionCard>
 
-          <SectionTitle title={t("Customer")} onAdd={canUpdateProject ? () => void openRelationOptions("owner") : undefined} />
+          <SectionTitle title={t("Owner")} onAdd={canUpdateProject ? () => void openRelationOptions("owner") : undefined} />
           <SectionCard>
             {data?.relaties_owners?.length ? (
               data.relaties_owners.map((person, index) => (
@@ -425,7 +562,7 @@ export default function ProjectDetailsScreen() {
             )}
           </SectionCard>
 
-          <SectionTitle title={t("Executor")} onAdd={canUpdateProject ? () => void openRelationOptions("member") : undefined} />
+          <SectionTitle title={t("Member")} onAdd={canUpdateProject ? () => void openRelationOptions("member") : undefined} />
           <SectionCard>
             {data?.relaties_members?.length ? (
               data.relaties_members.map((person, index) => (
@@ -492,6 +629,27 @@ export default function ProjectDetailsScreen() {
             </>
           ) : null}
 
+          {canSendMail ? (
+            <Pressable
+              style={[styles.sendMailBtn, mailBusy && styles.sendMailBtnDisabled]}
+              onPress={openSendMail}
+              disabled={mailBusy}
+            >
+              {mailBusy ? (
+                <ActivityIndicator color={AppColors.white} />
+              ) : (
+                <>
+                  <FallBackImage
+                    source={Images.ConnectionMail}
+                    style={styles.sendMailIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.sendMailBtnText}>{t("Send mail")}</Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
+
           <ProjectFilesSections projectId={params.id || data?.id} />
           <View style={styles.bottomSpacer} />
         </KeyboardAwareScrollView>
@@ -503,8 +661,8 @@ export default function ProjectDetailsScreen() {
           optionType === "contact"
             ? t("Select contact")
             : optionType === "member"
-              ? t("Select executor")
-              : t("Select customer")
+              ? t("Select member")
+              : t("Select owner")
         }
         searchPlaceholder={t("Search")}
         confirmText={t("Done")}
@@ -515,6 +673,47 @@ export default function ProjectDetailsScreen() {
           const record = selected[0]?.raw as ProjectRelationRecord | undefined;
           if (record) void addRelation(record);
           else setOptionType(null);
+        }}
+      />
+
+      <SelectionBottomSheet
+        visible={mailContactSheetVisible}
+        title={t("Select contact")}
+        searchPlaceholder={t("Search")}
+        confirmText={t("Done")}
+        options={mailContactOptions}
+        selectedIds={mailContactId != null ? [mailContactId] : []}
+        onClose={() => setMailContactSheetVisible(false)}
+        onConfirm={(selected) => {
+          const contactId = selected[0]?.id;
+          setMailContactSheetVisible(false);
+          if (contactId != null && contactId !== "") {
+            void openMailDocuments(contactId);
+          }
+        }}
+      />
+
+      <SelectionBottomSheet
+        visible={mailDocumentSheetVisible}
+        title={t("Select documents")}
+        searchPlaceholder={t("Search")}
+        confirmText={t("Send")}
+        options={mailFileOptions}
+        selectedIds={[]}
+        multiSelect
+        onClose={() => {
+          setMailDocumentSheetVisible(false);
+          setMailContactId(null);
+          setMailFileOptions([]);
+        }}
+        onConfirm={(selected) => {
+          const contactId = mailContactId;
+          setMailDocumentSheetVisible(false);
+          if (contactId == null) return;
+          void submitSendMail(
+            contactId,
+            selected.map((item) => item.id)
+          );
         }}
       />
     </View>
@@ -536,6 +735,31 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 24,
+  },
+  sendMailBtn: {
+    marginTop: 8,
+    marginBottom: CONNECTION_UI.cardGap,
+    backgroundColor: AppColors.primary,
+    borderRadius: 7,
+    minHeight: 48,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  sendMailBtnDisabled: {
+    opacity: 0.85,
+  },
+  sendMailIcon: {
+    width: 18,
+    height: 18,
+    tintColor: AppColors.white,
+  },
+  sendMailBtnText: {
+    color: AppColors.white,
+    fontSize: 15,
+    fontFamily: FONTS.LexendSemiBold,
   },
   loaderWrap: {
     flex: 1,

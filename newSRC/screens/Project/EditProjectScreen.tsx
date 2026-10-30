@@ -462,9 +462,9 @@ export default function EditProjectScreen() {
               {errors.budject ? <Text style={styles.errorText}>{errors.budject}</Text> : null}
             </View>
 
-            {renderPeople(t("Customer"), detail?.relaties_owners, "owner")}
+            {renderPeople(t("Owner"), detail?.relaties_owners, "owner")}
             {renderPeople(t("Contact"), detail?.connected_relaties, "contact")}
-            {renderPeople(t("Executor"), detail?.relaties_members, "member")}
+            {renderPeople(t("Member"), detail?.relaties_members, "member")}
 
             <View style={styles.block}>
               <Text style={styles.blockTitle}>{t("Documents")}</Text>

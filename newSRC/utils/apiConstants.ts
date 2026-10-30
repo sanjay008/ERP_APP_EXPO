@@ -151,6 +151,7 @@ export const apiConstants = {
   projectPhotoFolders: `${baseUrlnew}projects/photo-folders`,
   projectUploadPhoto: `${baseUrlnew}projects/upload-photo`,
   projectRemoveFile: `${baseUrlnew}projects/remove-file`,
+  projectSendMail: `${baseUrlnew}projects/send-mail`,
 };
 
 export default apiConstants;

@@ -674,3 +674,32 @@ export async function uploadProjectPhoto(
 
   return response;
 }
+
+export async function sendProjectMail(
+  projectId: string | number,
+  contactRelatieId: string | number,
+  documentIds: Array<string | number>
+) {
+  if (!documentIds.length) {
+    throw toAppApiError({ message: "No document selected" });
+  }
+
+  const ctx = await getUserContext();
+  const response = await ApiService(apiConstants.projectSendMail, {
+    includeToken: true,
+    customData: {
+      relaties_id: ctx.relaties_id,
+      role: ctx.role,
+      user_id: ctx.user_id,
+      project_id: projectId,
+      contact_relatie_id: contactRelatieId,
+      "document_ids[]": documentIds,
+    },
+  });
+
+  if (!response?.status) {
+    throw toAppApiError(response);
+  }
+
+  return response;
+}
