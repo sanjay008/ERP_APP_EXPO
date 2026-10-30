@@ -14,3 +14,8 @@ export function dedupeAsync<T>(key: string, fn: () => Promise<T>): Promise<T> {
   inflight.set(key, promise);
   return promise;
 }
+
+/** Drop pending shared requests after account/session switch. */
+export function clearInflightRequests() {
+  inflight.clear();
+}

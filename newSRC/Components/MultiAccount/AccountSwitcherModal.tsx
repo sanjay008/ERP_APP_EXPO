@@ -52,6 +52,8 @@ import {
   type SavedAccount,
   type SessionSnapshot,
 } from "../../utils/multiAccountSession";
+import { useAppData } from "../../context/AppDataContext";
+import { clearInflightRequests } from "../../utils/requestDedupe";
 import { mergeApiCountries } from "../../utils/countryListHelper";
 import { getApiErrorMessage, isPhoneValid, isValidEmail } from "../../utils/validation";
 import { storeData } from "../../utils/storeData";
@@ -133,6 +135,7 @@ export default function AccountSwitcherModal({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const { modalPadding } = useScreenInsets();
+  const { clearAppData } = useAppData();
 
   const [step, setStep] = useState<Step>("list");
   const [accounts, setAccounts] = useState<SavedAccount[]>([]);
@@ -446,6 +449,9 @@ export default function AccountSwitcherModal({ visible, onClose }: Props) {
       await upsertCurrentAccountFromSession();
       await applySessionSnapshot(account.session);
       await upsertCurrentAccountFromSession();
+      // Drop previous-account cache + in-flight calls (get_status race after switch).
+      clearAppData();
+      clearInflightRequests();
       await reloadApp(router);
     } catch (err) {
       setError(getApiErrorMessage(err, t("Something went wrong")));

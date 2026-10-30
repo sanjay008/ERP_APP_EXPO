@@ -8,12 +8,14 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import SearchBox from "../../Components/SearchBox";
 import OptionBottomSheet, { type OptionItem } from "../../Components/OptionBottomSheet";
+import { useAppData } from "../../context/AppDataContext";
 import { fetchTasks, type TaskItem } from "../../services/taskService";
+import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -27,8 +29,12 @@ type SortField = "name" | "status" | "id" | "date";
 export default function TaskListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, scrollPadding, fabBottom } = useScreenInsets();
   const params = useLocalSearchParams<{ color?: string; title?: string }>();
+
+  const canReadTasks = hasPermission(permissions, "tasks_mobile", "read");
+  const canCreateTasks = hasPermission(permissions, "tasks_mobile", "create");
 
   const [items, setItems] = useState<TaskItem[]>([]);
   const [search, setSearch] = useState("");
@@ -154,6 +160,10 @@ export default function TaskListScreen() {
     </Pressable>
   );
 
+  if (!canReadTasks) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <ScreenHeader
@@ -200,12 +210,14 @@ export default function TaskListScreen() {
         />
       </ListScreenBody>
 
-      <Pressable
-        style={[styles.fab, { bottom: fabBottom }]}
-        onPress={() => router.push("/(app)/tasks/create")}
-      >
-        <Ionicons name="add" size={32} color="#FFFFFF" />
-      </Pressable>
+      {canCreateTasks ? (
+        <Pressable
+          style={[styles.fab, { bottom: fabBottom }]}
+          onPress={() => router.push("/(app)/tasks/create")}
+        >
+          <Ionicons name="add" size={32} color="#FFFFFF" />
+        </Pressable>
+      ) : null}
 
       <OptionBottomSheet
         visible={sortSheetVisible}

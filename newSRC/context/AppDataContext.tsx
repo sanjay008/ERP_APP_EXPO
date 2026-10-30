@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import apiClient from "../utils/client";
 import { apiConstants } from "../utils/apiConstants";
+import { clearInflightRequests } from "../utils/requestDedupe";
 import { getData } from "../utils/storeData";
 import { Keys } from "../utils/Keys";
 
@@ -84,6 +85,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     cacheOwnerRef.current = "";
     permissionsRef.current = null;
     permissionRequestRef.current = null;
+    clearInflightRequests();
     setPermissions(null);
   }, []);
 

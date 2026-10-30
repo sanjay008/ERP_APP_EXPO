@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import SelectionBottomSheet from "../../Components/SelectionBottomSheet";
 import OptionBottomSheet from "../../Components/OptionBottomSheet";
@@ -20,6 +20,8 @@ import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
 import { RegisterBackContext } from "../../constants/GoBackContext";
+import { useAppData } from "../../context/AppDataContext";
+import { hasPermission } from "../../utils/permissionFlags";
 import {
   collectProjectFolderNames,
   fetchProjectDetails,
@@ -60,9 +62,14 @@ function sameValue(left: unknown, right: unknown) {
 export default function EditProjectScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, footerPadding } = useScreenInsets();
   const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id?: string }>();
+
+  const canUpdateProject = hasPermission(permissions, "project_mobile", "update");
+  const canDeleteDocument = hasPermission(permissions, "project_documents_mobile", "delete");
+  const canDeletePhoto = hasPermission(permissions, "project_photos_mobile", "delete");
 
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
@@ -168,7 +175,7 @@ export default function EditProjectScreen() {
   };
 
   const handleSave = async () => {
-    if (!params.id || !detail) return;
+    if (!canUpdateProject || !params.id || !detail) return;
     const name = projectName.trim();
     if (!name) {
       setErrors({ project_name: t("This field is required") });
@@ -363,6 +370,10 @@ export default function EditProjectScreen() {
 
   const imageUri = image?.uri || detail?.project_image;
 
+  if (!canUpdateProject) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <ScreenHeader title={t("Edit project")} onBack={() => router.back()} compact />
@@ -483,22 +494,24 @@ export default function EditProjectScreen() {
                             style={thumb.kind === "image" ? styles.docThumbImage : styles.docThumbIcon}
                             resizeMode={thumb.kind === "image" ? "cover" : "contain"}
                           />
-                          <Pressable
-                            onPress={() => askRemoveFile("document", item)}
-                            disabled={deleteLoading}
-                            hitSlop={6}
-                            style={styles.photoRemove}
-                          >
-                            {removing ? (
-                              <ActivityIndicator size="small" color={Colors.dicline} />
-                            ) : (
-                              <FallBackImage
-                                source={Images.CloseIcon}
-                                style={styles.photoRemoveIcon}
-                                resizeMode="contain"
-                              />
-                            )}
-                          </Pressable>
+                          {canDeleteDocument ? (
+                            <Pressable
+                              onPress={() => askRemoveFile("document", item)}
+                              disabled={deleteLoading}
+                              hitSlop={6}
+                              style={styles.photoRemove}
+                            >
+                              {removing ? (
+                                <ActivityIndicator size="small" color={Colors.dicline} />
+                              ) : (
+                                <FallBackImage
+                                  source={Images.CloseIcon}
+                                  style={styles.photoRemoveIcon}
+                                  resizeMode="contain"
+                                />
+                              )}
+                            </Pressable>
+                          ) : null}
                         </View>
                         {title ? (
                           <Text style={styles.docName} numberOfLines={1}>
@@ -548,22 +561,24 @@ export default function EditProjectScreen() {
                                     </Text>
                                   </View>
                                 )}
-                                <Pressable
-                                  onPress={() => askRemoveFile("photo", photo)}
-                                  disabled={deleteLoading}
-                                  hitSlop={6}
-                                  style={styles.photoRemove}
-                                >
-                                  {removing ? (
-                                    <ActivityIndicator size="small" color={Colors.dicline} />
-                                  ) : (
-                                    <FallBackImage
-                                      source={Images.CloseIcon}
-                                      style={styles.photoRemoveIcon}
-                                      resizeMode="contain"
-                                    />
-                                  )}
-                                </Pressable>
+                                {canDeletePhoto ? (
+                                  <Pressable
+                                    onPress={() => askRemoveFile("photo", photo)}
+                                    disabled={deleteLoading}
+                                    hitSlop={6}
+                                    style={styles.photoRemove}
+                                  >
+                                    {removing ? (
+                                      <ActivityIndicator size="small" color={Colors.dicline} />
+                                    ) : (
+                                      <FallBackImage
+                                        source={Images.CloseIcon}
+                                        style={styles.photoRemoveIcon}
+                                        resizeMode="contain"
+                                      />
+                                    )}
+                                  </Pressable>
+                                ) : null}
                               </View>
                               {title ? (
                                 <Text style={styles.docName} numberOfLines={1}>
@@ -594,12 +609,12 @@ export default function EditProjectScreen() {
             <TouchableOpacity
               style={[
                 styles.submitBtn,
-                (saving || !hasChanges) && styles.submitBtnDisabled,
+                (saving || !hasChanges || !canUpdateProject) && styles.submitBtnDisabled,
               ]}
               onPress={() => {
                 void handleSave();
               }}
-              disabled={saving || !hasChanges}
+              disabled={saving || !hasChanges || !canUpdateProject}
             >
               {saving ? (
                 <ActivityIndicator color={Colors.white} size="small" />

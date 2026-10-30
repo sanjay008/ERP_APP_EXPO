@@ -21,6 +21,7 @@ import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
 import { LIST_UI } from "../../utils/connectionTheme";
 import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
+import { formatPhoneDisplay } from "../../utils/validation";
 import {
   getDocumentUploadProgress,
 } from "../Documents/types";
@@ -101,14 +102,17 @@ function buildDetailRows(
 
   const whatsapp =
     relaties?.country_code && relaties?.mobiel
-      ? `+${relaties.country_code} ${relaties.mobiel}`
+      ? formatPhoneDisplay(String(relaties.country_code), String(relaties.mobiel))
       : "";
 
   const phone =
     relaties?.contact_telefoon_country_code != null &&
     relaties?.telefoon != null &&
     String(relaties.telefoon).trim() !== ""
-      ? `+${relaties.contact_telefoon_country_code} ${relaties.telefoon}`
+      ? formatPhoneDisplay(
+          String(relaties.contact_telefoon_country_code),
+          String(relaties.telefoon)
+        )
       : "";
 
   return [

@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
+import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
   fetchQuickRelations,
   type QuickRelationItem,
 } from "../../services/relationService";
+import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -24,8 +26,12 @@ function iconColor(color?: string) {
 export default function RelationScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, scrollPadding } = useScreenInsets();
   const params = useLocalSearchParams<{ title?: string; color?: string }>();
+
+  const canReadRelations = hasPermission(permissions, "quick_relations_mobile", "read");
+  const canCreateRelations = hasPermission(permissions, "quick_relations_mobile", "create");
 
   const [items, setItems] = useState<QuickRelationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +65,7 @@ export default function RelationScreen() {
   }, [loadData]);
 
   const openForm = (item: QuickRelationItem) => {
+    if (!canCreateRelations) return;
     router.push({
       pathname: "/(app)/relation/form",
       params: {
@@ -73,8 +80,16 @@ export default function RelationScreen() {
     });
   };
 
+  if (!canReadRelations) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
+
   const renderItem = ({ item }: { item: QuickRelationItem }) => (
-    <Pressable style={styles.card} onPress={() => openForm(item)}>
+    <Pressable
+      style={[styles.card, !canCreateRelations && styles.cardDisabled]}
+      onPress={() => openForm(item)}
+      disabled={!canCreateRelations}
+    >
       <View style={styles.iconBox}>
         <Ionicons name="people-outline" size={22} color={iconColor(item.color)} />
       </View>
@@ -146,6 +161,9 @@ const styles = StyleSheet.create({
     ...listScreenStyles.rowCard,
     paddingVertical: LIST_UI.cardPaddingVertical,
     paddingHorizontal: LIST_UI.cardPaddingHorizontal,
+  },
+  cardDisabled: {
+    opacity: 0.55,
   },
   iconBox: {
     width: LIST_UI.iconSize,

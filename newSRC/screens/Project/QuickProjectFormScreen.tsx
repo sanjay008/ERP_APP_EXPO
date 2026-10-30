@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import FormSelectField from "../../Components/FormSelectField";
 import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
@@ -18,6 +18,7 @@ import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
 import { RegisterBackContext } from "../../constants/GoBackContext";
+import { useAppData } from "../../context/AppDataContext";
 import {
   fetchQuickCreateForm,
   requestProjectsRefresh,
@@ -26,6 +27,7 @@ import {
   type QuickCreatePerson,
 } from "../../services/projectService";
 import { AppApiError, parseApiError, type ParsedApiError } from "../../utils/apiError";
+import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { Colors } from "../../utils/colors";
 import { FONTS } from "../../utils/FONTS";
@@ -40,8 +42,13 @@ function optionId(value: string | number) {
 export default function QuickProjectFormScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, footerPadding } = useScreenInsets();
   const { setToast } = useContext(RegisterBackContext);
+
+  const canCreateQuickProject =
+    hasPermission(permissions, "quick_project_mobile", "create") ||
+    hasPermission(permissions, "quick_project_mobile", "read");
 
   const [companies, setCompanies] = useState<QuickCreateCompany[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,6 +243,10 @@ export default function QuickProjectFormScreen() {
       {errors[name] ? <Text style={styles.errorText}>{errors[name]}</Text> : null}
     </View>
   );
+
+  if (!canCreateQuickProject) {
+    return <Redirect href="/(app)/projects" />;
+  }
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

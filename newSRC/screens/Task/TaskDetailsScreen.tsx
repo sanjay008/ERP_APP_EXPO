@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
@@ -17,7 +17,9 @@ import FallBackImage from "../../Components/FallBackImage";
 import AuthButton from "../../Components/Auth/AuthButton";
 import FormModal from "../../Components/FormModal";
 import NoteCard from "../../Components/NoteCard";
+import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
+import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
 import {
   addTaskComment,
@@ -36,8 +38,10 @@ import { Images } from "../../utils/Images";
 
 export default function TaskDetailsScreen() {
   const { t } = useTranslation();
+  const { permissions } = useAppData();
   const { top, scrollPadding } = useScreenInsets();
   const params = useLocalSearchParams<{ id: string; color?: string }>();
+  const canReadTasks = hasPermission(permissions, "tasks_mobile", "read");
 
   const [data, setData] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,6 +130,10 @@ export default function TaskDetailsScreen() {
       setSubmitting(false);
     }
   };
+
+  if (!canReadTasks) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

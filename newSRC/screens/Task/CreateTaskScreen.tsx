@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { parseApiError } from "../../utils/apiError";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
@@ -21,6 +21,7 @@ import SelectionBottomSheet, {
   type SheetOption,
 } from "../../Components/SelectionBottomSheet";
 import OptionBottomSheet, { type OptionItem } from "../../Components/OptionBottomSheet";
+import { useAppData } from "../../context/AppDataContext";
 import {
   createTask,
   fetchCustomers,
@@ -29,6 +30,7 @@ import {
   type RelatieOption,
 } from "../../services/taskService";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
+import { hasPermission } from "../../utils/permissionFlags";
 import { getKeyboardAvoidBehavior, useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -106,7 +108,9 @@ async function pickTaskDocument(): Promise<TaskFile | null> {
 export default function CreateTaskScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, scrollPadding } = useScreenInsets();
+  const canCreateTasks = hasPermission(permissions, "tasks_mobile", "create");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -224,6 +228,10 @@ export default function CreateTaskScreen() {
       setSubmitting(false);
     }
   };
+
+  if (!canCreateTasks) {
+    return <Redirect href="/(app)/tasks" />;
+  }
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>

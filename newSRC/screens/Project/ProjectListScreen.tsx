@@ -9,13 +9,14 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import SearchBox from "../../Components/SearchBox";
 import FallBackImage from "../../Components/FallBackImage";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
 import OptionBottomSheet, { type OptionItem } from "../../Components/OptionBottomSheet";
+import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
   consumeProjectsRefresh,
@@ -24,6 +25,7 @@ import {
   type ProjectItem,
   type ProjectStatus,
 } from "../../services/projectService";
+import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -49,8 +51,14 @@ function StatusBadge({ status }: { status?: ProjectStatus }) {
 export default function ProjectListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, scrollPadding, modalPadding } = useScreenInsets();
   const params = useLocalSearchParams<{ color?: string }>();
+
+  const canReadProjects = hasPermission(permissions, "project_mobile", "read");
+  const canCreateQuickProject =
+    hasPermission(permissions, "quick_project_mobile", "create") ||
+    hasPermission(permissions, "quick_project_mobile", "read");
 
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
@@ -71,16 +79,19 @@ export default function ProjectListScreen() {
       else setLoading(true);
       clearApiError();
 
-      const [projectsRes, statusRes] = await Promise.all([
-        fetchProjects(),
-        fetchProjectStatuses(),
-      ]);
-
+      // Status is secondary — don't fail the whole list if get_status races after account switch.
+      const projectsRes = await fetchProjects();
       if (projectsRes?.status && Array.isArray(projectsRes.data)) {
         setItems(projectsRes.data);
       }
-      if (statusRes?.status && Array.isArray(statusRes.data)) {
-        setStatuses(statusRes.data);
+
+      try {
+        const statusRes = await fetchProjectStatuses();
+        if (statusRes?.status && Array.isArray(statusRes.data)) {
+          setStatuses(statusRes.data);
+        }
+      } catch {
+        setStatuses([]);
       }
     } catch (error) {
       captureApiError(error);
@@ -180,6 +191,10 @@ export default function ProjectListScreen() {
     </Pressable>
   );
 
+  if (!canReadProjects) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <ScreenHeader
@@ -189,7 +204,9 @@ export default function ProjectListScreen() {
           setDraftStatusIds(selectedStatusIds);
           setFilterVisible(true);
         }}
-        createOnPress={() => router.push("/(app)/projects/create")}
+        createOnPress={
+          canCreateQuickProject ? () => router.push("/(app)/projects/create") : undefined
+        }
       />
 
       <View style={styles.searchWrap}>

@@ -4,9 +4,13 @@ import { checkNetworkConnection } from "./networkStatus";
 import { createOfflineError, isEmptyListResponse, parseApiError, toAppApiError } from "./apiError";
 import { dedupeAsync } from "./requestDedupe";
 
-function buildApiServiceKey(endpoint: string, options: ApiOptions): string {
+function buildApiServiceKey(
+  endpoint: string,
+  options: ApiOptions,
+  tokenFingerprint = ""
+): string {
   const parts: Record<string, string> = {};
-  if (options.includeToken) parts._token = "1";
+  if (options.includeToken) parts._token = tokenFingerprint || "1";
   Object.entries(options.customData ?? {}).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
     if (typeof value === "object" && "uri" in (value as object)) return;
@@ -37,7 +41,20 @@ const ApiService = async <T = unknown>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<ApiResponse<T>> => {
-  const dedupeKey = buildApiServiceKey(endpoint, options);
+  // Fingerprint active session so account-switch cannot reuse another user's in-flight call.
+  let tokenFingerprint = "";
+  if (options.includeToken) {
+    try {
+      const verify_token = await getData("USERDATA");
+      const token = String(verify_token?.data?.user?.verify_token || "");
+      const userId = String(verify_token?.data?.user?.id || "");
+      const relatiesId = String(verify_token?.data?.relaties?.id || "");
+      tokenFingerprint = `${userId}:${relatiesId}:${token.slice(-8)}`;
+    } catch {
+      tokenFingerprint = "";
+    }
+  }
+  const dedupeKey = buildApiServiceKey(endpoint, options, tokenFingerprint);
   return dedupeAsync(dedupeKey, () => performApiRequest<T>(endpoint, options));
 };
 

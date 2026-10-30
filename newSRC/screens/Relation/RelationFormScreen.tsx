@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import BoxIcon from "../../Components/BoxIcon";
 import FormSelectField from "../../Components/FormSelectField";
@@ -24,6 +24,8 @@ import SelectionBottomSheet, { type SheetOption } from "../../Components/Selecti
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
 import { RegisterBackContext } from "../../constants/GoBackContext";
+import { useAppData } from "../../context/AppDataContext";
+import { hasPermission } from "../../utils/permissionFlags";
 import {
   findCountryCodeField,
   formatDisplayDate,
@@ -73,6 +75,7 @@ function fieldIcon(field: QuickRelationField) {
 export default function RelationFormScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -85,6 +88,9 @@ export default function RelationFormScreen() {
     is_customer_client?: string;
     is_employee_of_company?: string;
   }>();
+
+  const canReadRelations = hasPermission(permissions, "quick_relations_mobile", "read");
+  const canCreateRelations = hasPermission(permissions, "quick_relations_mobile", "create");
 
   const item = useRelationFormStore((state) => state.item);
   const form = useRelationFormStore((state) => state.form);
@@ -163,7 +169,12 @@ export default function RelationFormScreen() {
     return () => reset();
   }, [reset]);
 
+  if (!canReadRelations || !canCreateRelations) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
+
   const handleSave = async () => {
+    if (!canCreateRelations) return;
     const result = await save();
     if (result.ok) {
       setToast({

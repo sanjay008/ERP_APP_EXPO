@@ -5,7 +5,8 @@ export const isValidEmail = (value: string): boolean => {
 
 export const normalizeCountryCode = (code: string): string => {
   if (!code) return "";
-  return code.replace(/[^\d+]/g, "").replace(/^\+?/, "");
+  // Digits only — strips any leading "+" so display can add exactly one.
+  return String(code).replace(/\D/g, "");
 };
 
 export const isPhoneValid = (countryCode: string, phone: string): boolean => {

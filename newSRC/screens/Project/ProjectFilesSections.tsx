@@ -7,6 +7,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +21,7 @@ import OptionBottomSheet from "../../Components/OptionBottomSheet";
 import SimpleBox from "../../Components/SimpleBox";
 import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
 import { RegisterBackContext } from "../../constants/GoBackContext";
+import { useAppData } from "../../context/AppDataContext";
 import {
   collectProjectFolderNames,
   createProjectPhotoFolders,
@@ -33,6 +35,7 @@ import {
 } from "../../services/projectService";
 import { getDropboxDirectLink } from "../../services/eventService";
 import { parseApiError } from "../../utils/apiError";
+import { hasPermission } from "../../utils/permissionFlags";
 import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
 import { pickTicketDocuments } from "../../utils/ticketFilePicker";
 import { pickProjectPhotos } from "../../utils/projectPhotoPicker";
@@ -148,10 +151,16 @@ function AddButton({
 
 export default function ProjectFilesSections({ projectId }: Props) {
   const { t } = useTranslation();
+  const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
   const { footerPadding } = useScreenInsets();
   const keyboardHeight = useKeyboardHeight();
   const loadedOnce = useRef(false);
+
+  const canReadDocuments = hasPermission(permissions, "project_documents_mobile", "read");
+  const canCreateDocuments = hasPermission(permissions, "project_documents_mobile", "create");
+  const canReadPhotos = hasPermission(permissions, "project_photos_mobile", "read");
+  const canCreatePhotos = hasPermission(permissions, "project_photos_mobile", "create");
 
   const [files, setFiles] = useState<ProjectFilesData>({
     folders: [],
@@ -165,9 +174,11 @@ export default function ProjectFilesSections({ projectId }: Props) {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [uploadFolder, setUploadFolder] = useState("");
   const [sourceSheet, setSourceSheet] = useState(false);
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<ProjectFileItem | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<ProjectUploadFile[]>([]);
-  const [photoMetaOpen, setPhotoMetaOpen] = useState(false);
+  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
+  const [photoSheetStep, setPhotoSheetStep] = useState<"actions" | "details">("actions");
   const [photoTitle, setPhotoTitle] = useState("");
   const [photoComment, setPhotoComment] = useState("");
 
@@ -271,14 +282,23 @@ export default function ProjectFilesSections({ projectId }: Props) {
     }
   };
 
-  const startPhotoUpload = (folder: string) => {
-    if (busy || !folder) return;
-    setUploadFolder(folder);
+  const startPhotoUpload = (folder?: string) => {
+    if (busy) return;
+    if (!folderNames.length) {
+      setToast({
+        top: 45,
+        text: t("Create a folder first"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+    setUploadFolder(folder || folderNames[0] || "");
     setSourceSheet(true);
   };
 
-  const pickPhotos = async (source: "camera" | "gallery", folder: string) => {
-    if (projectId == null || projectId === "" || !folder) return;
+  const pickPhotos = async (source: "camera" | "gallery") => {
+    if (projectId == null || projectId === "") return;
 
     const picked = await pickProjectPhotos(source);
     if (!picked.ok) {
@@ -300,25 +320,44 @@ export default function ProjectFilesSections({ projectId }: Props) {
         name: asset.name || `photo_${Date.now()}.jpg`,
       }))
     );
-    setUploadFolder(folder);
+    if (!uploadFolder && folderNames[0]) {
+      setUploadFolder(folderNames[0]);
+    }
     setPhotoTitle("");
     setPhotoComment("");
-    setPhotoMetaOpen(true);
+    setPhotoSheetStep("actions");
+    setPhotoSheetOpen(true);
   };
 
-  const confirmPhotoUpload = async () => {
-    if (projectId == null || projectId === "" || !uploadFolder || !pendingPhotos.length) return;
+  const confirmPhotoUpload = async (withDetails: boolean) => {
+    if (projectId == null || projectId === "" || !pendingPhotos.length) return;
+    const folder = uploadFolder.trim();
+    if (!folder) {
+      setToast({
+        top: 45,
+        text: t("Select folder"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
 
     try {
-      setBusyKey(`photo:${uploadFolder}`);
-      setPhotoMetaOpen(false);
-      await uploadProjectPhoto(projectId, uploadFolder, pendingPhotos, {
-        title: photoTitle,
-        comment: photoComment,
-      });
+      setBusyKey(`photo:${folder}`);
+      setPhotoSheetOpen(false);
+      setFolderPickerOpen(false);
+      await uploadProjectPhoto(
+        projectId,
+        folder,
+        pendingPhotos,
+        withDetails
+          ? { title: photoTitle, comment: photoComment }
+          : undefined
+      );
       setPendingPhotos([]);
       setPhotoTitle("");
       setPhotoComment("");
+      setPhotoSheetStep("actions");
       await loadFiles(true);
     } catch (error) {
       showError(error);
@@ -327,23 +366,53 @@ export default function ProjectFilesSections({ projectId }: Props) {
     }
   };
 
-  const closePhotoMeta = () => {
+  const closePhotoSheet = () => {
     if (busyKey?.startsWith("photo:")) return;
-    setPhotoMetaOpen(false);
+    setPhotoSheetOpen(false);
+    setFolderPickerOpen(false);
     setPendingPhotos([]);
     setPhotoTitle("");
     setPhotoComment("");
+    setPhotoSheetStep("actions");
   };
+
+  const renderFolderPicker = () => (
+    <View style={styles.folderSelectBlock}>
+      <Text style={styles.label}>{t("Upload to folder")}</Text>
+      <Pressable
+        style={styles.folderSelect}
+        onPress={() => {
+          if (!folderNames.length) return;
+          setFolderPickerOpen(true);
+        }}
+      >
+        <View style={styles.folderSelectIcon}>
+          <Ionicons name="folder-outline" size={18} color={AppColors.primary} />
+        </View>
+        <Text
+          style={[styles.folderSelectText, !uploadFolder && styles.folderSelectPlaceholder]}
+          numberOfLines={1}
+        >
+          {uploadFolder || t("Select folder")}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color={AppColors.subtitle} />
+      </Pressable>
+    </View>
+  );
 
   return (
     <>
+      {canReadDocuments ? (
+        <>
       <View style={styles.sectionTitleRow}>
         <Text style={styles.sectionTitle}>{t("Documents")}</Text>
-        <AddButton
-          onPress={() => void uploadDocuments()}
-          loading={busyKey === "document"}
-          disabled={busy && busyKey !== "document"}
-        />
+        {canCreateDocuments ? (
+          <AddButton
+            onPress={() => void uploadDocuments()}
+            loading={busyKey === "document"}
+            disabled={busy && busyKey !== "document"}
+          />
+        ) : null}
       </View>
       <View style={styles.card}>
         {loading ? (
@@ -395,16 +464,22 @@ export default function ProjectFilesSections({ projectId }: Props) {
         )}
         <OverlayLoader visible={busyKey === "document"} />
       </View>
+        </>
+      ) : null}
 
+      {canReadPhotos ? (
+        <>
       <View style={styles.sectionTitleRow}>
         <Text style={styles.sectionTitle}>{t("Photos")}</Text>
-        <AddButton
-          onPress={() => {
-            if (!busy) setCreateFolderOpen(true);
-          }}
-          loading={busyKey === "folder"}
-          disabled={busy && busyKey !== "folder"}
-        />
+        {canCreatePhotos ? (
+          <AddButton
+            onPress={() => {
+              if (!busy) setCreateFolderOpen(true);
+            }}
+            loading={busyKey === "folder"}
+            disabled={busy && busyKey !== "folder"}
+          />
+        ) : null}
       </View>
       <View style={styles.card}>
         {loading ? (
@@ -419,11 +494,13 @@ export default function ProjectFilesSections({ projectId }: Props) {
                 <Text style={styles.folderTitle} numberOfLines={1}>
                   {name}
                 </Text>
-                <AddButton
-                  onPress={() => startPhotoUpload(name)}
-                  loading={busyKey === `photo:${name}`}
-                  disabled={busy && busyKey !== `photo:${name}`}
-                />
+                {canCreatePhotos ? (
+                  <AddButton
+                    onPress={() => startPhotoUpload(name)}
+                    loading={busyKey === `photo:${name}`}
+                    disabled={busy && busyKey !== `photo:${name}`}
+                  />
+                ) : null}
               </View>
               {photos.length ? (
                 <View style={styles.photoGrid}>
@@ -473,6 +550,8 @@ export default function ProjectFilesSections({ projectId }: Props) {
           <Text style={styles.empty}>{t("No photos")}</Text>
         )}
       </View>
+        </>
+      ) : null}
 
       <Modal
         visible={createFolderOpen}
@@ -552,31 +631,42 @@ export default function ProjectFilesSections({ projectId }: Props) {
         visible={sourceSheet}
         title={t("Choose Camera or Gallery")}
         options={[
-          { id: "camera", label: t("Camera") },
-          { id: "gallery", label: t("Gallery") },
+          { id: "camera", label: t("Camera (1 photo, crop)") },
+          { id: "gallery", label: t("Gallery (multiple)") },
         ]}
         onClose={() => setSourceSheet(false)}
         onConfirm={(option) => {
           setSourceSheet(false);
           if (option.id === "camera" || option.id === "gallery") {
-            void pickPhotos(option.id, uploadFolder);
+            void pickPhotos(option.id);
           }
         }}
       />
 
+      <OptionBottomSheet
+        visible={folderPickerOpen}
+        title={t("Select folder")}
+        options={folderNames.map((name) => ({ id: name, label: name }))}
+        onClose={() => setFolderPickerOpen(false)}
+        onConfirm={(option) => {
+          setUploadFolder(option.id);
+          setFolderPickerOpen(false);
+        }}
+      />
+
       <Modal
-        visible={photoMetaOpen}
+        visible={photoSheetOpen}
         transparent
         animationType="fade"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={closePhotoMeta}
+        onRequestClose={closePhotoSheet}
       >
         <KeyboardAvoidingView
           style={styles.modalRoot}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <Pressable style={styles.modalBackdrop} onPress={closePhotoMeta} />
+          <Pressable style={styles.modalBackdrop} onPress={closePhotoSheet} />
           <View
             style={[
               styles.modalSheet,
@@ -584,35 +674,114 @@ export default function ProjectFilesSections({ projectId }: Props) {
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("Photo details")}</Text>
+              <View style={styles.modalTitleWrap}>
+                <Text style={styles.modalTitle}>
+                  {photoSheetStep === "actions"
+                    ? t("Upload photos")
+                    : t("Add title & comment")}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  {pendingPhotos.length === 1
+                    ? t("1 photo selected")
+                    : t("{{count}} photos selected", { count: pendingPhotos.length })}
+                </Text>
+              </View>
               <SimpleBox
                 Icon={Images.CloseIcon}
-                onPress={closePhotoMeta}
+                onPress={closePhotoSheet}
                 style={styles.closeBtn}
                 IconStyle={{ width: 14, height: 14, tintColor: Colors.white }}
               />
             </View>
-            <Text style={styles.label}>{t("Title")}</Text>
-            <TextInput
-              style={styles.input}
-              value={photoTitle}
-              onChangeText={setPhotoTitle}
-              placeholder={t("Optional")}
-              placeholderTextColor={Colors.placeholder}
-            />
-            <Text style={styles.label}>{t("Comment")}</Text>
-            <TextInput
-              style={[styles.input, styles.commentInput]}
-              value={photoComment}
-              onChangeText={setPhotoComment}
-              placeholder={t("Optional")}
-              placeholderTextColor={Colors.placeholder}
-              multiline
-              textAlignVertical="top"
-            />
-            <Pressable style={styles.saveBtn} onPress={() => void confirmPhotoUpload()}>
-              <Text style={styles.saveBtnText}>{t("Upload")}</Text>
-            </Pressable>
+
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.photoSheetBody}
+            >
+              {pendingPhotos.length ? (
+                <View style={styles.pendingRow}>
+                  {pendingPhotos.slice(0, 4).map((photo, index) => (
+                    <View key={`${photo.uri}-${index}`} style={styles.pendingThumb}>
+                      <Image source={{ uri: photo.uri }} style={styles.pendingImage} />
+                    </View>
+                  ))}
+                  {pendingPhotos.length > 4 ? (
+                    <View style={[styles.pendingThumb, styles.pendingMore]}>
+                      <Text style={styles.pendingMoreText}>+{pendingPhotos.length - 4}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {renderFolderPicker()}
+
+              {photoSheetStep === "actions" ? (
+                <View style={styles.actionList}>
+                  <Pressable
+                    style={styles.actionCard}
+                    onPress={() => void confirmPhotoUpload(false)}
+                  >
+                    <View style={[styles.actionIconWrap, styles.actionIconPrimary]}>
+                      <Ionicons name="cloud-upload-outline" size={20} color={AppColors.white} />
+                    </View>
+                    <View style={styles.actionTextWrap}>
+                      <Text style={styles.actionTitle}>{t("Upload now")}</Text>
+                      <Text style={styles.actionHint}>{t("Skip title and comment")}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.actionCard}
+                    onPress={() => setPhotoSheetStep("details")}
+                  >
+                    <View style={styles.actionIconWrap}>
+                      <Ionicons name="create-outline" size={20} color={AppColors.primary} />
+                    </View>
+                    <View style={styles.actionTextWrap}>
+                      <Text style={styles.actionTitle}>{t("Add title & comment")}</Text>
+                      <Text style={styles.actionHint}>{t("Optional — you can leave empty")}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.detailsWrap}>
+                  <Text style={styles.optionalNote}>{t("Title and comment are optional")}</Text>
+                  <Text style={styles.label}>{t("Title")}</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={photoTitle}
+                    onChangeText={setPhotoTitle}
+                    placeholder={t("Optional")}
+                    placeholderTextColor={Colors.placeholder}
+                  />
+                  <Text style={styles.label}>{t("Comment")}</Text>
+                  <TextInput
+                    style={[styles.input, styles.commentInput]}
+                    value={photoComment}
+                    onChangeText={setPhotoComment}
+                    placeholder={t("Optional")}
+                    placeholderTextColor={Colors.placeholder}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                  <Pressable
+                    style={styles.saveBtn}
+                    onPress={() => void confirmPhotoUpload(true)}
+                  >
+                    <Text style={styles.saveBtnText}>{t("Upload")}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.secondaryBtn}
+                    onPress={() => setPhotoSheetStep("actions")}
+                  >
+                    <Text style={styles.secondaryBtnText}>{t("Back")}</Text>
+                  </Pressable>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -743,17 +912,135 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 4,
   },
-  modalTitle: {
+  modalTitleWrap: {
     flex: 1,
+    gap: 2,
+    paddingRight: 8,
+  },
+  modalTitle: {
     fontSize: 16,
     fontFamily: FONTS.OutfitSemiBold,
     color: Colors.black,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    fontFamily: FONTS.LexendRegular,
+    color: AppColors.subtitle,
   },
   closeBtn: {
     width: 36,
     height: 36,
     backgroundColor: Colors.dicline,
     borderColor: Colors.dicline,
+  },
+  photoSheetBody: {
+    gap: 12,
+    paddingBottom: 4,
+  },
+  folderSelectBlock: {
+    gap: 8,
+  },
+  folderSelect: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 7,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: AppColors.white,
+  },
+  folderSelectIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    backgroundColor: "#EAF1FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  folderSelectText: {
+    flex: 1,
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
+  },
+  folderSelectPlaceholder: {
+    color: Colors.placeholder,
+  },
+  pendingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pendingThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 4,
+    overflow: "hidden",
+    backgroundColor: CONNECTION_UI.surface,
+  },
+  pendingImage: {
+    width: "100%",
+    height: "100%",
+  },
+  pendingMore: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EEF1F5",
+  },
+  pendingMoreText: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 12,
+    color: AppColors.black,
+  },
+  actionList: {
+    gap: 10,
+  },
+  actionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#EEF1F5",
+    borderRadius: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: "#FBFCFD",
+  },
+  actionIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+    backgroundColor: "#EAF1FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionIconPrimary: {
+    backgroundColor: AppColors.primary,
+  },
+  actionTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  actionTitle: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 14,
+    color: AppColors.black,
+  },
+  actionHint: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 12,
+    color: AppColors.subtitle,
+  },
+  detailsWrap: {
+    gap: 10,
+  },
+  optionalNote: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 12,
+    color: AppColors.subtitle,
+    marginBottom: 2,
   },
   label: {
     fontFamily: FONTS.LexendSemiBold,
@@ -785,6 +1072,19 @@ const styles = StyleSheet.create({
     color: AppColors.white,
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 15,
+  },
+  secondaryBtn: {
+    minHeight: 44,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryBtnText: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
   },
   folderCardFirst: {
     marginTop: 0,

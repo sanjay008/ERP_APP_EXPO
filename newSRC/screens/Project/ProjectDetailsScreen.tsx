@@ -7,14 +7,16 @@ import {
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
 import SelectionBottomSheet, { type SheetOption } from "../../Components/SelectionBottomSheet";
 import { RegisterBackContext } from "../../constants/GoBackContext";
+import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
+import { hasPermission } from "../../utils/permissionFlags";
 import {
   addProjectRelation,
   fetchProjectDetails,
@@ -30,7 +32,11 @@ import {
   type ProjectTicket,
 } from "../../services/projectService";
 import { parseApiError } from "../../utils/apiError";
-import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
+import {
+  ANDROID_MIN_BOTTOM_INSET,
+  useKeyboardHeight,
+  useScreenInsets,
+} from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { CONNECTION_UI } from "../../utils/connectionTheme";
@@ -208,11 +214,21 @@ function TicketCard({
 export default function ProjectDetailsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { permissions } = useAppData();
   const { top, bottom } = useScreenInsets();
   const keyboardHeight = useKeyboardHeight();
+  // KASV often ignores content paddingBottom on Android — pad the screen shell instead.
+  const safeBottom =
+    Platform.OS === "android"
+      ? Math.max(bottom, ANDROID_MIN_BOTTOM_INSET)
+      : Math.max(bottom, 16);
   const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id: string; color?: string; title?: string }>();
   const skipNextFocusLoad = React.useRef(true);
+
+  const canReadProjects = hasPermission(permissions, "project_mobile", "read");
+  const canUpdateProject = hasPermission(permissions, "project_mobile", "update");
+  const canReadTasks = hasPermission(permissions, "tasks_mobile", "read");
 
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -295,15 +311,22 @@ export default function ProjectDetailsScreen() {
 
   const headerTitle = data?.project_name || params.title || t("Projects");
 
+  if (!canReadProjects) {
+    return <Redirect href="/(app)/(tabs)/menu" />;
+  }
+
   return (
-    <View style={[styles.container, { paddingTop: top }]}>
+    <View style={[styles.container, { paddingTop: top, paddingBottom: safeBottom }]}>
       <ScreenHeader
         title={headerTitle}
-        editOnPress={() =>
-          router.push({
-            pathname: "/(app)/projects/edit",
-            params: { id: String(params.id || data?.id || "") },
-          })
+        editOnPress={
+          canUpdateProject
+            ? () =>
+                router.push({
+                  pathname: "/(app)/projects/edit",
+                  params: { id: String(params.id || data?.id || "") },
+                })
+            : undefined
         }
       />
 
@@ -316,7 +339,7 @@ export default function ProjectDetailsScreen() {
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: bottom + 16 + keyboardHeight },
+            { paddingBottom: 24 + keyboardHeight },
           ]}
           enableOnAndroid
           enableAutomaticScroll
@@ -423,16 +446,20 @@ export default function ProjectDetailsScreen() {
             </>
           ) : null}
 
-          <SectionTitle title={t("Tasks")} />
-          <SectionCard>
-            {data?.task_data?.length ? (
-              data.task_data.map((task, index) => (
-                <TaskCard key={`task-${index}`} task={task} />
-              ))
-            ) : (
-              <Text style={styles.emptyMeta}>--</Text>
-            )}
-          </SectionCard>
+          {canReadTasks ? (
+            <>
+              <SectionTitle title={t("Tasks")} />
+              <SectionCard>
+                {data?.task_data?.length ? (
+                  data.task_data.map((task, index) => (
+                    <TaskCard key={`task-${index}`} task={task} />
+                  ))
+                ) : (
+                  <Text style={styles.emptyMeta}>--</Text>
+                )}
+              </SectionCard>
+            </>
+          ) : null}
 
           <SectionTitle title={t("Ticket")} />
           <SectionCard>
@@ -461,6 +488,7 @@ export default function ProjectDetailsScreen() {
           </SectionCard>
 
           <ProjectFilesSections projectId={params.id || data?.id} />
+          <View style={styles.bottomSpacer} />
         </KeyboardAwareScrollView>
       )}
 
@@ -500,6 +528,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: CONNECTION_UI.screenPadding,
     paddingTop: CONNECTION_UI.listTop,
+  },
+  bottomSpacer: {
+    height: 24,
   },
   loaderWrap: {
     flex: 1,
