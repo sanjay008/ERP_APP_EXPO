@@ -22,7 +22,7 @@
       "icon": "./newSRC/assets/Images/appicon.png",
       "bundleIdentifier": "com.erpportaal.app",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "16",
+      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
@@ -43,7 +43,7 @@
         "foregroundImage": "./newSRC/assets/Images/appicon.png"
       },
       "edgeToEdgeEnabled": true,
-      "versionCode": 16,
+      "versionCode": 64,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
