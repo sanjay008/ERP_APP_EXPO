@@ -2,7 +2,7 @@
   "expo": {
     "name": "ERP Portaal",
     "slug": "erpportaal",
-    "version": "1.0.0",
+    "version": "26.11.1",
     "orientation": "portrait",
     "icon": "./newSRC/assets/Images/appicon.png",
     "scheme": "erpportaal",
@@ -22,14 +22,19 @@
       "icon": "./newSRC/assets/Images/appicon.png",
       "bundleIdentifier": "com.erpportaal.app",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "buildNumber": "16",
       "supportsTablet": true,
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"],
+        "UIBackgroundModes": [
+          "remote-notification",
+          "remote-notification"
+        ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
         },
-        "NSLocationWhenInUseUsageDescription": "Allow ERP Portaal to use your location for check-in and check-out."
+        "NSLocationWhenInUseUsageDescription": "Allow ERP Portaal to use your location for check-in and check-out.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -38,6 +43,7 @@
         "foregroundImage": "./newSRC/assets/Images/appicon.png"
       },
       "edgeToEdgeEnabled": true,
+      "versionCode": 16,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
