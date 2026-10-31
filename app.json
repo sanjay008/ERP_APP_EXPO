@@ -23,7 +23,7 @@
       "bundleIdentifier": "com.erpportaal.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "1",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification",
