@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -11,6 +10,8 @@ import {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "./ScreenHeader";
+import FormModal from "./FormModal";
+import HtmlContent from "./HtmlContent";
 import ListScreenBody, { listEmptyFeedback } from "./ListScreenBody";
 import OptionBottomSheet, { type OptionItem } from "./OptionBottomSheet";
 import { useApiErrorState } from "../hooks/useApiErrorState";
@@ -59,6 +60,7 @@ export default function TimeRegistrationTableScreen({
   const [month, setMonth] = useState(currentMonth);
   const [yearSheetVisible, setYearSheetVisible] = useState(false);
   const [monthSheetVisible, setMonthSheetVisible] = useState(false);
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const yearOptions: OptionItem[] = useMemo(
@@ -127,9 +129,7 @@ export default function TimeRegistrationTableScreen({
         <Pressable
           style={[styles.cell, styles.overtimeCell, overtimeBg ? { backgroundColor: overtimeBg } : null]}
           onPress={() => {
-            if (item.description) {
-              Alert.alert(t("Omschrijving"), item.description);
-            }
+            if (item.description) setDescriptionHtml(item.description);
           }}
         >
           <Text style={styles.overtimeText}>
@@ -218,6 +218,18 @@ export default function TimeRegistrationTableScreen({
           setMonthSheetVisible(false);
         }}
       />
+
+      <FormModal
+        visible={Boolean(descriptionHtml)}
+        onClose={() => setDescriptionHtml("")}
+        scrollable
+      >
+        <Text style={styles.descriptionTitle}>{t("Omschrijving")}</Text>
+        <HtmlContent html={descriptionHtml} variant="description" />
+        <Pressable style={styles.descriptionClose} onPress={() => setDescriptionHtml("")}>
+          <Text style={styles.descriptionCloseText}>{t("Close")}</Text>
+        </Pressable>
+      </FormModal>
     </View>
   );
 }
@@ -280,5 +292,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "left",
     color: AppColors.black,
+  },
+  descriptionTitle: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 16,
+    color: AppColors.black,
+    marginBottom: 8,
+  },
+  descriptionClose: {
+    marginTop: 16,
+    backgroundColor: AppColors.primary,
+    borderRadius: 8,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  descriptionCloseText: {
+    fontFamily: FONTS.LexendSemiBold,
+    color: AppColors.white,
   },
 });

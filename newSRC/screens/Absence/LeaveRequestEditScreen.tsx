@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Platform,
   Pressable,
@@ -185,7 +184,12 @@ export default function LeaveRequestEditScreen() {
       setToast({ top: 45, text: t("Updated successfully"), type: "success", visible: true });
       router.back();
     } catch (error) {
-      Alert.alert(t("Error"), error instanceof Error ? error.message : t("Something went wrong"));
+      setToast({
+        top: 45,
+        text: error instanceof Error ? error.message : t("Something went wrong"),
+        type: "error",
+        visible: true,
+      });
     } finally {
       setSubmitting(false);
     }

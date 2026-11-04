@@ -3,6 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from "rea
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
+import HtmlContent from "../../Components/HtmlContent";
 import SearchBox from "../../Components/SearchBox";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
@@ -76,9 +77,9 @@ export default function AnnouncementListScreen() {
         {item.title || t("Announcements")}
       </Text>
       {item.description ? (
-        <Text style={styles.preview} numberOfLines={2}>
-          {removeHtmlTags(item.description)}
-        </Text>
+        <View style={styles.preview}>
+          <HtmlContent html={item.description} variant="note" />
+        </View>
       ) : null}
       <Text style={styles.meta}>{formatHrDate(item.created_at)}</Text>
     </Pressable>
@@ -141,10 +142,8 @@ const styles = StyleSheet.create({
   },
   preview: {
     marginTop: 6,
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: AppColors.subtitle,
+    maxHeight: 40,
+    overflow: "hidden",
   },
   meta: {
     marginTop: 8,

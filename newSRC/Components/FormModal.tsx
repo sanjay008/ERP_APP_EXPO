@@ -1,9 +1,6 @@
 import React from "react";
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -11,7 +8,10 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { useScreenInsets, getKeyboardAvoidBehavior } from "../utils/screenInsets";
+import Animated from "react-native-reanimated";
+import { useScreenInsets } from "../utils/screenInsets";
+import { useKeyboardLiftStyle } from "../utils/keyboardShift";
+import { ignoreHardwareBack } from "../utils/modalBack";
 import { AppColors } from "../utils/theme";
 
 type Props = ModalProps & {
@@ -20,6 +20,8 @@ type Props = ModalProps & {
   children: React.ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   scrollable?: boolean;
+  /** When true, Android back and the backdrop do not dismiss the modal. */
+  protected?: boolean;
 };
 
 export default function FormModal({
@@ -28,46 +30,39 @@ export default function FormModal({
   children,
   contentStyle,
   scrollable = false,
+  protected: isProtected = true,
   animationType = "fade",
   transparent = true,
   ...rest
 }: Props) {
   const { modalPadding } = useScreenInsets();
+  const liftStyle = useKeyboardLiftStyle(visible);
 
   return (
     <Modal
+      {...rest}
       visible={visible}
       transparent={transparent}
       animationType={animationType}
-      onRequestClose={onClose}
       statusBarTranslucent
       navigationBarTranslucent
-      {...rest}
+      onRequestClose={isProtected ? ignoreHardwareBack : onClose}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={getKeyboardAvoidBehavior()}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-      >
-        <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable
-            style={[styles.card, { marginBottom: modalPadding }, contentStyle]}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {scrollable ? (
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-              >
-                {children}
-              </ScrollView>
-            ) : (
-              children
-            )}
-          </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
+      <View style={styles.backdrop}>
+        <Animated.View style={[styles.card, { marginBottom: modalPadding }, liftStyle, contentStyle]}>
+          {scrollable ? (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            children
+          )}
+        </Animated.View>
+      </View>
     </Modal>
   );
 }

@@ -30,6 +30,8 @@ export type ScheduleItem = {
 
 export type CheckInOutData = {
   id?: string | number;
+  project_id?: string | number;
+  relaties_id?: string | number;
   check_in_out?: number | string;
   display_name?: string;
   emp_contract_name?: string;
@@ -39,6 +41,8 @@ export type CheckInOutData = {
   original_end_time?: string;
   day?: string;
   current_date?: string;
+  project_names?: { project_name?: string };
+  currect_address?: string;
 };
 
 export type BreakTimeOption = {
@@ -66,13 +70,7 @@ export function isCheckedInFlag(value: unknown) {
 }
 
 export function isAlreadyCheckedInError(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error && "message" in error
-        ? String((error as { message?: unknown }).message || "")
-        : String(error || "");
-  const text = message.toLowerCase();
+  const text = readErrorMessage(error);
   return (
     text.includes("already checked in") ||
     text.includes("checkout first") ||
@@ -80,22 +78,31 @@ export function isAlreadyCheckedInError(error: unknown) {
   );
 }
 
-export function getTodayFormats() {
-  const today = new Date();
-  const options: Intl.DateTimeFormatOptions = {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  };
-  const formatted = today.toLocaleDateString("en-US", options);
-  const [month, day, year] = formatted.split(/[\s,]+/);
+export function isAlreadyCheckedOutError(error: unknown) {
+  const text = readErrorMessage(error);
+  return text.includes("already checked out") || text.includes("checkin first") || text.includes("check in first");
+}
+
+function readErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error && "message" in error
+        ? String((error as { message?: unknown }).message || "")
+        : String(error || "");
+  return message.toLowerCase();
+}
+
+const CICO_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Project CICO requires `d M Y` (03 Nov 2026) and `H:i` (09:15), independent of device locale. */
+export function getTodayFormats(now = new Date()) {
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = CICO_MONTHS[now.getMonth()];
+  const year = now.getFullYear();
   const displayDate = `${day} ${month} ${year}`;
-  const apiDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const currentTime = today.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const apiDate = `${year}-${String(now.getMonth() + 1).padStart(2, "0")}-${day}`;
+  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   return { displayDate, apiDate, currentTime };
 }
 
@@ -373,15 +380,20 @@ export async function performProjectCheckIn(params: {
   address: string;
 }) {
   const { project, currentDate, currentTime, address } = params;
+  const ctx = await getUserContext();
+  // Backend field is project_relaties_id (old APK). relaties_id alone does not link the employee.
   const response = await apiClient.post<ApiBody<unknown>>(apiConstants.storeprojectcheckin, {
     todays_date: currentDate,
     project_id: project.id,
     currect_time: currentTime,
     currect_address: address,
-    working_address: project.gmaps_working_address,
+    working_address: project.gmaps_working_address || "",
+    project_relaties_id: ctx.relaties_id,
+    user_id: ctx.user_id,
+    role: ctx.role,
     check_in_out: "1",
-    hour_rate: project.hour_rate,
-    cost: project.travel_cost,
+    hour_rate: project.hour_rate ?? "",
+    cost: project.travel_cost ?? 0,
   });
 
   const body = response.data;
@@ -399,14 +411,23 @@ export async function performProjectCheckOut(params: {
   currentTime: string;
 }) {
   const { checkData, selectedBreak, description, currentDate, currentTime } = params;
+  const ctx = await getUserContext();
+  // Status payload has row id and project_id. Checkout must send the project, same as old APK when only id existed.
+  const projectId =
+    checkData.project_id != null && String(checkData.project_id) !== ""
+      ? checkData.project_id
+      : checkData.id;
   const response = await apiClient.post<ApiBody<unknown>>(apiConstants.storeprojectcheckout, {
     todays_date: currentDate,
-    project_id: checkData.id,
+    project_id: projectId,
     check_in_project_time: checkData.original_start_time,
     currect_time: currentTime,
     description,
+    relaties_id: checkData.relaties_id || ctx.relaties_id,
+    user_id: ctx.user_id,
+    role: ctx.role,
     check_in_out: "0",
-    original_project_break_time_check_in_out: selectedBreak,
+    original_project_break_time_check_in_out: selectedBreak || "00:00",
   });
 
   const body = response.data;

@@ -22,7 +22,7 @@
       "icon": "./newSRC/assets/Images/appicon.png",
       "bundleIdentifier": "com.erpportaal.app",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [

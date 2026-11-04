@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   BackHandler,
@@ -65,6 +65,10 @@ export default function HomeScreen() {
   const [employeeModalMode, setEmployeeModalMode] = useState<"check-in" | "check-out" | null>(null);
   const [projectModalMode, setProjectModalMode] = useState<"check-in" | "check-out" | null>(null);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
+  const clearApiErrorRef = useRef(clearApiError);
+  const captureApiErrorRef = useRef(captureApiError);
+  clearApiErrorRef.current = clearApiError;
+  captureApiErrorRef.current = captureApiError;
 
   const refreshCheckInOutStatus = useCallback(async () => {
     const { displayDate } = getTodayFormats();
@@ -88,7 +92,7 @@ export default function HomeScreen() {
   const fetchHomeItems = useCallback(async () => {
     setLoading(true);
     try {
-      clearApiError();
+      clearApiErrorRef.current();
       const userData = await getData("USERDATA");
       const response = await ApiService<HomeItem[]>(apiConstants.home, {
         includeToken: true,
@@ -107,12 +111,12 @@ export default function HomeScreen() {
         setHomeData([]);
       }
     } catch (error) {
-      captureApiError(error);
+      captureApiErrorRef.current(error);
       setHomeData([]);
     } finally {
       setLoading(false);
     }
-  }, [clearApiError, captureApiError]);
+  }, []);
 
   useEffect(() => {
     loadCompanyInfo();

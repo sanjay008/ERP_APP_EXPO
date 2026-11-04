@@ -250,10 +250,11 @@ export function parseApiError(error: unknown, fallback?: string): ParsedApiError
       };
     }
 
-    if (
-      statusCode === 429 ||
-      responseMessage?.toLowerCase().includes("too many attempts")
-    ) {
+    const lowerMessage = responseMessage?.toLowerCase() || "";
+    const isRateLimit =
+      lowerMessage.includes("too many attempts") || lowerMessage.includes("too many requests");
+    // This API also uses HTTP 429 for check-in/out and token errors. Keep those messages.
+    if ((statusCode === 429 && (!responseMessage || isRateLimit)) || isRateLimit) {
       return {
         kind: "server",
         message: i18n.t("Too many requests, please wait a moment"),

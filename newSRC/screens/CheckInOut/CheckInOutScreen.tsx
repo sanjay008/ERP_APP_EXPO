@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -53,6 +52,7 @@ export default function CheckInOutScreen() {
   const [breakTimes, setBreakTimes] = useState<Array<{ id?: string | number; break_time?: string }>>([]);
   const [selectedBreak, setSelectedBreak] = useState("");
   const [description, setDescription] = useState("");
+  const [contractError, setContractError] = useState("");
   const [contractSheetVisible, setContractSheetVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(getTodayFormats().currentTime);
 
@@ -124,9 +124,10 @@ export default function CheckInOutScreen() {
   const handleSubmit = async () => {
     if (!checkedIn) {
       if (!selectedContract?.id) {
-        Alert.alert(t("Error"), t("Please select a contract"));
+        setContractError(t("Please select a contract"));
         return;
       }
+      setContractError("");
       setSubmitting(true);
       try {
         await performCheckIn({
@@ -198,7 +199,11 @@ export default function CheckInOutScreen() {
                   required
                   placeholder={t("Select contract")}
                   value={selectedContract?.title}
-                  onPress={() => setContractSheetVisible(true)}
+                  error={contractError}
+                  onPress={() => {
+                    setContractError("");
+                    setContractSheetVisible(true);
+                  }}
                 />
 
                 <View style={styles.infoRow}>

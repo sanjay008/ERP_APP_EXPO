@@ -129,6 +129,7 @@ export default function EmployeeListScreen() {
           color: params.color || "",
           employeeName: item.contract_name || item.display_name || "",
           relatiesId: item.relaties_id ? String(item.relaties_id) : "",
+          employerId: item.employer_id != null && String(item.employer_id) !== "" ? String(item.employer_id) : "",
         },
       });
       return;

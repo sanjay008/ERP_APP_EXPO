@@ -31,6 +31,7 @@ import {
   type ProductTemplate,
 } from "../../services/productService";
 import { getApiErrorMessage } from "../../utils/validation";
+import { isRichTextEmpty } from "../../utils/richText";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -45,6 +46,7 @@ export default function CreateProductScreen() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [templates, setTemplates] = useState<ProductTemplate[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
 
@@ -166,25 +168,17 @@ export default function CreateProductScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!templateId || !categoryId || !title.trim() || !price.trim() || !description.trim()) {
-      setToast({
-        top: 45,
-        text: t("Please fill all required fields"),
-        type: "error",
-        visible: true,
-      });
-      return;
-    }
-
+    const nextErrors: Record<string, string> = {};
+    if (!templateId) nextErrors.template = t("Please fill all required fields");
+    if (!categoryId) nextErrors.category = t("Please fill all required fields");
+    if (!title.trim()) nextErrors.title = t("Please fill all required fields");
+    if (!price.trim()) nextErrors.price = t("Please fill all required fields");
+    if (isRichTextEmpty(description)) nextErrors.description = t("Please fill all required fields");
     if (availableSubCategories.length > 0 && subCategories.length === 0) {
-      setToast({
-        top: 45,
-        text: t("Please select subcategory"),
-        type: "error",
-        visible: true,
-      });
-      return;
+      nextErrors.subcategory = t("Please select subcategory");
     }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
 
     setSubmitting(true);
     try {
@@ -236,33 +230,67 @@ export default function CreateProductScreen() {
           label={t("Template")}
           value={selectedTemplate?.template_name}
           placeholder={t("Select template")}
-          onPress={() => setTemplateSheetOpen(true)}
+          error={errors.template}
+          onPress={() => {
+            setErrors((prev) => ({ ...prev, template: "" }));
+            setTemplateSheetOpen(true);
+          }}
         />
         <AuthSelect
           label={t("Category")}
           value={selectedCategory?.category_name}
           placeholder={t("Select category")}
-          onPress={() => setCategorySheetOpen(true)}
+          error={errors.category}
+          onPress={() => {
+            setErrors((prev) => ({ ...prev, category: "" }));
+            setCategorySheetOpen(true);
+          }}
         />
         {availableSubCategories.length > 0 ? (
           <AuthSelect
             label={t("Subcategory")}
             value={subCategoryLabel}
             placeholder={t("Select subcategory")}
-            onPress={() => setSubCategorySheetOpen(true)}
+            error={errors.subcategory}
+            onPress={() => {
+              setErrors((prev) => ({ ...prev, subcategory: "" }));
+              setSubCategorySheetOpen(true);
+            }}
           />
         ) : null}
-        <AuthInput label={t("Title")} value={title} onChangeText={setTitle} required />
+        <AuthInput
+          label={t("Title")}
+          value={title}
+          onChangeText={(value) => {
+            setTitle(value);
+            if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
+          }}
+          required
+          error={errors.title}
+        />
         <AuthInput
           label={t("Price")}
           value={price}
-          onChangeText={setPrice}
+          onChangeText={(value) => {
+            setPrice(value);
+            if (errors.price) setErrors((prev) => ({ ...prev, price: "" }));
+          }}
           keyboardType="decimal-pad"
           required
+          error={errors.price}
         />
 
         <Text style={styles.editorLabel}>{t("Description")} *</Text>
-        <RichDescriptionEditor value={description} onChange={setDescription} compact />
+        <RichDescriptionEditor
+          value={description}
+          error={Boolean(errors.description)}
+          compact
+          onChange={(html) => {
+            setDescription(html);
+            if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+          }}
+        />
+        {errors.description ? <Text style={styles.fieldError}>{errors.description}</Text> : null}
 
         <View style={styles.imageHeader}>
           <Text style={styles.editorLabel}>{t("Images")}</Text>
@@ -329,6 +357,11 @@ export default function CreateProductScreen() {
 const styles = StyleSheet.create({
   centered: { alignItems: "center", justifyContent: "center" },
   content: { paddingHorizontal: LIST_UI.screenPadding, paddingTop: 16, gap: 12 },
+  fieldError: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -6,
+  },
   editorLabel: {
     fontFamily: FONTS.LexendMedium,
     fontSize: 13,

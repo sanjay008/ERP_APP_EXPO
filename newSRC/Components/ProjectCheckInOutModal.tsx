@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -19,6 +18,8 @@ import {
   fetchProjectsForCheckIn,
   formatBreakTime,
   getTodayFormats,
+  isAlreadyCheckedInError,
+  isAlreadyCheckedOutError,
   performProjectCheckIn,
   performProjectCheckOut,
   type ProjectOption,
@@ -66,6 +67,9 @@ export default function ProjectCheckInOutModal({
   const [selectedBreak, setSelectedBreak] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
+  const [projectError, setProjectError] = useState("");
+  const [addressError, setAddressError] = useState("");
+  const [formError, setFormError] = useState("");
   const [projectSheetVisible, setProjectSheetVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(getTodayFormats().currentTime);
 
@@ -86,7 +90,7 @@ export default function ProjectCheckInOutModal({
     } catch (error: any) {
       setProjects([]);
       setSelectedProject(null);
-      Alert.alert(t("Error"), error?.message || t("Something went wrong"));
+      setFormError(error?.message || t("Something went wrong"));
     } finally {
       setLoading(false);
     }
@@ -141,18 +145,17 @@ export default function ProjectCheckInOutModal({
   const handleProjectSelect = (options: SheetOption[]) => {
     const project = options[0]?.raw as ProjectOption;
     if (project) setSelectedProject(project);
+    setProjectError("");
     setProjectSheetVisible(false);
   };
 
   const handleCheckIn = async () => {
-    if (!selectedProject) {
-      Alert.alert(t("Error"), t("select Project"));
-      return;
-    }
-    if (!address.trim()) {
-      Alert.alert(t("Error"), t("Current address"));
-      return;
-    }
+    const nextProjectError = selectedProject ? "" : t("select Project");
+    const nextAddressError = address.trim() ? "" : t("Current address");
+    setProjectError(nextProjectError);
+    setAddressError(nextAddressError);
+    setFormError("");
+    if (nextProjectError || nextAddressError || !selectedProject) return;
     setSubmitting(true);
     try {
       await performProjectCheckIn({
@@ -165,7 +168,10 @@ export default function ProjectCheckInOutModal({
       onComplete();
       onClose();
     } catch (error: any) {
-      Alert.alert(t("Error"), error?.message || t("Something went wrong"));
+      if (isAlreadyCheckedInError(error)) {
+        onComplete();
+      }
+      setFormError(error?.message || t("Something went wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -173,6 +179,7 @@ export default function ProjectCheckInOutModal({
 
   const handleCheckOut = async () => {
     if (!checkData) return;
+    setFormError("");
     setSubmitting(true);
     try {
       await performProjectCheckOut({
@@ -191,7 +198,10 @@ export default function ProjectCheckInOutModal({
       onComplete();
       onClose();
     } catch (error: any) {
-      Alert.alert(t("Error"), error?.message || t("Something went wrong"));
+      if (isAlreadyCheckedOutError(error)) {
+        onComplete();
+      }
+      setFormError(error?.message || t("Something went wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -219,9 +229,10 @@ export default function ProjectCheckInOutModal({
               required
               placeholder={t("Projects")}
               value={selectedProject?.project_name}
+              error={projectError}
               onPress={() => {
                 if (projects.length === 0) {
-                  Alert.alert(t("Error"), t("No Data Found"));
+                  setProjectError(t("No Data Found"));
                   return;
                 }
                 setProjectSheetVisible(true);
@@ -231,11 +242,16 @@ export default function ProjectCheckInOutModal({
             <Text style={styles.sectionTitle}>{t("Current address")}</Text>
             <TextInput
               value={address}
-              onChangeText={setAddress}
+              onChangeText={(value) => {
+                setAddress(value);
+                if (addressError) setAddressError("");
+              }}
               placeholder={t("Current address")}
               placeholderTextColor={Colors.placeholder}
-              style={styles.input}
+              style={[styles.input, addressError ? styles.inputError : null]}
             />
+            {addressError ? <Text style={styles.fieldError}>{addressError}</Text> : null}
+            {formError ? <Text style={styles.fieldError}>{formError}</Text> : null}
 
             <InfoRow label={t("Current date")} value={displayDate} />
             <InfoRow label={t("Currenttime")} value={currentTime} />
@@ -289,6 +305,7 @@ export default function ProjectCheckInOutModal({
               placeholderTextColor={Colors.placeholder}
               style={styles.textArea}
             />
+            {formError ? <Text style={styles.fieldError}>{formError}</Text> : null}
           </>
         )}
 
@@ -362,6 +379,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontFamily: FONTS.LexendRegular,
     color: AppColors.black,
+    marginBottom: 8,
+  },
+  inputError: {
+    borderColor: "#EF4444",
+  },
+  fieldError: {
+    color: "#EF4444",
+    fontSize: 12,
     marginBottom: 8,
   },
   workingAddress: {

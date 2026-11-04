@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
+import HtmlContent from "../../Components/HtmlContent";
 import SearchBox from "../../Components/SearchBox";
 import FallBackImage from "../../Components/FallBackImage";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
@@ -20,7 +21,6 @@ import {
   fetchEvents,
   formatEventDate,
   getDropboxDirectLink,
-  stripHtmlTags,
   type EventListItem,
 } from "../../services/eventService";
 import { useScreenInsets } from "../../utils/screenInsets";
@@ -124,9 +124,11 @@ export default function EventListScreen() {
         <View style={styles.eventBody}>
           <Text style={styles.eventDate}>{formatEventDate(item.date)}</Text>
           <Text style={styles.eventName}>{t(item.name)}</Text>
-          <Text style={styles.eventDescription} numberOfLines={2}>
-            {stripHtmlTags(item.description)}
-          </Text>
+          {item.description ? (
+            <View style={styles.eventDescription}>
+              <HtmlContent html={item.description} variant="note" />
+            </View>
+          ) : null}
           <Pressable
             style={styles.actionBtn}
             onPress={() =>
@@ -310,9 +312,8 @@ const styles = StyleSheet.create({
     color: AppColors.black,
   },
   eventDescription: {
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 12,
-    color: AppColors.subtitle,
+    maxHeight: 40,
+    overflow: "hidden",
   },
   actionBtn: {
     alignSelf: "flex-start",

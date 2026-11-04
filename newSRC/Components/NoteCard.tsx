@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import HtmlContent from "./HtmlContent";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 
@@ -10,11 +11,6 @@ type Props = {
   text?: string;
   heading?: string;
 };
-
-function stripHtml(html?: string | null) {
-  if (!html) return "";
-  return html.replace(/<[^>]*>/g, "").trim();
-}
 
 export default function NoteCard({ author, time, text, heading }: Props) {
   return (
@@ -26,7 +22,7 @@ export default function NoteCard({ author, time, text, heading }: Props) {
           <Text style={styles.author}>{author || "-"}</Text>
         </View>
         <View style={styles.body}>
-          <Text style={styles.text}>{stripHtml(text)}</Text>
+          <HtmlContent html={text} variant="note" />
           {time ? <Text style={styles.time}>{time}</Text> : null}
         </View>
       </View>
@@ -68,13 +64,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 10,
-  },
-  text: {
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 13,
-    color: AppColors.black,
-    lineHeight: 20,
-    marginBottom: 8,
   },
   time: {
     fontFamily: FONTS.LexendRegular,

@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,6 +13,8 @@ import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import NoteCard from "../../Components/NoteCard";
 import FormModal from "../../Components/FormModal";
+import HtmlContent from "../../Components/HtmlContent";
+import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
 import WorkOrderSignatureModal from "../../Components/WorkOrderSignatureModal";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import { useScreenInsets } from "../../utils/screenInsets";
@@ -28,11 +29,8 @@ import { FONTS } from "../../utils/FONTS";
 import { LIST_UI } from "../../utils/connectionTheme";
 import { listScreenStyles } from "../../utils/listScreenStyles";
 import { openMapsAddress } from "../../utils/openMaps";
-
-function stripHtml(html?: string | null) {
-  if (!html) return "";
-  return html.replace(/<[^>]*>/g, "").trim();
-}
+import { isRichTextEmpty, richTextPayload } from "../../utils/richText";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 const APPROVED_STATUS_ID = 64;
 
@@ -111,7 +109,7 @@ export default function WorkOrderDetailsScreen() {
   };
 
   const submitComment = async () => {
-    if (!comment.trim()) {
+    if (isRichTextEmpty(comment)) {
       setCommentError(t("Please enter comment"));
       return;
     }
@@ -120,14 +118,14 @@ export default function WorkOrderDetailsScreen() {
       await addWorkOrderComment({
         id: params.id,
         customer_relationship_id: data?.customer_relationship_id,
-        comment: comment.trim(),
+        comment: richTextPayload(comment),
       });
       setComment("");
       setCommentError("");
       setCommentVisible(false);
       await loadDetails();
     } catch (error) {
-      console.log("Error adding comment:", error);
+      setCommentError(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSubmittingComment(false);
     }
@@ -239,9 +237,7 @@ export default function WorkOrderDetailsScreen() {
                     ) : null}
                   </View>
                   {task.short_description ? (
-                    <Text style={styles.todoDesc} numberOfLines={2}>
-                      {stripHtml(task.short_description)}
-                    </Text>
+                    <HtmlContent html={task.short_description} variant="note" />
                   ) : null}
                   <Text style={styles.todoMeta}>
                     {task.quantity} {task.quantity_type} · {task.deadline || "-"}
@@ -311,16 +307,17 @@ export default function WorkOrderDetailsScreen() {
 
       <FormModal visible={commentVisible} onClose={() => setCommentVisible(false)} scrollable>
         <Text style={styles.modalTitle}>{t("Voeg een notitie toe")}</Text>
-        <TextInput
-          style={styles.commentInput}
+        <RichDescriptionEditor
           value={comment}
-          onChangeText={(text) => {
-            setComment(text);
+          contentKey={commentVisible ? "open" : "closed"}
+          placeholder={t("Notitie...")}
+          error={Boolean(commentError)}
+          disabled={submittingComment}
+          compact
+          onChange={(html) => {
+            setComment(html);
             if (commentError) setCommentError("");
           }}
-          placeholder={t("Notitie...")}
-          placeholderTextColor={AppColors.subtitle}
-          multiline
         />
         {commentError ? <Text style={styles.errorText}>{commentError}</Text> : null}
         <View style={styles.modalActions}>

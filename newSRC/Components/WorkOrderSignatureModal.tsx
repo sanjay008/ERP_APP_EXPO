@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,7 +15,10 @@ import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import { Images } from "../utils/Images";
 import FallBackImage from "./FallBackImage";
-import { getKeyboardAvoidBehavior, useScreenInsets } from "../utils/screenInsets";
+import { useScreenInsets } from "../utils/screenInsets";
+import { ignoreHardwareBack } from "../utils/modalBack";
+import { useKeyboardLiftStyle } from "../utils/keyboardShift";
+import Animated from "react-native-reanimated";
 
 const SIGNATURE_WEB_STYLE = `
   .m-signature-pad--footer .save { display: none; }
@@ -60,6 +61,7 @@ export default function WorkOrderSignatureModal({
 }: Props) {
   const { t } = useTranslation();
   const { modalPadding } = useScreenInsets();
+  const liftStyle = useKeyboardLiftStyle(visible);
   const signatureRef = useRef<any>(null);
   const [signName, setSignName] = useState(initialName);
   const [nameError, setNameError] = useState("");
@@ -131,20 +133,16 @@ export default function WorkOrderSignatureModal({
       animationType="slide"
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={handleClose}
+      onRequestClose={ignoreHardwareBack}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={getKeyboardAvoidBehavior()}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-      >
+      <View style={styles.flex}>
         <View style={styles.backdrop}>
           <ScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
             bounces={false}
           >
-            <View style={[styles.sheet, { paddingBottom: modalPadding + 16 }]}>
+            <Animated.View style={[styles.sheet, { paddingBottom: modalPadding + 16 }, liftStyle]}>
               <View style={styles.header}>
                 <Text style={styles.title}>{t("Handtekening voor akkoord")}</Text>
                 <Pressable onPress={handleClose} hitSlop={8}>
@@ -214,10 +212,10 @@ export default function WorkOrderSignatureModal({
                   {submitting ? t("Loading...") : t("Approve")}
                 </Text>
               </Pressable>
-            </View>
+            </Animated.View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,9 +9,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import SelectionSheet from "./Auth/SelectionSheet";
-import { useKeyboardHeight, useScreenInsets } from "../utils/screenInsets";
+import { useScreenInsets } from "../utils/screenInsets";
+import { useKeyboardLiftStyle } from "../utils/keyboardShift";
+import { ignoreHardwareBack } from "../utils/modalBack";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import type { BookingClientInfo, BookingCurrency } from "../services/bookingService";
@@ -60,13 +61,7 @@ export default function TaxiBookingPaymentModal({
 }: Props) {
   const { t } = useTranslation();
   const { modalPadding } = useScreenInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const sheetPadding =
-    keyboardHeight > 0
-      ? Platform.OS === "ios"
-        ? 12
-        : keyboardHeight + 8
-      : modalPadding;
+  const liftStyle = useKeyboardLiftStyle(visible);
   const [step, setStep] = useState<1 | 2>(1);
   const [amount, setAmount] = useState("");
   const [currencyCode, setCurrencyCode] = useState("");
@@ -81,6 +76,7 @@ export default function TaxiBookingPaymentModal({
     country_code: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [advancing, setAdvancing] = useState(false);
 
   const currencyOptions = useMemo(() => {
     if (currencies.length > 0) return currencies;
@@ -121,17 +117,29 @@ export default function TaxiBookingPaymentModal({
   };
 
   const handleNext = async () => {
-    if (!validateStep1()) return;
-    if (onUpdateClient) {
-      await onUpdateClient(form);
+    if (advancing || !validateStep1()) return;
+    setAdvancing(true);
+    try {
+      if (onUpdateClient) await onUpdateClient(form);
+      setStep(2);
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        form: error instanceof Error ? error.message : t("Something went wrong"),
+      }));
+    } finally {
+      setAdvancing(false);
     }
-    setStep(2);
   };
 
   const handleSubmit = () => {
     const parsed = Number.parseFloat(amount);
-    if (!parsed || parsed <= 0) return;
-    if (!currencyCode || !paymentMethod) return;
+    const next: Record<string, string> = {};
+    if (!parsed || parsed <= 0) next.amount = t("This field is required");
+    if (!currencyCode) next.currency = t("This field is required");
+    if (!paymentMethod) next.method = t("This field is required");
+    setErrors(next);
+    if (Object.keys(next).length) return;
     onSubmit({
       amount: parsed,
       currencyCode,
@@ -148,14 +156,10 @@ export default function TaxiBookingPaymentModal({
         animationType="slide"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={onClose}
+        onRequestClose={ignoreHardwareBack}
       >
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
         <View style={styles.backdrop}>
-          <View style={[styles.sheet, { paddingBottom: sheetPadding }]}>
+          <Animated.View style={[styles.sheet, { paddingBottom: modalPadding }, liftStyle]}>
             <Text style={styles.title}>{t("Booking Payments")}</Text>
             <Text style={styles.stepLabel}>
               {t("Step")} {step}/2
@@ -207,6 +211,7 @@ export default function TaxiBookingPaymentModal({
                     keyboardType="decimal-pad"
                     placeholder="0.00"
                   />
+                  {errors.amount ? <Text style={styles.error}>{errors.amount}</Text> : null}
 
                   <Text style={styles.label}>{t("Currency")}</Text>
                   <Pressable style={styles.select} onPress={() => setCurrencySheetOpen(true)}>
@@ -214,20 +219,23 @@ export default function TaxiBookingPaymentModal({
                       {selectedCurrency?.code || currencyCode || t("Select")}
                     </Text>
                   </Pressable>
+                  {errors.currency ? <Text style={styles.error}>{errors.currency}</Text> : null}
 
                   <Text style={styles.label}>{t("Payment Method")}</Text>
                   <Pressable style={styles.select} onPress={() => setMethodSheetOpen(true)}>
                     <Text style={styles.selectText}>{paymentMethod || t("Select")}</Text>
                   </Pressable>
+                  {errors.method ? <Text style={styles.error}>{errors.method}</Text> : null}
                 </>
               )}
             </ScrollView>
 
+            {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
             <View style={styles.actions}>
               <Pressable
                 style={styles.cancelBtn}
                 onPress={step === 1 ? onClose : () => setStep(1)}
-                disabled={loading}
+                disabled={loading || advancing}
               >
                 <Text style={styles.cancelText}>
                   {step === 1 ? t("Annuleren") : t("Back")}
@@ -236,9 +244,9 @@ export default function TaxiBookingPaymentModal({
               <Pressable
                 style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
                 onPress={step === 1 ? handleNext : handleSubmit}
-                disabled={loading}
+                disabled={loading || advancing}
               >
-                {loading ? (
+                {loading || advancing ? (
                   <ActivityIndicator color={AppColors.white} />
                 ) : (
                   <Text style={styles.saveText}>
@@ -247,9 +255,8 @@ export default function TaxiBookingPaymentModal({
                 )}
               </Pressable>
             </View>
-          </View>
+          </Animated.View>
         </View>
-        </KeyboardAvoidingView>
       </Modal>
 
       <SelectionSheet

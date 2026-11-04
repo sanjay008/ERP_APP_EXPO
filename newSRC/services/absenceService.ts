@@ -1,6 +1,9 @@
 import apiClient from "../utils/client";
+import ApiService from "../utils/Apiservice";
 import { apiConstants } from "../utils/apiConstants";
 import { toAppApiError } from "../utils/apiError";
+import { getData } from "../utils/storeData";
+import { fetchEmployeeContracts } from "./employeeService";
 
 export type AbsenceLeaveItem = {
   id: number | string;
@@ -140,11 +143,24 @@ export async function fetchHrStatuses() {
   }
 }
 
-export async function fetchLeaveTypes(contractId: string | number) {
+export async function fetchLeaveTypes(contractId: string | number, relatiesId?: string | number) {
   const response = await post<LeaveTypeItem[]>(apiConstants.getleavetypes, {
     contract_id: contractId,
+    ...(relatiesId ? { relaties_id: relatiesId } : {}),
   });
   return response?.status && Array.isArray(response.data) ? response.data : [];
+}
+
+/** Old APK: contract.employer_id, not the employee relaties id. */
+export async function resolveAbsenceEmployerId(contractId: string | number) {
+  try {
+    const response = await fetchEmployeeContracts();
+    const match = (response.data || []).find((item) => String(item.id) === String(contractId));
+    if (match?.employer_id == null || String(match.employer_id) === "") return undefined;
+    return match.employer_id;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function fetchLeaveTimelineDates(contractId: string | number) {
@@ -177,24 +193,47 @@ export async function deleteLeaveAbsence(leaveId: string | number) {
   return post(apiConstants.deleteleaveabsence, { leave_id: leaveId });
 }
 
-export async function submitLeaveAbsence(leaveId: string | number, relatiesId?: string | number) {
-  const extra = relatiesId ? { relaties_id: relatiesId } : {};
+export async function submitLeaveAbsence(leaveId: string | number) {
+  // Old Absencerequest.js Submit (Leave Requests only):
+  // checkconflictinghours(id) + update_leave_absence(id) together, FormData + logged-in user.
+  const userData = await getData("USERDATA");
+  const auth = {
+    user_id: userData?.data?.user?.id,
+    relaties_id: userData?.data?.relaties?.id,
+    role: userData?.data?.user?.role,
+  };
 
-  // Old app always called update_leave_absence even if conflict check failed.
-  // Blocking on check_conflicting_hours showed "already sent" for the wrong user.
-  await post(apiConstants.check_conflicting_hours, {
-    leave_id: leaveId,
-    ...extra,
+  const conflictPromise = ApiService(apiConstants.check_conflicting_hours, {
+    includeToken: true,
+    customData: {
+      ...auth,
+      leave_id: leaveId,
+    },
   });
 
-  const response = await post(apiConstants.update_leave_absence, {
-    leave_id: leaveId,
-    ...extra,
+  const updatePromise = ApiService(apiConstants.update_leave_absence, {
+    includeToken: true,
+    customData: {
+      ...auth,
+      leave_id: leaveId,
+    },
   });
-  if (!response?.status) {
-    throw toAppApiError({ message: response?.message || "Failed to submit leave" });
+
+  const [conflictRes, updateRes] = await Promise.all([conflictPromise, updatePromise]);
+
+  // Old: update_leave_absence success drives refresh even if check also ran.
+  if (updateRes?.status) {
+    return updateRes;
   }
-  return response;
+
+  // Prefer the clearer conflict message when both fail (old showed check alert too).
+  if (!conflictRes?.status && conflictRes?.message) {
+    throw toAppApiError({ message: conflictRes.message });
+  }
+
+  throw toAppApiError({
+    message: updateRes?.message || "Leave Not Submitted.",
+  });
 }
 
 export async function updateLeaveAbsenceStatus(leaveId: string | number, statusId: string | number) {
@@ -210,7 +249,15 @@ export async function storeLeaveRequest(payload: Record<string, unknown>) {
 }
 
 export async function storeAbsenceRequest(payload: Record<string, unknown>) {
-  const response = await post(apiConstants.store_absence, payload);
+  const next = { ...payload };
+  if (next.absence_employer_id == null || String(next.absence_employer_id) === "") {
+    const employerId = await resolveAbsenceEmployerId(next.contract_id as string | number);
+    if (employerId == null) {
+      throw toAppApiError({ message: "The Absence Employer ID field is required." });
+    }
+    next.absence_employer_id = employerId;
+  }
+  const response = await post(apiConstants.store_absence, next);
   if (!response?.status) {
     throw toAppApiError({ message: response?.message || "Failed to create absence" });
   }

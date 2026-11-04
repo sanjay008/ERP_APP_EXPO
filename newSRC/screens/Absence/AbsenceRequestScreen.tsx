@@ -1,9 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -41,7 +38,10 @@ import {
   type LeaveTimelineDate,
   type LeaveTypeItem,
 } from "../../services/absenceService";
-import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
+import { useScreenInsets } from "../../utils/screenInsets";
+import { useKeyboardLiftStyle } from "../../utils/keyboardShift";
+import { ignoreHardwareBack } from "../../utils/modalBack";
+import Animated from "react-native-reanimated";
 import { AppColors } from "../../utils/theme";
 import { Colors } from "../../utils/colors";
 import { FONTS } from "../../utils/FONTS";
@@ -59,6 +59,7 @@ function RequestCard({
   onSubmit,
   onStatusPress,
   statusOptions,
+  allowSubmit = false,
   t,
 }: {
   item: AbsenceLeaveItem;
@@ -69,9 +70,12 @@ function RequestCard({
   onSubmit?: () => void;
   onStatusPress?: () => void;
   statusOptions?: boolean;
+  /** Old APK: Submit only on Leave Requests — never Absence / Additional / Switch. */
+  allowSubmit?: boolean;
   t: (key: string) => string;
 }) {
   const statusColor = item.status_data?.color || AppColors.primary;
+  const showSubmit = Boolean(allowSubmit && onSubmit && item.leave_absence_store === 0);
   return (
     <View style={styles.card}>
       <Pressable onPress={onToggle}>
@@ -79,7 +83,7 @@ function RequestCard({
           <Text style={styles.cardTitle}>
             {t(item.employerscheduledata?.day || "-")} ({item.total_hours || "N/A"})
           </Text>
-          {item.leave_absence_store === 0 ? (
+          {showSubmit ? (
             <Pressable style={[styles.statusBadge, { backgroundColor: AppColors.primary }]} onPress={onSubmit}>
               <Text style={styles.statusText}>{t("Submit")}</Text>
             </Pressable>
@@ -87,11 +91,11 @@ function RequestCard({
             <Pressable style={[styles.statusBadge, { backgroundColor: statusColor }]} onPress={onStatusPress}>
               <Text style={styles.statusText}>{t(item.status_data?.status_name || "Status")}</Text>
             </Pressable>
-          ) : (
+          ) : item.status_data?.status_name ? (
             <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-              <Text style={styles.statusText}>{t(item.status_data?.status_name || "-")}</Text>
+              <Text style={styles.statusText}>{t(item.status_data.status_name)}</Text>
             </View>
-          )}
+          ) : null}
         </View>
         <View style={styles.cardMeta}>
           <Text style={styles.metaText}>{item.date || "-"}</Text>
@@ -149,16 +153,10 @@ export default function AbsenceRequestScreen() {
     contractId?: string;
     employeeName?: string;
     relatiesId?: string;
+    employerId?: string;
     color?: string;
   }>();
   const { top, scrollPadding, modalPadding } = useScreenInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const sheetPadding =
-    keyboardHeight > 0
-      ? Platform.OS === "ios"
-        ? 12
-        : keyboardHeight + 8
-      : modalPadding;
   const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
@@ -180,15 +178,32 @@ export default function AbsenceRequestScreen() {
 
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const [absenceModalVisible, setAbsenceModalVisible] = useState(false);
+  const leaveLift = useKeyboardLiftStyle(leaveModalVisible);
+  const absenceLift = useKeyboardLiftStyle(absenceModalVisible);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeItem[]>([]);
   const [timelineDates, setTimelineDates] = useState<LeaveTimelineDate[]>([]);
   const [selectedDates, setSelectedDates] = useState<Record<string, LeaveTimelineDate>>({});
   const [selectedLeaveType, setSelectedLeaveType] = useState<LeaveTypeItem | null>(null);
   const [leaveReason, setLeaveReason] = useState("");
+  const [leaveFieldErrors, setLeaveFieldErrors] = useState({
+    type: "",
+    date: "",
+    reason: "",
+  });
   const [absenceReason, setAbsenceReason] = useState("");
   const [absenceHours, setAbsenceHours] = useState("");
+  const [absenceFieldErrors, setAbsenceFieldErrors] = useState({
+    date: "",
+    hours: "",
+    reason: "",
+  });
   const [typeSheetVisible, setTypeSheetVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const hoursFromTimeline = (entry?: LeaveTimelineDate | null) => {
+    if (entry?.total_hours == null || entry.total_hours === "") return "";
+    return String(entry.total_hours);
+  };
 
   const loadData = useCallback(async (pull = false) => {
     if (!contractId) return;
@@ -223,27 +238,64 @@ export default function AbsenceRequestScreen() {
   const openLeaveModal = async () => {
     try {
       const [types, dates] = await Promise.all([
-        fetchLeaveTypes(contractId),
+        fetchLeaveTypes(contractId, params.relatiesId),
         fetchLeaveTimelineDates(contractId),
       ]);
+      if (!types.length) {
+        setToast({
+          top: 45,
+          text: t("No leave types available"),
+          type: "error",
+          visible: true,
+        });
+        return;
+      }
+      if (!dates.length) {
+        setToast({
+          top: 45,
+          text: t("No dates available"),
+          type: "error",
+          visible: true,
+        });
+        return;
+      }
       setLeaveTypes(types);
       setTimelineDates(dates);
+      // Old calendar: dates from timeline; auto-select when only one.
       setSelectedDates(dates.length === 1 && dates[0]?.date ? { [dates[0].date]: dates[0] } : {});
       setSelectedLeaveType(null);
       setLeaveReason("");
+      setLeaveFieldErrors({ type: "", date: "", reason: "" });
       setLeaveModalVisible(true);
     } catch (error) {
       captureApiError(error);
+      showErrorToast(error instanceof Error ? error.message : undefined);
     }
   };
 
   const openAbsenceModal = async () => {
     try {
       const dates = await fetchLeaveTimelineDates(contractId);
+      if (!dates.length) {
+        setToast({
+          top: 45,
+          text: t("No dates available"),
+          type: "error",
+          visible: true,
+        });
+        return;
+      }
       setTimelineDates(dates);
-      setSelectedDates(dates.length === 1 && dates[0]?.date ? { [dates[0].date]: dates[0] } : {});
+      // Old APK: one date at a time. Prefill hours from schedule so Save is not blocked empty.
+      const first = dates[0];
+      const initial =
+        dates.length === 1 && first?.date
+          ? { [first.date]: first }
+          : {};
+      setSelectedDates(initial);
       setAbsenceReason("");
-      setAbsenceHours("");
+      setAbsenceHours(hoursFromTimeline(dates.length === 1 ? first : null));
+      setAbsenceFieldErrors({ date: "", hours: "", reason: "" });
       setAbsenceModalVisible(true);
     } catch (error) {
       captureApiError(error);
@@ -260,6 +312,28 @@ export default function AbsenceRequestScreen() {
       }
       return next;
     });
+    setLeaveFieldErrors((prev) => ({ ...prev, date: "" }));
+  };
+
+  /** Absence uses single-date selection (same as old APK calendar). */
+  const selectAbsenceDate = (entry: LeaveTimelineDate) => {
+    setSelectedDates({ [entry.date]: entry });
+    const nextHours = hoursFromTimeline(entry);
+    setAbsenceHours(nextHours);
+    setAbsenceFieldErrors((prev) => ({
+      ...prev,
+      date: "",
+      hours: nextHours ? "" : prev.hours,
+    }));
+  };
+
+  const showErrorToast = (message?: string) => {
+    setToast({
+      top: 45,
+      text: message || t("Something went wrong"),
+      type: "error",
+      visible: true,
+    });
   };
 
   const handleDelete = async () => {
@@ -270,20 +344,21 @@ export default function AbsenceRequestScreen() {
         setDeleteTarget(null);
         loadData(true);
       } else {
-        Alert.alert(t("Error"), response?.message || t("Something went wrong"));
+        showErrorToast(response?.message);
       }
     } catch (error) {
       captureApiError(error);
+      showErrorToast(error instanceof Error ? error.message : undefined);
     }
   };
 
   const handleSubmitRequest = async (leaveId: string | number) => {
     try {
-      await submitLeaveAbsence(leaveId, params.relatiesId);
+      await submitLeaveAbsence(leaveId);
       setToast({ top: 45, text: t("Submitted"), type: "success", visible: true });
       loadData(true);
     } catch (error) {
-      Alert.alert(t("Error"), error instanceof Error ? error.message : t("Something went wrong"));
+      showErrorToast(error instanceof Error ? error.message : undefined);
     }
   };
 
@@ -310,27 +385,37 @@ export default function AbsenceRequestScreen() {
   };
 
   const createLeave = async () => {
-    const selected = resolvedDates();
-    if (!selected.length || !selectedLeaveType) {
-      Alert.alert(t("Error"), t("Please fill required fields"));
+    const selected = resolvedDates().filter(
+      (entry) => entry.date && entry.schedule_id != null && String(entry.schedule_id) !== ""
+    );
+    const reason = leaveReason.trim();
+    // Old APK required Reason. date and schedule_id must be the same length.
+    const nextErrors = {
+      type: selectedLeaveType ? "" : t("Please select a type"),
+      date: selected.length ? "" : t("Please select a date"),
+      reason: reason ? "" : t("Reason is required"),
+    };
+    setLeaveFieldErrors(nextErrors);
+    if (nextErrors.type || nextErrors.date || nextErrors.reason) {
       return;
     }
+
     setSubmitting(true);
     try {
       await storeLeaveRequest({
         contract_id: contractId,
         ...(params.relatiesId ? { relaties_id: params.relatiesId } : {}),
-        leave_type: selectedLeaveType.id,
+        leave_type: selectedLeaveType!.id,
         date: selected.map((d) => d.date).join(","),
         schedule_id: selected.map((d) => d.schedule_id).join(","),
-        total_hours: selected.map((d) => d.total_hours).join(","),
-        reason_field: leaveReason,
+        total_hours: selected.map((d) => d.total_hours ?? 0).join(","),
+        reason_field: reason,
       });
       setLeaveModalVisible(false);
       setToast({ top: 45, text: t("Leave created successfully"), type: "success", visible: true });
       loadData(true);
     } catch (error) {
-      Alert.alert(t("Error"), error instanceof Error ? error.message : t("Something went wrong"));
+      showErrorToast(error instanceof Error ? error.message : undefined);
     } finally {
       setSubmitting(false);
     }
@@ -338,33 +423,48 @@ export default function AbsenceRequestScreen() {
 
   const createAbsence = async () => {
     const selected = resolvedDates();
-    if (!selected.length || !absenceHours.trim() || !absenceReason.trim()) {
-      Alert.alert(t("Error"), t("Please fill required fields"));
+    const hours = absenceHours.trim();
+    const reason = absenceReason.trim();
+    const nextErrors = {
+      date: selected.length ? "" : t("Please select a date"),
+      hours: hours ? "" : t("Hours is required"),
+      reason: reason ? "" : t("Reason is required"),
+    };
+    setAbsenceFieldErrors(nextErrors);
+    if (nextErrors.date || nextErrors.hours || nextErrors.reason) {
       return;
     }
+
+    const selectedDate = selected[0];
+    if (selectedDate?.schedule_id == null || String(selectedDate.schedule_id) === "") {
+      setAbsenceFieldErrors((prev) => ({ ...prev, date: t("Please select a date") }));
+      return;
+    }
+
     setSubmitting(true);
     try {
       await storeAbsenceRequest({
         contract_id: contractId,
-        ...(params.relatiesId
-          ? { relaties_id: params.relatiesId, absence_employer_id: params.relatiesId }
-          : {}),
-        date: selected.map((d) => d.date).join(","),
-        schedule_id: selected.map((d) => d.schedule_id).join(","),
-        total_hours: absenceHours,
-        absence_reason: absenceReason,
+        ...(params.relatiesId ? { relaties_id: params.relatiesId } : {}),
+        ...(params.employerId ? { absence_employer_id: params.employerId } : {}),
+        date: selectedDate.date,
+        schedule_id: selectedDate.schedule_id,
+        total_hours: hours,
+        absence_reason: reason,
       });
       setAbsenceModalVisible(false);
       setToast({ top: 45, text: t("Absence created successfully"), type: "success", visible: true });
       loadData(true);
     } catch (error) {
-      Alert.alert(t("Error"), error instanceof Error ? error.message : t("Something went wrong"));
+      showErrorToast(error instanceof Error ? error.message : undefined);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const renderSection = (title: string, data: AbsenceLeaveItem[], section: SectionKey) => (
+  const renderSection = (title: string, data: AbsenceLeaveItem[], section: SectionKey) => {
+    const isLeaveSection = section === "leave";
+    return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {data.length === 0 ? (
@@ -374,30 +474,43 @@ export default function AbsenceRequestScreen() {
           <RequestCard
             key={`${section}-${item.id}`}
             item={item}
-            expanded={expandedId === item.id}
-            onToggle={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
-            onEdit={() =>
-              router.push({
-                pathname: "/(app)/absence-requests/leave/[leaveId]",
-                params: {
-                  leaveId: String(item.id),
-                  color: params.color || "",
-                },
-              })
+            expanded={expandedId === `${section}-${item.id}`}
+            onToggle={() =>
+              setExpandedId((prev) =>
+                prev === `${section}-${item.id}` ? null : `${section}-${item.id}`
+              )
             }
-            onDelete={() => setDeleteTarget(item.id)}
-            onSubmit={() => handleSubmitRequest(item.id)}
-            onStatusPress={() => {
-              setStatusTarget(item);
-              setStatusSheetVisible(true);
-            }}
-            statusOptions={Boolean(item.status_permission?.read)}
+            onEdit={
+              isLeaveSection
+                ? () =>
+                    router.push({
+                      pathname: "/(app)/absence-requests/leave/[leaveId]",
+                      params: {
+                        leaveId: String(item.id),
+                        color: params.color || "",
+                      },
+                    })
+                : undefined
+            }
+            onDelete={isLeaveSection ? () => setDeleteTarget(item.id) : undefined}
+            onSubmit={isLeaveSection ? () => handleSubmitRequest(item.id) : undefined}
+            allowSubmit={isLeaveSection}
+            onStatusPress={
+              isLeaveSection
+                ? () => {
+                    setStatusTarget(item);
+                    setStatusSheetVisible(true);
+                  }
+                : undefined
+            }
+            statusOptions={isLeaveSection && Boolean(item.status_permission?.read)}
             t={t}
           />
         ))
       )}
     </View>
-  );
+    );
+  };
 
   return (
     <View style={[listScreenStyles.container, { paddingTop: top }]}>
@@ -443,29 +556,36 @@ export default function AbsenceRequestScreen() {
         animationType="slide"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={() => setLeaveModalVisible(false)}
+        onRequestClose={ignoreHardwareBack}
       >
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-        >
+        <View style={styles.flex}>
           <View style={styles.modalBackdrop}>
-            <View
+            <Animated.View
               style={[
                 styles.modalCard,
-                { paddingBottom: sheetPadding, maxHeight: keyboardHeight > 0 ? "100%" : "85%" },
+                { paddingBottom: modalPadding, maxHeight: "90%" },
+                leaveLift,
               ]}
             >
-              <Text style={styles.modalTitle}>{t("+ Leave")}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>{t("Leave Request")}</Text>
+              {employeeName ? (
+                <Text style={styles.contractHint}>
+                  {t("Contract")}: {employeeName}
+                </Text>
+              ) : null}
               <FormSelectField
                 label={t("Type")}
                 required
-                placeholder={t("Select")}
+                placeholder={t("Select Type")}
                 value={selectedLeaveType?.leave_type_name}
+                error={leaveFieldErrors.type || undefined}
                 onPress={() => setTypeSheetVisible(true)}
               />
-              <Text style={styles.modalLabel}>{t("Datum")}</Text>
+              <Text style={styles.modalLabel}>
+                {t("Date")}
+                <Text style={styles.requiredMark}> *</Text>
+              </Text>
               <ScrollView
                 style={styles.dateList}
                 nestedScrollEnabled
@@ -474,20 +594,45 @@ export default function AbsenceRequestScreen() {
               >
                 {timelineDates.map((entry) => {
                   const selected = Boolean(selectedDates[entry.date]);
+                  const hoursLabel = hoursFromTimeline(entry);
                   return (
-                    <Pressable key={entry.date} style={[styles.dateItem, selected && styles.dateItemSelected]} onPress={() => toggleDate(entry)}>
+                    <Pressable
+                      key={entry.date}
+                      style={[styles.dateItem, selected && styles.dateItemSelected]}
+                      onPress={() => toggleDate(entry)}
+                    >
                       <Text style={styles.dateItemText}>{entry.date}</Text>
+                      {hoursLabel ? (
+                        <Text style={styles.dateItemMeta}>
+                          {hoursLabel} {t("Hours")}
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}
               </ScrollView>
+              {leaveFieldErrors.date ? (
+                <Text style={styles.fieldError}>{leaveFieldErrors.date}</Text>
+              ) : null}
+              <Text style={styles.modalLabel}>
+                {t("Reason")}
+                <Text style={styles.requiredMark}> *</Text>
+              </Text>
               <TextInput
                 value={leaveReason}
-                onChangeText={setLeaveReason}
-                placeholder={t("Description")}
+                onChangeText={(text) => {
+                  setLeaveReason(text);
+                  if (text.trim()) {
+                    setLeaveFieldErrors((prev) => ({ ...prev, reason: "" }));
+                  }
+                }}
+                placeholder={t("Reason")}
                 placeholderTextColor={Colors.placeholder}
-                style={styles.input}
+                style={[styles.input, leaveFieldErrors.reason ? styles.inputError : null]}
               />
+              {leaveFieldErrors.reason ? (
+                <Text style={styles.fieldError}>{leaveFieldErrors.reason}</Text>
+              ) : null}
               <View style={styles.modalActions}>
                 <Pressable style={styles.secondaryButton} onPress={() => setLeaveModalVisible(false)}>
                   <Text style={styles.secondaryButtonText}>{t("Cancel")}</Text>
@@ -496,9 +641,10 @@ export default function AbsenceRequestScreen() {
                   <Text style={styles.primaryButtonText}>{t("Save")}</Text>
                 </Pressable>
               </View>
-            </View>
+              </ScrollView>
+            </Animated.View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       <Modal
@@ -507,22 +653,22 @@ export default function AbsenceRequestScreen() {
         animationType="slide"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={() => setAbsenceModalVisible(false)}
+        onRequestClose={ignoreHardwareBack}
       >
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-        >
+        <View style={styles.flex}>
           <View style={styles.modalBackdrop}>
-            <View
+            <Animated.View
               style={[
                 styles.modalCard,
-                { paddingBottom: sheetPadding, maxHeight: keyboardHeight > 0 ? "100%" : "85%" },
+                { paddingBottom: modalPadding, maxHeight: "90%" },
+                absenceLift,
               ]}
             >
               <Text style={styles.modalTitle}>{t("+ Absence")}</Text>
-              <Text style={styles.modalLabel}>{t("Datum")}</Text>
+              <Text style={styles.modalLabel}>
+                {t("Datum")}
+                <Text style={styles.requiredMark}> *</Text>
+              </Text>
               <ScrollView
                 style={styles.dateList}
                 nestedScrollEnabled
@@ -531,28 +677,65 @@ export default function AbsenceRequestScreen() {
               >
                 {timelineDates.map((entry) => {
                   const selected = Boolean(selectedDates[entry.date]);
+                  const hoursLabel = hoursFromTimeline(entry);
                   return (
-                    <Pressable key={entry.date} style={[styles.dateItem, selected && styles.dateItemSelected]} onPress={() => toggleDate(entry)}>
+                    <Pressable
+                      key={entry.date}
+                      style={[styles.dateItem, selected && styles.dateItemSelected]}
+                      onPress={() => selectAbsenceDate(entry)}
+                    >
                       <Text style={styles.dateItemText}>{entry.date}</Text>
+                      {hoursLabel ? (
+                        <Text style={styles.dateItemMeta}>
+                          {hoursLabel} {t("Hours")}
+                        </Text>
+                      ) : null}
                     </Pressable>
                   );
                 })}
               </ScrollView>
+              {absenceFieldErrors.date ? (
+                <Text style={styles.fieldError}>{absenceFieldErrors.date}</Text>
+              ) : null}
+              <Text style={styles.modalLabel}>
+                {t("Hours")}
+                <Text style={styles.requiredMark}> *</Text>
+              </Text>
               <TextInput
                 value={absenceHours}
-                onChangeText={setAbsenceHours}
+                onChangeText={(text) => {
+                  setAbsenceHours(text);
+                  if (text.trim()) {
+                    setAbsenceFieldErrors((prev) => ({ ...prev, hours: "" }));
+                  }
+                }}
                 placeholder={t("Hours")}
                 keyboardType="decimal-pad"
                 placeholderTextColor={Colors.placeholder}
-                style={styles.input}
+                style={[styles.input, absenceFieldErrors.hours ? styles.inputError : null]}
               />
+              {absenceFieldErrors.hours ? (
+                <Text style={styles.fieldError}>{absenceFieldErrors.hours}</Text>
+              ) : null}
+              <Text style={styles.modalLabel}>
+                {t("Reason")}
+                <Text style={styles.requiredMark}> *</Text>
+              </Text>
               <TextInput
                 value={absenceReason}
-                onChangeText={setAbsenceReason}
+                onChangeText={(text) => {
+                  setAbsenceReason(text);
+                  if (text.trim()) {
+                    setAbsenceFieldErrors((prev) => ({ ...prev, reason: "" }));
+                  }
+                }}
                 placeholder={t("Description")}
                 placeholderTextColor={Colors.placeholder}
-                style={styles.input}
+                style={[styles.input, absenceFieldErrors.reason ? styles.inputError : null]}
               />
+              {absenceFieldErrors.reason ? (
+                <Text style={styles.fieldError}>{absenceFieldErrors.reason}</Text>
+              ) : null}
               <View style={styles.modalActions}>
                 <Pressable style={styles.secondaryButton} onPress={() => setAbsenceModalVisible(false)}>
                   <Text style={styles.secondaryButtonText}>{t("Cancel")}</Text>
@@ -561,9 +744,9 @@ export default function AbsenceRequestScreen() {
                   <Text style={styles.primaryButtonText}>{t("Save")}</Text>
                 </Pressable>
               </View>
-            </View>
+            </Animated.View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       <SelectionBottomSheet
@@ -576,6 +759,7 @@ export default function AbsenceRequestScreen() {
         onClose={() => setTypeSheetVisible(false)}
         onConfirm={(options) => {
           setSelectedLeaveType(options[0]?.raw as LeaveTypeItem);
+          setLeaveFieldErrors((prev) => ({ ...prev, type: "" }));
           setTypeSheetVisible(false);
         }}
       />
@@ -590,10 +774,16 @@ export default function AbsenceRequestScreen() {
           if (!statusTarget) return;
           try {
             const response = await updateLeaveAbsenceStatus(statusTarget.id, option.id);
-            Alert.alert(t("Success"), response?.message || t("Updated"));
+            setToast({
+              top: 45,
+              text: response?.message || t("Updated"),
+              type: "success",
+              visible: true,
+            });
             loadData(true);
           } catch (error) {
             captureApiError(error);
+            showErrorToast(error instanceof Error ? error.message : undefined);
           } finally {
             setStatusSheetVisible(false);
             setStatusTarget(null);
@@ -670,25 +860,47 @@ const styles = StyleSheet.create({
     maxHeight: "85%",
   },
   modalTitle: { fontFamily: FONTS.LexendSemiBold, fontSize: 18, marginBottom: 12 },
+  contractHint: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 13,
+    color: Colors.placeholder,
+    marginBottom: 12,
+  },
   modalLabel: { fontFamily: FONTS.LexendMedium, marginBottom: 8 },
-  dateList: { maxHeight: 180, marginBottom: 12, flexShrink: 1 },
+  requiredMark: { color: Colors.dicline, fontFamily: FONTS.LexendMedium },
+  dateList: { maxHeight: 180, marginBottom: 8, flexShrink: 1 },
   dateItem: {
     borderWidth: 1,
     borderColor: LIST_UI.cardBorder,
     borderRadius: 8,
     padding: 10,
     marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
   dateItemSelected: { borderColor: AppColors.primary, backgroundColor: "#F3F7FF" },
-  dateItemText: { fontFamily: FONTS.LexendRegular, color: AppColors.black },
+  dateItemText: { fontFamily: FONTS.LexendRegular, color: AppColors.black, flex: 1 },
+  dateItemMeta: { fontFamily: FONTS.LexendMedium, color: Colors.placeholder, fontSize: 12 },
   input: {
     borderWidth: 1,
     borderColor: LIST_UI.cardBorder,
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
+    marginBottom: 8,
     fontFamily: FONTS.LexendRegular,
     color: AppColors.black,
+  },
+  inputError: {
+    borderColor: Colors.dicline,
+  },
+  fieldError: {
+    fontFamily: FONTS.LexendRegular,
+    color: Colors.dicline,
+    fontSize: 12,
+    marginBottom: 10,
+    marginTop: -2,
   },
   modalActions: { flexDirection: "row", gap: 10 },
   secondaryButton: {

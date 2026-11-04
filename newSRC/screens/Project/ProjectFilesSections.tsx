@@ -2,10 +2,8 @@ import React, { useCallback, useContext, useMemo, useRef, useState } from "react
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,8 +13,11 @@ import {
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
+import Animated from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import FallBackImage from "../../Components/FallBackImage";
+import HtmlContent from "../../Components/HtmlContent";
+import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
 import OptionBottomSheet from "../../Components/OptionBottomSheet";
 import SimpleBox from "../../Components/SimpleBox";
 import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
@@ -35,8 +36,10 @@ import {
 } from "../../services/projectService";
 import { getDropboxDirectLink } from "../../services/eventService";
 import { parseApiError } from "../../utils/apiError";
+import { ignoreHardwareBack } from "../../utils/modalBack";
+import { useKeyboardLiftStyle } from "../../utils/keyboardShift";
 import { hasPermission } from "../../utils/permissionFlags";
-import { useKeyboardHeight, useScreenInsets } from "../../utils/screenInsets";
+import { useScreenInsets } from "../../utils/screenInsets";
 import { pickTicketDocuments } from "../../utils/ticketFilePicker";
 import { pickProjectPhotos } from "../../utils/projectPhotoPicker";
 import { AppColors } from "../../utils/theme";
@@ -154,7 +157,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
   const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
   const { footerPadding } = useScreenInsets();
-  const keyboardHeight = useKeyboardHeight();
   const loadedOnce = useRef(false);
 
   const canReadDocuments = hasPermission(permissions, "project_documents_mobile", "read");
@@ -181,6 +183,7 @@ export default function ProjectFilesSections({ projectId }: Props) {
   const [photoSheetStep, setPhotoSheetStep] = useState<"actions" | "details">("actions");
   const [photoTitle, setPhotoTitle] = useState("");
   const [photoComment, setPhotoComment] = useState("");
+  const sheetLift = useKeyboardLiftStyle(createFolderOpen || photoSheetOpen);
 
   const busy = Boolean(busyKey);
   const folderNames = useMemo(() => collectProjectFolderNames(files), [files]);
@@ -450,11 +453,7 @@ export default function ProjectFilesSections({ projectId }: Props) {
                       {title}
                     </Text>
                   ) : null}
-                  {comment ? (
-                    <Text style={styles.fileComment} numberOfLines={2}>
-                      {comment}
-                    </Text>
-                  ) : null}
+                  {comment ? <HtmlContent html={comment} variant="note" /> : null}
                 </Pressable>
               );
             })}
@@ -531,11 +530,7 @@ export default function ProjectFilesSections({ projectId }: Props) {
                             {title}
                           </Text>
                         ) : null}
-                        {comment ? (
-                          <Text style={styles.fileComment} numberOfLines={2}>
-                            {comment}
-                          </Text>
-                        ) : null}
+                        {comment ? <HtmlContent html={comment} variant="note" /> : null}
                       </Pressable>
                     );
                   })}
@@ -559,27 +554,12 @@ export default function ProjectFilesSections({ projectId }: Props) {
         animationType="fade"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={() => {
-          if (busyKey === "folder") return;
-          setCreateFolderOpen(false);
-        }}
+        onRequestClose={ignoreHardwareBack}
       >
-        <KeyboardAvoidingView
-          style={styles.modalRoot}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => {
-              if (busyKey === "folder") return;
-              setCreateFolderOpen(false);
-            }}
-          />
-          <View
-            style={[
-              styles.modalSheet,
-              { paddingBottom: footerPadding + (Platform.OS === "android" ? keyboardHeight : 0) },
-            ]}
+        <View style={styles.modalRoot}>
+          <View style={styles.modalBackdrop} />
+          <Animated.View
+            style={[styles.modalSheet, { paddingBottom: footerPadding }, sheetLift]}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{t("Create folder")}</Text>
@@ -623,8 +603,8 @@ export default function ProjectFilesSections({ projectId }: Props) {
                 <Text style={styles.saveBtnText}>{t("Create folder")}</Text>
               )}
             </Pressable>
-          </View>
-        </KeyboardAvoidingView>
+          </Animated.View>
+        </View>
       </Modal>
 
       <OptionBottomSheet
@@ -660,18 +640,12 @@ export default function ProjectFilesSections({ projectId }: Props) {
         animationType="fade"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={closePhotoSheet}
+        onRequestClose={ignoreHardwareBack}
       >
-        <KeyboardAvoidingView
-          style={styles.modalRoot}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <Pressable style={styles.modalBackdrop} onPress={closePhotoSheet} />
-          <View
-            style={[
-              styles.modalSheet,
-              { paddingBottom: footerPadding + (Platform.OS === "android" ? keyboardHeight : 0) },
-            ]}
+        <View style={styles.modalRoot}>
+          <View style={styles.modalBackdrop} />
+          <Animated.View
+            style={[styles.modalSheet, { paddingBottom: footerPadding }, sheetLift]}
           >
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
@@ -758,14 +732,12 @@ export default function ProjectFilesSections({ projectId }: Props) {
                     placeholderTextColor={Colors.placeholder}
                   />
                   <Text style={styles.label}>{t("Comment")}</Text>
-                  <TextInput
-                    style={[styles.input, styles.commentInput]}
+                  <RichDescriptionEditor
                     value={photoComment}
-                    onChangeText={setPhotoComment}
+                    onChange={setPhotoComment}
                     placeholder={t("Optional")}
-                    placeholderTextColor={Colors.placeholder}
-                    multiline
-                    textAlignVertical="top"
+                    compact
+                    contentKey={photoSheetStep}
                   />
                   <Pressable
                     style={styles.saveBtn}
@@ -782,8 +754,8 @@ export default function ProjectFilesSections({ projectId }: Props) {
                 </View>
               )}
             </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+          </Animated.View>
+        </View>
       </Modal>
 
       <DocumentPreviewModal

@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import AuthButton from "../../Components/Auth/AuthButton";
 import AuthInput from "../../Components/Auth/AuthInput";
+import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
 import AuthSelect from "../../Components/Auth/AuthSelect";
 import SelectionSheet from "../../Components/Auth/SelectionSheet";
 import { GooglePlacesField } from "../../Components/GooglePlacesInput";
@@ -376,7 +377,13 @@ export default function CreateBookingScreen() {
               placeholder={t("Select")}
               onPress={() => setSheet("payment")}
             />
-            <AuthInput label={t("Comment")} value={comments} onChangeText={setComments} multiline />
+            <Text style={styles.summaryLine}>{t("Comment")}</Text>
+            <RichDescriptionEditor
+              value={comments}
+              onChange={setComments}
+              placeholder={t("Enter comment")}
+              compact
+            />
           </>
         ) : null}
 

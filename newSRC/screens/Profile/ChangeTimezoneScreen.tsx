@@ -27,6 +27,7 @@ export default function ChangeTimezoneScreen() {
 
   const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
   const [selected, setSelected] = useState("");
+  const [fieldError, setFieldError] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,14 +70,10 @@ export default function ChangeTimezoneScreen() {
 
   const handleSave = async () => {
     if (!selected) {
-      setToast({
-        top: 45,
-        text: t("Please select a timezone"),
-        type: "error",
-        visible: true,
-      });
+      setFieldError(t("Please select a timezone"));
       return;
     }
+    setFieldError("");
 
     setSaving(true);
     try {
@@ -89,12 +86,7 @@ export default function ChangeTimezoneScreen() {
       });
       router.back();
     } catch (error) {
-      setToast({
-        top: 45,
-        text: getApiErrorMessage(error, t("Something went wrong")),
-        type: "error",
-        visible: true,
-      });
+      setFieldError(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSaving(false);
     }
@@ -113,9 +105,13 @@ export default function ChangeTimezoneScreen() {
             label={t("Timezone")}
             placeholder={t("Select timezone")}
             value={selectedLabel}
-            onPress={() => setSheetOpen(true)}
+            error={fieldError}
+            onPress={() => {
+              setFieldError("");
+              setSheetOpen(true);
+            }}
           />
-          <AuthButton title={t("Save")} onPress={handleSave} disabled={saving} />
+          <AuthButton title={t("Save")} onPress={handleSave} loading={saving} disabled={saving} />
         </View>
       )}
 
@@ -129,7 +125,10 @@ export default function ChangeTimezoneScreen() {
         onClose={() => setSheetOpen(false)}
         onConfirm={(selectedItems) => {
           const item = selectedItems[0];
-          if (item) setSelected(String(item.id));
+          if (item) {
+            setSelected(String(item.id));
+            setFieldError("");
+          }
           setSheetOpen(false);
         }}
       />

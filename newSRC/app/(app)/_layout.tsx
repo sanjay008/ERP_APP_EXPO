@@ -87,8 +87,7 @@ function AppStack() {
       <Stack.Screen name="child-time/index" options={{ headerShown: false }} />
       <Stack.Screen name="project-time/index" options={{ headerShown: false }} />
       <Stack.Screen name="project-time/[id]" options={{ headerShown: false }} />
-      <Stack.Screen name="home-tasks/create" options={{ headerShown: false }} />
-      <Stack.Screen name="home-tasks/multiple-user" options={{ headerShown: false }} />
+      <Stack.Screen name="home-tasks" options={{ headerShown: false }} />
       <Stack.Screen name="customers/index" options={{ headerShown: false }} />
       <Stack.Screen name="customers/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="bookings/index" options={{ headerShown: false }} />

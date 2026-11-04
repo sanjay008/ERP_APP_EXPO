@@ -102,6 +102,14 @@ apiClient.interceptors.response.use(
       error.response?.data || error.message
     );
 
+    const bodyMessage =
+      error.response?.data && typeof error.response.data === "object"
+        ? (error.response.data as { message?: string }).message
+        : undefined;
+    if (isTokenExpiredMessage(parsed.message) || isTokenExpiredMessage(bodyMessage)) {
+      clearAuthSession().catch(() => undefined);
+    }
+
     return Promise.reject(toAppApiError(error));
   }
 );

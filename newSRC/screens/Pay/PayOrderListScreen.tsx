@@ -10,6 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
+import HtmlContent from "../../Components/HtmlContent";
 import SearchBox from "../../Components/SearchBox";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
@@ -45,10 +46,8 @@ function PayOrderCard({
             {t("Pay order")} :{"  "}
             <Text style={styles.value}>{item.pay_order_nr || "-"}</Text>
           </Text>
-          <Text style={styles.row}>
-            {t("Description")} :{"  "}
-            <Text style={styles.value}>{item.description || "-"}</Text>
-          </Text>
+          <Text style={styles.row}>{t("Description")}</Text>
+          <HtmlContent html={item.description || "-"} variant="note" />
           <Text style={styles.row}>
             {t("Amount")} :{"  "}
             <Text style={styles.value}>{formatMoney(symbol, item.amount)}</Text>

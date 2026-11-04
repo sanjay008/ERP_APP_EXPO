@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,8 @@ import {
   fetchProjectsForCheckIn,
   formatBreakTime,
   getTodayFormats,
+  isAlreadyCheckedInError,
+  isAlreadyCheckedOutError,
   performProjectCheckIn,
   performProjectCheckOut,
   type ProjectOption,
@@ -48,6 +49,7 @@ export default function ProjectCheckInOutScreen() {
   const [selectedBreak, setSelectedBreak] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
+  const [projectError, setProjectError] = useState("");
   const [projectSheetVisible, setProjectSheetVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(getTodayFormats().currentTime);
 
@@ -93,9 +95,10 @@ export default function ProjectCheckInOutScreen() {
   const handleSubmit = async () => {
     if (!checkedIn) {
       if (!selectedProject) {
-        Alert.alert(t("Error"), t("Select project"));
+        setProjectError(t("Select project"));
         return;
       }
+      setProjectError("");
       setSubmitting(true);
       try {
         await performProjectCheckIn({
@@ -110,7 +113,20 @@ export default function ProjectCheckInOutScreen() {
         setCheckData(state.checkData);
         setBreakTimes(state.breakTimes);
       } catch (error) {
-        captureApiError(error);
+        if (isAlreadyCheckedInError(error)) {
+          const state = await fetchProjectCheckInOutState(displayDate);
+          setCheckedIn(true);
+          setCheckData(state.checkData);
+          setBreakTimes(state.breakTimes);
+          setToast({
+            top: 45,
+            text: error instanceof Error ? error.message : t("Please checkout first"),
+            type: "error",
+            visible: true,
+          });
+        } else {
+          captureApiError(error);
+        }
       } finally {
         setSubmitting(false);
       }
@@ -134,7 +150,18 @@ export default function ProjectCheckInOutScreen() {
       setCheckData(state.checkData);
       setBreakTimes(state.breakTimes);
     } catch (error) {
-      captureApiError(error);
+      if (isAlreadyCheckedOutError(error)) {
+        setCheckedIn(false);
+        setCheckData(null);
+        setToast({
+          top: 45,
+          text: error instanceof Error ? error.message : t("Please check in first"),
+          type: "error",
+          visible: true,
+        });
+      } else {
+        captureApiError(error);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -158,7 +185,11 @@ export default function ProjectCheckInOutScreen() {
                   required
                   placeholder={t("Select project name")}
                   value={selectedProject?.project_name}
-                  onPress={() => setProjectSheetVisible(true)}
+                  error={projectError}
+                  onPress={() => {
+                    setProjectError("");
+                    setProjectSheetVisible(true);
+                  }}
                 />
                 <View style={styles.infoRow}>
                   <Text style={styles.label}>{t("Current date")}</Text>

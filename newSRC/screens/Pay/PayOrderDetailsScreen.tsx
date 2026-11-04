@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
+import HtmlContent from "../../Components/HtmlContent";
 import ApiFeedback from "../../Components/ApiFeedback";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
@@ -35,16 +36,22 @@ function formatPaymentDate(value?: string) {
 function DetailRow({
   label,
   value,
+  html,
   last,
 }: {
   label: string;
-  value: string;
+  value?: string;
+  html?: string;
   last?: boolean;
 }) {
   return (
     <View style={[styles.row, last && styles.rowLast]}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+      {html ? (
+        <HtmlContent html={html} variant="note" />
+      ) : (
+        <Text style={styles.value}>{value}</Text>
+      )}
     </View>
   );
 }
@@ -84,7 +91,7 @@ export default function PayOrderDetailsScreen() {
     if (!item) return [];
     return [
       { label: t("Payment Order"), value: item.pay_order_nr || "-" },
-      { label: t("Description"), value: item.description || "-" },
+      { label: t("Description"), html: item.description || "-" },
       { label: t("Amount"), value: formatMoney(symbol, item.amount) },
       { label: t("Paid"), value: formatMoney(symbol, item.paid) },
       { label: t("Outstanding"), value: formatMoney(symbol, item.outstading) },
@@ -118,6 +125,7 @@ export default function PayOrderDetailsScreen() {
                 key={row.label}
                 label={row.label}
                 value={row.value}
+                html={row.html}
                 last={index === rows.length - 1 && !item.module_status}
               />
             ))}
@@ -159,9 +167,9 @@ export default function PayOrderDetailsScreen() {
                     <Text style={[styles.paymentCell, styles.cellLeft]}>
                       {formatPaymentDate(payment.created_at || payment.payment_date)}
                     </Text>
-                    <Text style={[styles.paymentCell, styles.cellCenter]} numberOfLines={2}>
-                      {payment.description || "-"}
-                    </Text>
+                    <View style={styles.paymentHtmlCell}>
+                      <HtmlContent html={payment.description || "-"} variant="note" />
+                    </View>
                     <Text style={[styles.paymentCell, styles.cellRight]}>
                       {formatMoney(symbol, payment.amount)}
                     </Text>
@@ -258,6 +266,7 @@ const styles = StyleSheet.create({
   },
   cellLeft: { textAlign: "left" },
   cellCenter: { textAlign: "center" },
+  paymentHtmlCell: { flex: 1 },
   cellRight: { textAlign: "right" },
   totalPaid: {
     alignSelf: "flex-end",

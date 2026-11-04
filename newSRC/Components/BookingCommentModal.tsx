@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { useKeyboardHeight, useScreenInsets } from "../utils/screenInsets";
+import RichDescriptionEditor from "./RichDescriptionEditor";
+import { useScreenInsets } from "../utils/screenInsets";
+import { useKeyboardLiftStyle } from "../utils/keyboardShift";
+import { ignoreHardwareBack } from "../utils/modalBack";
+import { isRichTextEmpty, richTextPayload } from "../utils/richText";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 
@@ -35,13 +31,7 @@ export default function BookingCommentModal({
 }: Props) {
   const { t } = useTranslation();
   const { modalPadding } = useScreenInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const sheetOffset =
-    keyboardHeight > 0
-      ? Platform.OS === "ios"
-        ? 12
-        : keyboardHeight + 8
-      : modalPadding;
+  const liftStyle = useKeyboardLiftStyle(visible);
   const [primary, setPrimary] = useState("");
   const [secondary, setSecondary] = useState("");
 
@@ -66,8 +56,8 @@ export default function BookingCommentModal({
 
   const handleSubmit = () => {
     onSubmit({
-      primary: primary.trim(),
-      secondary: secondary.trim() || undefined,
+      primary: mode === "complete-cash" ? primary.trim() : richTextPayload(primary),
+      secondary: isRichTextEmpty(secondary) ? undefined : richTextPayload(secondary),
     });
   };
 
@@ -78,39 +68,43 @@ export default function BookingCommentModal({
       animationType="fade"
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={ignoreHardwareBack}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
         <View style={styles.backdrop}>
-          <View style={[styles.sheet, { marginBottom: sheetOffset }]}>
+          <Animated.View style={[styles.sheet, { marginBottom: modalPadding }, liftStyle]}>
           <Text style={styles.title}>{title}</Text>
 
           <Text style={styles.label}>{primaryLabel}</Text>
-          <TextInput
-            style={styles.input}
-            value={primary}
-            onChangeText={setPrimary}
-            multiline={mode !== "complete-cash"}
-            keyboardType={mode === "complete-cash" ? "decimal-pad" : "default"}
-            placeholder={
-              mode === "complete-cash"
-                ? `${currencySymbol} 0.00`
-                : t("Enter comment")
-            }
-          />
+          {mode === "complete-cash" ? (
+            <TextInput
+              style={styles.amountInput}
+              value={primary}
+              onChangeText={setPrimary}
+              keyboardType="decimal-pad"
+              placeholder={`${currencySymbol} 0.00`}
+              placeholderTextColor={AppColors.subtitle}
+            />
+          ) : (
+            <RichDescriptionEditor
+              value={primary}
+              contentKey={`${mode}-${visible}`}
+              placeholder={t("Enter comment")}
+              disabled={loading}
+              compact
+              onChange={setPrimary}
+            />
+          )}
 
           {mode === "complete-cash" ? (
             <>
               <Text style={styles.label}>{t("Voeg een notitie toe")}</Text>
-              <TextInput
-                style={styles.input}
+              <RichDescriptionEditor
                 value={secondary}
-                onChangeText={setSecondary}
-                multiline
+                contentKey={`cash-${visible}`}
                 placeholder={t("Enter comment")}
+                disabled={loading}
+                compact
+                onChange={setSecondary}
               />
             </>
           ) : null}
@@ -133,15 +127,13 @@ export default function BookingCommentModal({
               </Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       </View>
-      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -166,8 +158,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 8,
   },
-  input: {
-    minHeight: 80,
+  amountInput: {
+    minHeight: 48,
     borderWidth: 1,
     borderColor: "#E0E5EA",
     borderRadius: 8,

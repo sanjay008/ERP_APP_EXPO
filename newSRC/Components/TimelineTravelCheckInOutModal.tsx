@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -14,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -36,7 +35,9 @@ import {
   type CicoSession,
 } from "../services/timelineCicoService";
 import { getApiErrorMessage } from "../utils/apiError";
-import { getKeyboardAvoidBehavior, useScreenInsets } from "../utils/screenInsets";
+import { useScreenInsets } from "../utils/screenInsets";
+import { useKeyboardLiftStyle } from "../utils/keyboardShift";
+import { ignoreHardwareBack } from "../utils/modalBack";
 import { AppColors } from "../utils/theme";
 import { FONTS } from "../utils/FONTS";
 import { Images } from "../utils/Images";
@@ -96,12 +97,14 @@ export default function TimelineTravelCheckInOutModal({
   const { t } = useTranslation();
   const { permissions } = useAppData();
   const { modalPadding } = useScreenInsets();
+  const liftStyle = useKeyboardLiftStyle(visible);
   const isSimple = String(permissions?.simpel_check_in_out?.read) === "1";
 
   const [step, setStep] = useState<Step>("loading");
   const [session, setSession] = useState<CicoSession | null>(null);
   const [coords, setCoords] = useState<CicoCoords | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const [date, setDate] = useState(formatCicoDate());
   const [time, setTime] = useState(formatCicoTime());
@@ -143,6 +146,7 @@ export default function TimelineTravelCheckInOutModal({
     setDescription("");
     setStopTime(true);
     setClosingDay(false);
+    setFormError("");
   }, []);
 
   const bootstrap = useCallback(async () => {
@@ -176,8 +180,7 @@ export default function TimelineTravelCheckInOutModal({
         .then(setCoords)
         .catch(() => setCoords(null));
     } catch (error) {
-      Alert.alert(getApiErrorMessage(error, t("Something went wrong")));
-      onClose();
+      setFormError(getApiErrorMessage(error, t("Something went wrong")));
     }
   }, [onClose, t]);
 
@@ -237,9 +240,10 @@ export default function TimelineTravelCheckInOutModal({
   const submit = async () => {
     if (!session) return;
     if (!startType || !endType) {
-      Alert.alert(t("Please select start and destination"));
+      setFormError(t("Please select start and destination"));
       return;
     }
+    setFormError("");
 
     setSubmitting(true);
     try {
@@ -274,7 +278,7 @@ export default function TimelineTravelCheckInOutModal({
       });
       onComplete();
     } catch (error) {
-      Alert.alert(getApiErrorMessage(error, t("Something went wrong")));
+      setFormError(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSubmitting(false);
     }
@@ -326,9 +330,10 @@ export default function TimelineTravelCheckInOutModal({
 
   const submitCheckoutExtra = () => {
     if (!breakTime) {
-      Alert.alert(t("Error"), t("Please select break time"));
+      setFormError(t("Please select break time"));
       return;
     }
+    setFormError("");
     submit();
   };
 
@@ -354,12 +359,8 @@ export default function TimelineTravelCheckInOutModal({
       animationType="fade"
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={ignoreHardwareBack}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={getKeyboardAvoidBehavior()}
-      >
         <View style={[styles.backdrop, success ? styles.backdropCenter : null]}>
           {success ? (
             <View style={styles.successCard}>
@@ -376,11 +377,8 @@ export default function TimelineTravelCheckInOutModal({
               </Pressable>
             </View>
           ) : (
-            <Pressable style={styles.backdropFill} onPress={onClose}>
-              <Pressable
-                style={[styles.card, { marginBottom: modalPadding }]}
-                onPress={(e) => e.stopPropagation()}
-              >
+            <View style={styles.backdropFill}>
+              <Animated.View style={[styles.card, { marginBottom: modalPadding }, liftStyle]}>
                 <View style={styles.topRow}>
                   {showBack ? (
                     <Pressable style={styles.iconBtn} onPress={goBack}>
@@ -397,8 +395,13 @@ export default function TimelineTravelCheckInOutModal({
                 <Text style={styles.screenTitle}>
                   {isCheckOut ? t("Check Out") : t("Check In")}
                 </Text>
+                {formError ? <Text style={styles.fieldError}>{formError}</Text> : null}
 
-                {step === "loading" || !session ? (
+                {formError && (step === "loading" || !session) ? (
+                  <Pressable style={styles.nextButton} onPress={bootstrap}>
+                    <Text style={styles.nextButtonText}>{t("Try again")}</Text>
+                  </Pressable>
+                ) : step === "loading" || !session ? (
                   <ActivityIndicator color={AppColors.primary} style={{ marginVertical: 24 }} />
                 ) : (
                   <ScrollView
@@ -695,11 +698,10 @@ export default function TimelineTravelCheckInOutModal({
                     ) : null}
                   </ScrollView>
                 )}
-              </Pressable>
-            </Pressable>
+              </Animated.View>
+            </View>
           )}
         </View>
-      </KeyboardAvoidingView>
 
       <AppDatePickerSheet
         visible={datePickerOpen}
@@ -777,6 +779,12 @@ const styles = StyleSheet.create({
   backdropFill: {
     flex: 1,
     justifyContent: "center",
+  },
+  fieldError: {
+    color: "#EF4444",
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 13,
+    marginBottom: 8,
   },
   card: {
     backgroundColor: AppColors.white,

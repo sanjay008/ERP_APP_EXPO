@@ -11,6 +11,7 @@ export type EmployeeStatus = {
 export type EmployeeContractItem = {
   id: number;
   relaties_id?: number;
+  employer_id?: number | string;
   contract_name?: string;
   from?: string;
   end?: string;

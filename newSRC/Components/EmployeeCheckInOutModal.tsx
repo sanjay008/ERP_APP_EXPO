@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -73,6 +72,8 @@ export default function EmployeeCheckInOutModal({
   const [selectedBreak, setSelectedBreak] = useState("");
   const [description, setDescription] = useState("");
   const [contractSheetVisible, setContractSheetVisible] = useState(false);
+  const [contractError, setContractError] = useState("");
+  const [formError, setFormError] = useState("");
   const [noSchedule, setNoSchedule] = useState("");
   const [currentTime, setCurrentTime] = useState(getTodayFormats().currentTime);
 
@@ -175,9 +176,11 @@ export default function EmployeeCheckInOutModal({
 
   const handleCheckIn = async () => {
     if (!selectedContract?.id) {
-      Alert.alert(t("Error"), t("Please select a contract"));
+      setContractError(t("Please select a contract"));
       return;
     }
+    setContractError("");
+    setFormError("");
     setSubmitting(true);
     try {
       await performCheckIn({
@@ -202,7 +205,7 @@ export default function EmployeeCheckInOutModal({
         });
         return;
       }
-      Alert.alert(t("Error"), getApiErrorMessage(error, t("Something went wrong")));
+      setFormError(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSubmitting(false);
     }
@@ -228,7 +231,7 @@ export default function EmployeeCheckInOutModal({
       onComplete();
       onClose();
     } catch (error: any) {
-      Alert.alert(t("Error"), error?.message || t("Something went wrong"));
+      setFormError(error?.message || t("Something went wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -253,7 +256,11 @@ export default function EmployeeCheckInOutModal({
               required
               placeholder={t("Select contract")}
               value={selectedContract?.title}
-              onPress={() => setContractSheetVisible(true)}
+              error={contractError}
+              onPress={() => {
+                setContractError("");
+                setContractSheetVisible(true);
+              }}
             />
 
             <InfoRow label={t("Current date")} value={displayDate} />
@@ -334,6 +341,8 @@ export default function EmployeeCheckInOutModal({
             />
           </>
         )}
+
+        {formError ? <Text style={styles.fieldError}>{formError}</Text> : null}
 
         <Pressable
           style={[styles.primaryButton, submitting && styles.buttonDisabled]}
@@ -435,6 +444,12 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     fontFamily: FONTS.LexendRegular,
     color: AppColors.black,
+  },
+  fieldError: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: 8,
+    marginBottom: 4,
   },
   emptyText: {
     fontFamily: FONTS.LexendRegular,

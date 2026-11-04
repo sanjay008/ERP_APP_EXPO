@@ -17,6 +17,7 @@ import SelectionBottomSheet from "../../Components/SelectionBottomSheet";
 import OptionBottomSheet from "../../Components/OptionBottomSheet";
 import ConfirmBottomSheet from "../../Components/ConfirmBottomSheet";
 import ScreenHeader from "../../Components/ScreenHeader";
+import HtmlContent from "../../Components/HtmlContent";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
 import { RegisterBackContext } from "../../constants/GoBackContext";
@@ -518,11 +519,7 @@ export default function EditProjectScreen() {
                             {title}
                           </Text>
                         ) : null}
-                        {comment ? (
-                          <Text style={styles.fileComment} numberOfLines={2}>
-                            {comment}
-                          </Text>
-                        ) : null}
+                        {comment ? <HtmlContent html={comment} variant="note" /> : null}
                       </View>
                     );
                   })}
@@ -585,11 +582,7 @@ export default function EditProjectScreen() {
                                   {title}
                                 </Text>
                               ) : null}
-                              {comment ? (
-                                <Text style={styles.fileComment} numberOfLines={2}>
-                                  {comment}
-                                </Text>
-                              ) : null}
+                              {comment ? <HtmlContent html={comment} variant="note" /> : null}
                             </View>
                           );
                         })}

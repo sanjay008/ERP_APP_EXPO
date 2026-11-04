@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Image,
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { parseApiError } from "../../utils/apiError";
 import { Redirect, useRouter } from "expo-router";
@@ -15,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import AuthInput from "../../Components/Auth/AuthInput";
+import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
+import KeyboardScreen from "../../Components/KeyboardScreen";
 import AuthButton from "../../Components/Auth/AuthButton";
 import FormSelectField from "../../Components/FormSelectField";
 import SelectionBottomSheet, {
@@ -31,7 +25,8 @@ import {
 } from "../../services/taskService";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import { hasPermission } from "../../utils/permissionFlags";
-import { getKeyboardAvoidBehavior, useScreenInsets } from "../../utils/screenInsets";
+import { useScreenInsets } from "../../utils/screenInsets";
+import { isRichTextEmpty, richTextPayload } from "../../utils/richText";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
@@ -187,7 +182,7 @@ export default function CreateTaskScreen() {
     const nextErrors: Record<string, string> = {};
     if (!selectedCustomer) nextErrors.customer = t("Relaties selection is required");
     if (!title.trim()) nextErrors.title = t("Task name is required");
-    if (!description.trim()) nextErrors.description = t("Description is required");
+    if (isRichTextEmpty(description)) nextErrors.description = t("Description is required");
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -212,7 +207,7 @@ export default function CreateTaskScreen() {
       const response = await createTask({
         selected_relaties_id: selectedCustomer?.id,
         title: title.trim(),
-        short_description: description.trim(),
+        short_description: richTextPayload(description),
         priority: selectedPriority?.value || selectedPriority?.name || "",
         document: selectedFile || "",
       });
@@ -242,18 +237,9 @@ export default function CreateTaskScreen() {
       ) : apiError && !formLoaded ? (
         <ApiFeedback error={apiError} onRetry={loadFormData} />
       ) : (
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={getKeyboardAvoidBehavior()}
+        <KeyboardScreen
+          contentContainerStyle={[styles.content, { paddingBottom: scrollPadding }]}
         >
-          <ScrollView
-            contentContainerStyle={[
-              styles.content,
-              { paddingBottom: scrollPadding },
-            ]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
             <View style={styles.conceptWrap}>
               <View style={styles.conceptBadge}>
                 <Text style={styles.conceptText}>{t("Concept")}</Text>
@@ -285,19 +271,21 @@ export default function CreateTaskScreen() {
               error={errors.title}
             />
 
-            <AuthInput
-              label={t("Omschrijving")}
-              required
+            <Text style={styles.editorLabel}>
+              {t("Omschrijving")}
+              <Text style={styles.required}> *</Text>
+            </Text>
+            <RichDescriptionEditor
               value={description}
-              onChangeText={(value) => {
-                setDescription(value);
+              placeholder={t("Enter description")}
+              error={Boolean(errors.description)}
+              compact
+              onChange={(html) => {
+                setDescription(html);
                 if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
               }}
-              placeholder={t("Enter description")}
-              multiline
-              style={{ minHeight: 100, textAlignVertical: "top" }}
-              error={errors.description}
             />
+            {errors.description ? <Text style={styles.fieldError}>{errors.description}</Text> : null}
 
             <FormSelectField
               label={t("Priority")}
@@ -355,8 +343,7 @@ export default function CreateTaskScreen() {
               onPress={handleSubmit}
               disabled={submitting}
             />
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardScreen>
       )}
 
       <SelectionBottomSheet
@@ -417,6 +404,19 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 16,
+  },
+  editorLabel: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 14,
+    color: AppColors.black,
+  },
+  required: {
+    color: "#EF4444",
+  },
+  fieldError: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -8,
   },
   conceptWrap: {
     alignItems: "flex-end",

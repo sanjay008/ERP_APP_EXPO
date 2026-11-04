@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
-  KeyboardAvoidingView,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -13,6 +10,8 @@ import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import AuthInput from "../../Components/Auth/AuthInput";
 import AuthButton from "../../Components/Auth/AuthButton";
+import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
+import KeyboardScreen from "../../Components/KeyboardScreen";
 import FormSelectField from "../../Components/FormSelectField";
 import SelectionBottomSheet, {
   type SheetOption,
@@ -33,7 +32,9 @@ import {
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import { getHomeTaskScreenTitle } from "../../utils/homeTaskNavigation";
 import { getData } from "../../utils/storeData";
-import { getKeyboardAvoidBehavior, useScreenInsets } from "../../utils/screenInsets";
+import { useScreenInsets } from "../../utils/screenInsets";
+import { isRichTextEmpty, richTextPayload } from "../../utils/richText";
+import { flattenFieldErrors, getApiErrorMessage } from "../../utils/apiError";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 
@@ -50,6 +51,8 @@ export default function MultipleUserTaskScreen() {
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState("");
   const [customers, setCustomers] = useState<RelatieOption[]>([]);
   const [templates, setTemplates] = useState<TaskTemplateOption[]>([]);
   const [priorities, setPriorities] = useState<PriorityOption[]>([]);
@@ -161,12 +164,20 @@ export default function MultipleUserTaskScreen() {
   );
 
   const handleSubmit = async () => {
+    const nextErrors: Record<string, string> = {};
+    if (!title.trim()) nextErrors.title = t("Title is required.");
+    if (!selectedCustomer) nextErrors.customer = t("Relaties selection is required");
+    if (isRichTextEmpty(description)) nextErrors.description = t("Description is required.");
+    setErrors(nextErrors);
+    setFormError("");
+    if (Object.keys(nextErrors).length) return;
+
     try {
       setSubmitting(true);
       const response = await createHomeTask({
         type: "task_multiple_user",
         title: title.trim(),
-        short_description: description.trim(),
+        short_description: richTextPayload(description),
         selected_relaties_id: selectedCustomer?.id,
         task_template: selectedTemplate?.id,
         priority: selectedPriority?.value,
@@ -177,20 +188,20 @@ export default function MultipleUserTaskScreen() {
       });
 
       if (response?.status) {
-        router.replace("/(app)/(tabs)/menu");
+        router.back();
         return;
       }
 
-      Alert.alert(t("Error"), response?.message || t("Something went wrong"));
+      setFormError(response?.message || t("Something went wrong"));
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { errors?: Record<string, string[]> } } };
-      const validationErrors = err.response?.data?.errors;
-      if (validationErrors) {
-        const message = Object.values(validationErrors).flat().join("\n");
-        Alert.alert(t("Validation Error"), message);
-      } else {
-        Alert.alert(t("Error"), t("Something went wrong"));
+      const fieldErrors = flattenFieldErrors(
+        (error as { response?: { data?: { errors?: unknown } } })?.response?.data?.errors
+      );
+      if (fieldErrors) {
+        setErrors((prev) => ({ ...prev, ...fieldErrors }));
+        return;
       }
+      setFormError(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSubmitting(false);
     }
@@ -205,24 +216,29 @@ export default function MultipleUserTaskScreen() {
       ) : apiError ? (
         <ApiFeedback error={apiError} onRetry={loadFormData} />
       ) : (
-        <KeyboardAvoidingView style={styles.flex} behavior={getKeyboardAvoidBehavior()}>
-          <ScrollView
-            contentContainerStyle={[styles.content, { paddingBottom: scrollPadding }]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+        <KeyboardScreen contentContainerStyle={[styles.content, { paddingBottom: scrollPadding }]}>
             <AuthInput
               label={t("Title")}
+              required
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(value) => {
+                setTitle(value);
+                if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
+              }}
               placeholder={t("Add title.....")}
+              error={errors.title}
             />
 
             <FormSelectField
               label={t("Relaties")}
+              required
               placeholder={t("Select Relatie...")}
               value={selectedCustomer?.display_name || selectedCustomer?.bedrijfsnaam}
-              onPress={() => setCustomerSheetVisible(true)}
+              error={errors.customer}
+              onPress={() => {
+                if (errors.customer) setErrors((prev) => ({ ...prev, customer: "" }));
+                setCustomerSheetVisible(true);
+              }}
             />
 
             <FormSelectField
@@ -275,22 +291,29 @@ export default function MultipleUserTaskScreen() {
               onPress={() => setTaxSheetVisible(true)}
             />
 
-            <AuthInput
-              label={t("Description")}
+            <Text style={styles.sectionLabel}>
+              {t("Description")}
+              <Text style={styles.required}> *</Text>
+            </Text>
+            <RichDescriptionEditor
               value={description}
-              onChangeText={setDescription}
               placeholder={t("Type here...")}
-              multiline
-              style={{ minHeight: 120, textAlignVertical: "top" }}
+              error={Boolean(errors.description)}
+              compact
+              onChange={(html) => {
+                setDescription(html);
+                if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+              }}
             />
+            {errors.description ? <Text style={styles.fieldError}>{errors.description}</Text> : null}
+            {formError ? <Text style={styles.fieldError}>{formError}</Text> : null}
 
             <AuthButton
               title={submitting ? t("Loading...") : t("Add Task")}
               onPress={handleSubmit}
               disabled={submitting}
             />
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardScreen>
       )}
 
       <SelectionBottomSheet
@@ -373,7 +396,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F7F9FB",
   },
-  flex: { flex: 1 },
   content: {
     padding: 16,
     gap: 16,
@@ -383,6 +405,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: AppColors.black,
     marginBottom: -8,
+  },
+  required: {
+    color: "#EF4444",
+  },
+  fieldError: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -8,
   },
   priceRow: {
     flexDirection: "row",

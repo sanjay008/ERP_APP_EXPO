@@ -20,6 +20,7 @@ import ConfirmBottomSheet from "../../Components/ConfirmBottomSheet";
 import ScreenHeader from "../../Components/ScreenHeader";
 import ApiFeedback from "../../Components/ApiFeedback";
 import FallBackImage from "../../Components/FallBackImage";
+import HtmlContent from "../../Components/HtmlContent";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
@@ -80,11 +81,6 @@ function openMaps(address?: string) {
   });
 }
 
-function stripHtml(input?: string) {
-  if (!input) return "";
-  return input.replace(/<[^>]+>/g, "").trim();
-}
-
 function CommentCard({ item }: { item: BookingComment }) {
   const isPrivate = item.comment_type === "Private_BookTaxi";
 
@@ -104,7 +100,7 @@ function CommentCard({ item }: { item: BookingComment }) {
       <View style={styles.commentBody}>
         <Text style={styles.commentUser}>{item.user?.username || "-"}</Text>
         <Text style={styles.commentDate}>{item.created_at || ""}</Text>
-        <Text style={styles.commentText}>{stripHtml(item.comment)}</Text>
+        <HtmlContent html={item.comment} variant="note" />
       </View>
     </View>
   );

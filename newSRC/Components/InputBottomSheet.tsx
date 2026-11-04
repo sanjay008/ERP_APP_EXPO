@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useScreenInsets } from "../utils/screenInsets";
+import { ignoreHardwareBack } from "../utils/modalBack";
 import RichDescriptionEditor from "./RichDescriptionEditor";
 import SimpleBox from "./SimpleBox";
 import { Colors } from "../utils/colors";
@@ -163,15 +164,15 @@ function InputBottomSheet({
       animationType="none"
       statusBarTranslucent
       navigationBarTranslucent
-      onRequestClose={handleClose}
+      onRequestClose={ignoreHardwareBack}
     >
       <View style={styles.modalRoot}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
+        <View style={StyleSheet.absoluteFill}>
           <Animated.View
             pointerEvents="none"
             style={[styles.backdrop, { opacity: backdropOpacity }]}
           />
-        </Pressable>
+        </View>
 
         <Animated.View
           style={[

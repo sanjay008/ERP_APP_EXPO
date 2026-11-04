@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { Redirect, useLocalSearchParams } from "expo-router";
@@ -16,6 +15,7 @@ import HtmlContent from "../../Components/HtmlContent";
 import FallBackImage from "../../Components/FallBackImage";
 import AuthButton from "../../Components/Auth/AuthButton";
 import FormModal from "../../Components/FormModal";
+import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
 import NoteCard from "../../Components/NoteCard";
 import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
@@ -35,6 +35,8 @@ import { isOpenableAddress, openMapsAddress } from "../../utils/openMaps";
 import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
 import { resolveDocumentFileType } from "../Documents/types";
 import { Images } from "../../utils/Images";
+import { isRichTextEmpty, richTextPayload } from "../../utils/richText";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 export default function TaskDetailsScreen() {
   const { t } = useTranslation();
@@ -113,19 +115,19 @@ export default function TaskDetailsScreen() {
   });
 
   const submitComment = async () => {
-    if (!comment.trim()) {
+    if (isRichTextEmpty(comment)) {
       setCommentError(t("Please enter comment"));
       return;
     }
     try {
       setSubmitting(true);
-      await addTaskComment(params.id, comment.trim());
+      await addTaskComment(params.id, richTextPayload(comment));
       setComment("");
       setCommentError("");
       setCommentVisible(false);
       await loadDetails();
     } catch (error) {
-      console.log("Error adding comment:", error);
+      setCommentError(getApiErrorMessage(error, t("Something went wrong")));
     } finally {
       setSubmitting(false);
     }
@@ -271,16 +273,17 @@ export default function TaskDetailsScreen() {
 
       <FormModal visible={commentVisible} onClose={() => setCommentVisible(false)} scrollable>
         <Text style={styles.modalTitle}>{t("Comment")}</Text>
-        <TextInput
-          style={styles.commentInput}
+        <RichDescriptionEditor
           value={comment}
-          onChangeText={(text) => {
-            setComment(text);
+          contentKey={commentVisible ? "open" : "closed"}
+          placeholder={t("Enter comment")}
+          error={Boolean(commentError)}
+          disabled={submitting}
+          compact
+          onChange={(html) => {
+            setComment(html);
             if (commentError) setCommentError("");
           }}
-          placeholder={t("Enter comment")}
-          placeholderTextColor={AppColors.subtitle}
-          multiline
         />
         {commentError ? (
           <Text style={styles.errorText}>{commentError}</Text>
