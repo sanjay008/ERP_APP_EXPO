@@ -166,6 +166,7 @@ export function isCertificateDocumentType(
 
 export function getDocumentTypeLabel(item?: QuickUploadType | null) {
   if (isCertificateDocumentType(item)) return "Certificate";
+  if (getMobileDocumentGroup(item) === "vog") return "Document for good behavior";
   return item?.type || item?.slug || "Document";
 }
 
@@ -229,6 +230,7 @@ export function buildUploadTypeCards(
       return;
     }
     const group = getMobileDocumentGroup(item);
+    if (group === "niwo") return;
     if (!group || group === "certificate") {
       if (group === "certificate" && !certificateFromApi) certificateFromApi = item;
       return;

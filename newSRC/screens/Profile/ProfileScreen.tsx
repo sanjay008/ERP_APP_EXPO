@@ -38,7 +38,8 @@ type DetailRow = {
   key: string;
   label: string;
   value: string;
-  icon: ImageSourcePropType;
+  icon?: ImageSourcePropType;
+  ionicon?: keyof typeof Ionicons.glyphMap;
   iconBg: string;
   iconColor: string;
   section?: string;
@@ -80,16 +81,22 @@ type ProfileDetailRow = DetailRow;
 
 function DetailIcon({
   source,
+  ionicon,
   backgroundColor,
   tintColor,
 }: {
-  source: ImageSourcePropType;
+  source?: ImageSourcePropType;
+  ionicon?: keyof typeof Ionicons.glyphMap;
   backgroundColor: string;
   tintColor: string;
 }) {
   return (
     <View style={[styles.iconBox, { backgroundColor }]}>
-      <Image source={source} style={styles.iconImage} tintColor={tintColor} resizeMode="contain" />
+      {ionicon ? (
+        <Ionicons name={ionicon} size={20} color={tintColor} />
+      ) : source ? (
+        <Image source={source} style={styles.iconImage} tintColor={tintColor} resizeMode="contain" />
+      ) : null}
     </View>
   );
 }
@@ -145,9 +152,9 @@ function buildDetailRows(
       key: "whatsapp",
       label: t("WhatsApp-nummer"),
       value: whatsapp || "-",
-      icon: Images.ConnectionPhone,
+      ionicon: "logo-whatsapp",
       iconBg: "#E7F7E8",
-      iconColor: "#06AC14",
+      iconColor: "#25D366",
     },
     {
       key: "phone",
@@ -388,7 +395,7 @@ export default function ProfileScreen() {
                 ? docProgress.remaining
                   ? `${docProgress.done}/${docProgress.total} ${t("uploaded")} · ${docProgress.remaining} ${t("remaining")}`
                   : `${docProgress.done}/${docProgress.total} ${t("uploaded")}`
-                : t("Paspoort, ID, Driving Licence, NIWO")}
+                : t("Paspoort, ID, Driving Licence")}
             </Text>
             {docProgress.total ? (
               <View style={styles.progressTrack}>
@@ -425,21 +432,18 @@ export default function ProfileScreen() {
               <View style={[styles.row, index === rows.length - 1 && styles.rowLast]}>
                 <DetailIcon
                   source={row.icon}
+                  ionicon={row.ionicon}
                   backgroundColor={row.iconBg}
                   tintColor={row.iconColor}
                 />
-                <Text style={styles.rowLabel}>{row.label}</Text>
-                <View style={styles.rowValueWrap}>
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowLabel}>{row.label}</Text>
                   {row.isMap ? (
                     <Pressable onPress={() => openMapsAddress(row.value)}>
-                      <Text style={styles.rowLink} numberOfLines={3}>
-                        {row.value}
-                      </Text>
+                      <Text style={styles.rowLink}>{row.value}</Text>
                     </Pressable>
                   ) : (
-                    <Text style={styles.rowValue} numberOfLines={3}>
-                      {row.value}
-                    </Text>
+                    <Text style={styles.rowValue}>{row.value}</Text>
                   )}
                 </View>
               </View>
@@ -614,8 +618,8 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 16,
+    alignItems: "flex-start",
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
     borderStyle: "dashed",
@@ -635,30 +639,28 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
   },
-  rowLabel: {
+  rowBody: {
     flex: 1,
-    fontFamily: FONTS.LexendRegular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: AppColors.black,
+    minWidth: 0,
   },
-  rowValueWrap: {
-    maxWidth: "46%",
-    alignItems: "flex-end",
-  },
-  rowValue: {
-    fontFamily: FONTS.LexendRegular,
+  rowLabel: {
+    fontFamily: FONTS.LexendMedium,
     fontSize: 13,
     lineHeight: 18,
     color: AppColors.subtitle,
-    textAlign: "right",
+    marginBottom: 4,
+  },
+  rowValue: {
+    fontFamily: FONTS.LexendRegular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: AppColors.black,
   },
   rowLink: {
     fontFamily: FONTS.LexendRegular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 22,
     color: AppColors.primary,
-    textAlign: "right",
     textDecorationLine: "underline",
   },
 });

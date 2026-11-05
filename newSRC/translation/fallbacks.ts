@@ -310,6 +310,7 @@ export const fallbackResources = {
       "You can add more than one photo.": "You can add more than one photo.",
       "Add a photo or PDF of the document": "Add a photo or PDF of the document",
       VOG: "VOG",
+      "Document for good behavior": "Document for good behavior",
       "Work permit": "Work permit",
       Diploma: "Diploma",
       "Bank document": "Bank document",
@@ -356,6 +357,7 @@ export const fallbackResources = {
       "Choose Camera or Gallery": "Choose Camera or Gallery",
       Cancel: "Cancel",
       "Paspoort, ID, Driving Licence, NIWO": "Paspoort, ID, Driving Licence, NIWO",
+      "Paspoort, ID, Driving Licence": "Paspoort, ID, Driving Licence",
       uploaded: "uploaded",
       remaining: "remaining",
       "Something went wrong. Please try again.":
@@ -794,6 +796,7 @@ export const fallbackResources = {
       "You can add more than one photo.": "U kunt meer dan één foto toevoegen.",
       "Add a photo or PDF of the document": "Voeg een foto of PDF van het document toe",
       VOG: "VOG",
+      "Document for good behavior": "Verklaring omtrent het gedrag",
       "Work permit": "Werkvergunning",
       Diploma: "Diploma",
       "Bank document": "Bankdocument",
@@ -840,6 +843,7 @@ export const fallbackResources = {
       "Choose Camera or Gallery": "Kies camera of galerij",
       Cancel: "Annuleren",
       "Paspoort, ID, Driving Licence, NIWO": "Paspoort, ID, rijbewijs, NIWO",
+      "Paspoort, ID, Driving Licence": "Paspoort, ID, rijbewijs",
       uploaded: "geüpload",
       remaining: "resterend",
       "Something went wrong. Please try again.":
