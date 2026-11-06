@@ -128,9 +128,18 @@ export function getQuickRelationFieldKind(field: QuickRelationField): QuickRelat
   const type = String(field.type || "").toLowerCase();
   const name = String(field.name || "").toLowerCase();
 
+  if (type === "hidden") return "hidden";
+  if (
+    type === "email" ||
+    name === "whatsapp_address" ||
+    name.includes("email") ||
+    name.includes("e-mail") ||
+    name.includes("mailadres")
+  ) {
+    return "email";
+  }
   if (name === "contact_telefoon") return "whatsapp";
   if (name === "contact_whatsapp") return "phone";
-  if (type === "hidden") return "hidden";
   if (field.options_key || type === "select" || type === "dropdown") return "select";
   if (type === "date" || type === "datepicker") return "date";
   if (type === "whatsapp" || (name.includes("whatsapp") && name !== "contact_whatsapp")) {
@@ -144,14 +153,6 @@ export function getQuickRelationFieldKind(field: QuickRelationField): QuickRelat
     name.includes("mobiel")
   ) {
     return "phone";
-  }
-  if (
-    type === "email" ||
-    name.includes("email") ||
-    name.includes("e-mail") ||
-    name.includes("mailadres")
-  ) {
-    return "email";
   }
   if (
     type === "address" ||
