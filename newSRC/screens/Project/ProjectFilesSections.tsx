@@ -2,25 +2,20 @@ import React, { useCallback, useContext, useMemo, useRef, useState } from "react
 import {
   ActivityIndicator,
   Linking,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import Animated from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import FallBackImage from "../../Components/FallBackImage";
 import HtmlContent from "../../Components/HtmlContent";
-import SimpleBox from "../../Components/SimpleBox";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import { useAppData } from "../../context/AppDataContext";
 import {
   collectProjectFolderNames,
-  createProjectPhotoFolders,
   fetchProjectFiles,
   projectFolderName,
   uploadProjectDocument,
@@ -29,10 +24,7 @@ import {
 } from "../../services/projectService";
 import { getDropboxDirectLink } from "../../services/eventService";
 import { parseApiError } from "../../utils/apiError";
-import { ignoreHardwareBack } from "../../utils/modalBack";
-import { useKeyboardLiftStyle } from "../../utils/keyboardShift";
 import { hasPermission } from "../../utils/permissionFlags";
-import { useScreenInsets } from "../../utils/screenInsets";
 import { pickTicketDocuments } from "../../utils/ticketFilePicker";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -149,7 +141,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
   const router = useRouter();
   const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
-  const { footerPadding } = useScreenInsets();
   const loadedOnce = useRef(false);
 
   const canReadDocuments = hasPermission(permissions, "project_documents_mobile", "read");
@@ -164,10 +155,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
   });
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<BusyKey>(null);
-  const [folderCount, setFolderCount] = useState("1");
-  const [folderName, setFolderName] = useState("");
-  const [createFolderOpen, setCreateFolderOpen] = useState(false);
-  const sheetLift = useKeyboardLiftStyle(createFolderOpen);
 
   const busy = Boolean(busyKey);
   const folderNames = useMemo(() => collectProjectFolderNames(files), [files]);
@@ -234,33 +221,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
     try {
       setBusyKey("document");
       await uploadProjectDocument(projectId, picked.assets);
-      await loadFiles(true);
-    } catch (error) {
-      showError(error);
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const saveFolders = async () => {
-    if (projectId == null || projectId === "" || busy) return;
-    const count = Number(folderCount);
-    const name = folderName.trim();
-    if (!name || !Number.isInteger(count) || count < 1) {
-      setToast({
-        top: 45,
-        text: t("This field is required"),
-        type: "error",
-        visible: true,
-      });
-      return;
-    }
-    try {
-      setBusyKey("folder");
-      await createProjectPhotoFolders(projectId, count, name);
-      setFolderName("");
-      setFolderCount("1");
-      setCreateFolderOpen(false);
       await loadFiles(true);
     } catch (error) {
       showError(error);
@@ -339,10 +299,13 @@ export default function ProjectFilesSections({ projectId }: Props) {
         {canCreatePhotos ? (
           <AddButton
             onPress={() => {
-              if (!busy) setCreateFolderOpen(true);
+              if (!projectId || busy) return;
+              router.push({
+                pathname: "/(app)/projects/create-folder",
+                params: { projectId: String(projectId) },
+              });
             }}
-            loading={busyKey === "folder"}
-            disabled={busy && busyKey !== "folder"}
+            disabled={busy}
           />
         ) : null}
       </View>
@@ -383,66 +346,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
       </View>
         </>
       ) : null}
-
-      <Modal
-        visible={createFolderOpen}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        navigationBarTranslucent
-        onRequestClose={ignoreHardwareBack}
-      >
-        <View style={styles.modalRoot}>
-          <View style={styles.modalBackdrop} />
-          <Animated.View
-            style={[styles.modalSheet, { paddingBottom: footerPadding }, sheetLift]}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("Create folder")}</Text>
-              <SimpleBox
-                Icon={Images.CloseIcon}
-                onPress={() => {
-                  if (busyKey === "folder") return;
-                  setCreateFolderOpen(false);
-                }}
-                style={styles.closeBtn}
-                IconStyle={{ width: 14, height: 14, tintColor: Colors.white }}
-              />
-            </View>
-            <Text style={styles.label}>{t("How many folders")}</Text>
-            <TextInput
-              style={styles.input}
-              value={folderCount}
-              onChangeText={(text) => setFolderCount(text.replace(/[^0-9]/g, ""))}
-              keyboardType="number-pad"
-              placeholder="1"
-              placeholderTextColor={Colors.placeholder}
-              editable={busyKey !== "folder"}
-            />
-            <Text style={styles.label}>{t("Folder name")}</Text>
-            <TextInput
-              style={styles.input}
-              value={folderName}
-              onChangeText={setFolderName}
-              placeholder="Koppeling"
-              placeholderTextColor={Colors.placeholder}
-              editable={busyKey !== "folder"}
-            />
-            <Pressable
-              style={[styles.saveBtn, busyKey === "folder" && styles.saveBtnDisabled]}
-              onPress={() => void saveFolders()}
-              disabled={busyKey === "folder"}
-            >
-              {busyKey === "folder" ? (
-                <ActivityIndicator color={AppColors.white} size="small" />
-              ) : (
-                <Text style={styles.saveBtnText}>{t("Create folder")}</Text>
-              )}
-            </Pressable>
-          </Animated.View>
-        </View>
-      </Modal>
-
     </>
   );
 }
