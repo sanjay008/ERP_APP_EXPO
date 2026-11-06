@@ -1,26 +1,21 @@
 import React, { useCallback, useContext, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Linking,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import Animated from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import FallBackImage from "../../Components/FallBackImage";
 import HtmlContent from "../../Components/HtmlContent";
-import RichDescriptionEditor from "../../Components/RichDescriptionEditor";
-import OptionBottomSheet from "../../Components/OptionBottomSheet";
 import SimpleBox from "../../Components/SimpleBox";
-import DocumentPreviewModal from "../Documents/DocumentPreviewModal";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import { useAppData } from "../../context/AppDataContext";
 import {
@@ -29,10 +24,8 @@ import {
   fetchProjectFiles,
   projectFolderName,
   uploadProjectDocument,
-  uploadProjectPhoto,
   type ProjectFileItem,
   type ProjectFilesData,
-  type ProjectUploadFile,
 } from "../../services/projectService";
 import { getDropboxDirectLink } from "../../services/eventService";
 import { parseApiError } from "../../utils/apiError";
@@ -41,7 +34,6 @@ import { useKeyboardLiftStyle } from "../../utils/keyboardShift";
 import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { pickTicketDocuments } from "../../utils/ticketFilePicker";
-import { pickProjectPhotos } from "../../utils/projectPhotoPicker";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { CONNECTION_UI } from "../../utils/connectionTheme";
@@ -154,6 +146,7 @@ function AddButton({
 
 export default function ProjectFilesSections({ projectId }: Props) {
   const { t } = useTranslation();
+  const router = useRouter();
   const { permissions } = useAppData();
   const { setToast } = useContext(RegisterBackContext);
   const { footerPadding } = useScreenInsets();
@@ -174,16 +167,7 @@ export default function ProjectFilesSections({ projectId }: Props) {
   const [folderCount, setFolderCount] = useState("1");
   const [folderName, setFolderName] = useState("");
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-  const [uploadFolder, setUploadFolder] = useState("");
-  const [sourceSheet, setSourceSheet] = useState(false);
-  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
-  const [previewPhoto, setPreviewPhoto] = useState<ProjectFileItem | null>(null);
-  const [pendingPhotos, setPendingPhotos] = useState<ProjectUploadFile[]>([]);
-  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
-  const [photoSheetStep, setPhotoSheetStep] = useState<"actions" | "details">("actions");
-  const [photoTitle, setPhotoTitle] = useState("");
-  const [photoComment, setPhotoComment] = useState("");
-  const sheetLift = useKeyboardLiftStyle(createFolderOpen || photoSheetOpen);
+  const sheetLift = useKeyboardLiftStyle(createFolderOpen);
 
   const busy = Boolean(busyKey);
   const folderNames = useMemo(() => collectProjectFolderNames(files), [files]);
@@ -285,124 +269,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
     }
   };
 
-  const startPhotoUpload = (folder?: string) => {
-    if (busy) return;
-    if (!folderNames.length) {
-      setToast({
-        top: 45,
-        text: t("Create a folder first"),
-        type: "error",
-        visible: true,
-      });
-      return;
-    }
-    setUploadFolder(folder || folderNames[0] || "");
-    setSourceSheet(true);
-  };
-
-  const pickPhotos = async (source: "camera" | "gallery") => {
-    if (projectId == null || projectId === "") return;
-
-    const picked = await pickProjectPhotos(source);
-    if (!picked.ok) {
-      if (picked.reason === "permission") {
-        setToast({
-          top: 45,
-          text: t("Permission required to access photos"),
-          type: "error",
-          visible: true,
-        });
-      }
-      return;
-    }
-
-    setPendingPhotos(
-      picked.assets.map((asset) => ({
-        uri: asset.uri,
-        type: asset.type || "image/jpeg",
-        name: asset.name || `photo_${Date.now()}.jpg`,
-      }))
-    );
-    if (!uploadFolder && folderNames[0]) {
-      setUploadFolder(folderNames[0]);
-    }
-    setPhotoTitle("");
-    setPhotoComment("");
-    setPhotoSheetStep("actions");
-    setPhotoSheetOpen(true);
-  };
-
-  const confirmPhotoUpload = async (withDetails: boolean) => {
-    if (projectId == null || projectId === "" || !pendingPhotos.length) return;
-    const folder = uploadFolder.trim();
-    if (!folder) {
-      setToast({
-        top: 45,
-        text: t("Select folder"),
-        type: "error",
-        visible: true,
-      });
-      return;
-    }
-
-    try {
-      setBusyKey(`photo:${folder}`);
-      setPhotoSheetOpen(false);
-      setFolderPickerOpen(false);
-      await uploadProjectPhoto(
-        projectId,
-        folder,
-        pendingPhotos,
-        withDetails
-          ? { title: photoTitle, comment: photoComment }
-          : undefined
-      );
-      setPendingPhotos([]);
-      setPhotoTitle("");
-      setPhotoComment("");
-      setPhotoSheetStep("actions");
-      await loadFiles(true);
-    } catch (error) {
-      showError(error);
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const closePhotoSheet = () => {
-    if (busyKey?.startsWith("photo:")) return;
-    setPhotoSheetOpen(false);
-    setFolderPickerOpen(false);
-    setPendingPhotos([]);
-    setPhotoTitle("");
-    setPhotoComment("");
-    setPhotoSheetStep("actions");
-  };
-
-  const renderFolderPicker = () => (
-    <View style={styles.folderSelectBlock}>
-      <Text style={styles.label}>{t("Upload to folder")}</Text>
-      <Pressable
-        style={styles.folderSelect}
-        onPress={() => {
-          if (!folderNames.length) return;
-          setFolderPickerOpen(true);
-        }}
-      >
-        <View style={styles.folderSelectIcon}>
-          <Ionicons name="folder-outline" size={18} color={AppColors.primary} />
-        </View>
-        <Text
-          style={[styles.folderSelectText, !uploadFolder && styles.folderSelectPlaceholder]}
-          numberOfLines={1}
-        >
-          {uploadFolder || t("Select folder")}
-        </Text>
-        <Ionicons name="chevron-down" size={18} color={AppColors.subtitle} />
-      </Pressable>
-    </View>
-  );
-
   return (
     <>
       {canReadDocuments ? (
@@ -484,63 +350,33 @@ export default function ProjectFilesSections({ projectId }: Props) {
         {loading ? (
           <ActivityIndicator color={AppColors.primary} />
         ) : folderNames.length ? (
-          Object.entries(photosByFolder).map(([name, photos], index) => (
-            <View key={name} style={[styles.folderCard, index === 0 && styles.folderCardFirst]}>
-              <View style={styles.folderHead}>
+          folderNames.map((name) => {
+            const count = photosByFolder[name]?.length ?? 0;
+            return (
+              <Pressable
+                key={name}
+                style={styles.folderRow}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(app)/projects/photos",
+                    params: {
+                      projectId: String(projectId ?? ""),
+                      folder: name,
+                    },
+                  })
+                }
+              >
                 <View style={styles.folderIconWrap}>
                   <Ionicons name="folder" size={16} color={AppColors.primary} />
                 </View>
                 <Text style={styles.folderTitle} numberOfLines={1}>
                   {name}
                 </Text>
-                {canCreatePhotos ? (
-                  <AddButton
-                    onPress={() => startPhotoUpload(name)}
-                    loading={busyKey === `photo:${name}`}
-                    disabled={busy && busyKey !== `photo:${name}`}
-                  />
-                ) : null}
-              </View>
-              {photos.length ? (
-                <View style={styles.photoGrid}>
-                  {photos.map((photo, photoIndex) => {
-                    const url = projectFileUrl(photo);
-                    const title = projectFileShortLabel(photo, 10);
-                    const comment = projectFileComment(photo);
-                    return (
-                      <Pressable
-                        key={`photo-${photo.id ?? photoIndex}`}
-                        style={styles.photoCell}
-                        onPress={() => {
-                          if (!url) return;
-                          setPreviewPhoto(photo);
-                        }}
-                      >
-                        <View style={styles.photoThumb}>
-                          {url ? (
-                            <Image source={{ uri: url }} style={styles.photo} />
-                          ) : (
-                            <View style={styles.photoFallback}>
-                              <Ionicons name="image-outline" size={18} color={AppColors.subtitle} />
-                            </View>
-                          )}
-                        </View>
-                        {title ? (
-                          <Text style={styles.docName} numberOfLines={1}>
-                            {title}
-                          </Text>
-                        ) : null}
-                        {comment ? <HtmlContent html={comment} variant="note" /> : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : (
-                <Text style={styles.empty}>{t("No photos")}</Text>
-              )}
-              <OverlayLoader visible={busyKey === `photo:${name}`} />
-            </View>
-          ))
+                {count > 0 ? <Text style={styles.folderCount}>{count}</Text> : null}
+                <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
+              </Pressable>
+            );
+          })
         ) : (
           <Text style={styles.empty}>{t("No photos")}</Text>
         )}
@@ -607,164 +443,6 @@ export default function ProjectFilesSections({ projectId }: Props) {
         </View>
       </Modal>
 
-      <OptionBottomSheet
-        visible={sourceSheet}
-        title={t("Choose Camera or Gallery")}
-        options={[
-          { id: "camera", label: t("Camera (1 photo, crop)") },
-          { id: "gallery", label: t("Gallery (multiple)") },
-        ]}
-        onClose={() => setSourceSheet(false)}
-        onConfirm={(option) => {
-          setSourceSheet(false);
-          if (option.id === "camera" || option.id === "gallery") {
-            void pickPhotos(option.id);
-          }
-        }}
-      />
-
-      <OptionBottomSheet
-        visible={folderPickerOpen}
-        title={t("Select folder")}
-        options={folderNames.map((name) => ({ id: name, label: name }))}
-        onClose={() => setFolderPickerOpen(false)}
-        onConfirm={(option) => {
-          setUploadFolder(option.id);
-          setFolderPickerOpen(false);
-        }}
-      />
-
-      <Modal
-        visible={photoSheetOpen}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        navigationBarTranslucent
-        onRequestClose={ignoreHardwareBack}
-      >
-        <View style={styles.modalRoot}>
-          <View style={styles.modalBackdrop} />
-          <Animated.View
-            style={[styles.modalSheet, { paddingBottom: footerPadding }, sheetLift]}
-          >
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTitleWrap}>
-                <Text style={styles.modalTitle}>
-                  {photoSheetStep === "actions"
-                    ? t("Upload photos")
-                    : t("Add title & comment")}
-                </Text>
-                <Text style={styles.modalSubtitle}>
-                  {pendingPhotos.length === 1
-                    ? t("1 photo selected")
-                    : t("{{count}} photos selected", { count: pendingPhotos.length })}
-                </Text>
-              </View>
-              <SimpleBox
-                Icon={Images.CloseIcon}
-                onPress={closePhotoSheet}
-                style={styles.closeBtn}
-                IconStyle={{ width: 14, height: 14, tintColor: Colors.white }}
-              />
-            </View>
-
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.photoSheetBody}
-            >
-              {pendingPhotos.length ? (
-                <View style={styles.pendingRow}>
-                  {pendingPhotos.slice(0, 4).map((photo, index) => (
-                    <View key={`${photo.uri}-${index}`} style={styles.pendingThumb}>
-                      <Image source={{ uri: photo.uri }} style={styles.pendingImage} />
-                    </View>
-                  ))}
-                  {pendingPhotos.length > 4 ? (
-                    <View style={[styles.pendingThumb, styles.pendingMore]}>
-                      <Text style={styles.pendingMoreText}>+{pendingPhotos.length - 4}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {renderFolderPicker()}
-
-              {photoSheetStep === "actions" ? (
-                <View style={styles.actionList}>
-                  <Pressable
-                    style={styles.actionCard}
-                    onPress={() => void confirmPhotoUpload(false)}
-                  >
-                    <View style={[styles.actionIconWrap, styles.actionIconPrimary]}>
-                      <Ionicons name="cloud-upload-outline" size={20} color={AppColors.white} />
-                    </View>
-                    <View style={styles.actionTextWrap}>
-                      <Text style={styles.actionTitle}>{t("Upload now")}</Text>
-                      <Text style={styles.actionHint}>{t("Skip title and comment")}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.actionCard}
-                    onPress={() => setPhotoSheetStep("details")}
-                  >
-                    <View style={styles.actionIconWrap}>
-                      <Ionicons name="create-outline" size={20} color={AppColors.primary} />
-                    </View>
-                    <View style={styles.actionTextWrap}>
-                      <Text style={styles.actionTitle}>{t("Add title & comment")}</Text>
-                      <Text style={styles.actionHint}>{t("Optional — you can leave empty")}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={AppColors.subtitle} />
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.detailsWrap}>
-                  <Text style={styles.optionalNote}>{t("Title and comment are optional")}</Text>
-                  <Text style={styles.label}>{t("Title")}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={photoTitle}
-                    onChangeText={setPhotoTitle}
-                    placeholder={t("Optional")}
-                    placeholderTextColor={Colors.placeholder}
-                  />
-                  <Text style={styles.label}>{t("Comment")}</Text>
-                  <RichDescriptionEditor
-                    value={photoComment}
-                    onChange={setPhotoComment}
-                    placeholder={t("Optional")}
-                    compact
-                    contentKey={photoSheetStep}
-                  />
-                  <Pressable
-                    style={styles.saveBtn}
-                    onPress={() => void confirmPhotoUpload(true)}
-                  >
-                    <Text style={styles.saveBtnText}>{t("Upload")}</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.secondaryBtn}
-                    onPress={() => setPhotoSheetStep("actions")}
-                  >
-                    <Text style={styles.secondaryBtnText}>{t("Back")}</Text>
-                  </Pressable>
-                </View>
-              )}
-            </ScrollView>
-          </Animated.View>
-        </View>
-      </Modal>
-
-      <DocumentPreviewModal
-        visible={Boolean(previewPhoto)}
-        title={previewPhoto ? projectFileLabel(previewPhoto, t("Photo")) : t("Photo")}
-        imageUri={previewPhoto ? projectFileUrl(previewPhoto) : null}
-        downloadUrl={previewPhoto ? projectFileUrl(previewPhoto) : null}
-        onClose={() => setPreviewPhoto(null)}
-      />
     </>
   );
 }
@@ -1089,6 +767,21 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.LexendSemiBold,
     fontSize: 14,
     color: AppColors.black,
+  },
+  folderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF1F5",
+  },
+  folderCount: {
+    minWidth: 24,
+    textAlign: "center",
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 13,
+    color: AppColors.primary,
   },
   photoGrid: {
     flexDirection: "row",

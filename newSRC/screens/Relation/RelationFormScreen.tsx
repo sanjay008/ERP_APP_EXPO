@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Platform,
   Pressable,
@@ -15,6 +16,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
 import BoxIcon from "../../Components/BoxIcon";
 import FormSelectField from "../../Components/FormSelectField";
 import CountryPicker from "../../Components/Auth/CountryPicker";
@@ -30,6 +32,7 @@ import {
   findCountryCodeField,
   formatDisplayDate,
   getQuickRelationFieldKind,
+  isCompanyConnectionField,
   isQuickRelationFieldRequired,
   optionLabel,
   optionValue,
@@ -117,10 +120,14 @@ export default function RelationFormScreen() {
   const itemId = item?.id;
   const badge = item?.category_name || item?.relation_type_name || "";
 
-  const visibleFields = useMemo(
-    () => (form?.fields ?? []).filter((field) => getQuickRelationFieldKind(field) !== "hidden"),
-    [form]
-  );
+  const visibleFields = useMemo(() => {
+    const fields = (form?.fields ?? []).filter(
+      (field) => getQuickRelationFieldKind(field) !== "hidden"
+    );
+    const companyFields = fields.filter((field) => isCompanyConnectionField(field));
+    const otherFields = fields.filter((field) => !isCompanyConnectionField(field));
+    return [...companyFields, ...otherFields];
+  }, [form]);
   const selectedSheetField = visibleFields.find((field) => field.name === activeField);
   const selectedSheetOptions = toSheetOptions(
     selectedSheetField?.options_key ? form?.options?.[selectedSheetField.options_key] ?? [] : []
@@ -195,11 +202,24 @@ export default function RelationFormScreen() {
     });
   };
 
+  const showFieldInfo = (field: QuickRelationField) => {
+    const message = field.info?.trim();
+    if (!message) return;
+    Alert.alert(field.label || field.name, message);
+  };
+
   const renderLabel = (field: QuickRelationField) => (
-    <Text style={styles.label}>
-      {field.label || field.name}
-      {isQuickRelationFieldRequired(field) ? <Text style={styles.required}> *</Text> : null}
-    </Text>
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>
+        {field.label || field.name}
+        {isQuickRelationFieldRequired(field) ? <Text style={styles.required}> *</Text> : null}
+      </Text>
+      {field.info?.trim() ? (
+        <Pressable onPress={() => showFieldInfo(field)} hitSlop={8} accessibilityRole="button">
+          <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+        </Pressable>
+      ) : null}
+    </View>
   );
 
   const renderPhoneField = (field: QuickRelationField, kind: "phone" | "whatsapp") => {
@@ -261,6 +281,7 @@ export default function RelationFormScreen() {
     if (kind === "select") {
       const options = toSheetOptions(form?.options?.[field.options_key || ""] ?? []);
       const selected = options.find((option) => String(option.id) === value);
+      const info = field.info?.trim() || "";
       return (
         <FormSelectField
           key={field.name}
@@ -269,7 +290,15 @@ export default function RelationFormScreen() {
           placeholder={t("Select")}
           value={selected?.label || ""}
           error={error}
-          onPress={() => setActiveField(field.name)}
+          info={info}
+          onInfoPress={() => showFieldInfo(field)}
+          onPress={() => {
+            if (!options.length && info) {
+              showFieldInfo(field);
+              return;
+            }
+            setActiveField(field.name);
+          }}
         />
       );
     }
@@ -479,6 +508,11 @@ const styles = StyleSheet.create({
     gap: 8,
     flexGrow: 0,
     flexShrink: 0,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   label: {
     fontSize: 14,

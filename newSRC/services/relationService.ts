@@ -32,6 +32,7 @@ export type QuickRelationField = {
   required?: boolean | number | string;
   options_key?: string;
   value?: string | number | boolean | null;
+  info?: string;
 };
 
 export type QuickRelationOption = {
@@ -91,7 +92,18 @@ export function parseQuickRelationItem(raw?: string): QuickRelationItem | null {
   }
 }
 
+export function isCompanyConnectionField(field?: { name?: string; options_key?: string } | null) {
+  const name = String(field?.name || "").toLowerCase();
+  const key = String(field?.options_key || "").toLowerCase();
+  return (
+    name === "employee_of_company_id" ||
+    name.includes("employee_of_company") ||
+    key === "companies"
+  );
+}
+
 export function isQuickRelationFieldRequired(field: QuickRelationField) {
+  if (isCompanyConnectionField(field)) return false;
   return (
     field.required === true ||
     field.required === 1 ||
@@ -142,7 +154,7 @@ export function getQuickRelationFieldKind(field: QuickRelationField): QuickRelat
   if (name === "contact_whatsapp") return "phone";
   if (field.options_key || type === "select" || type === "dropdown") return "select";
   if (type === "date" || type === "datepicker") return "date";
-  if (type === "whatsapp" || (name.includes("whatsapp") && name !== "contact_whatsapp")) {
+  if (type === "whatsapp" || (name.includes("whatsapp") && name !== "contact_whatsapp" && name !== "whatsapp_address")) {
     return "whatsapp";
   }
   if (

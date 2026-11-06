@@ -12,6 +12,8 @@ type Props = {
   onPress: () => void;
   error?: string;
   disabled?: boolean;
+  info?: string;
+  onInfoPress?: () => void;
 };
 
 function FormSelectField({
@@ -22,13 +24,22 @@ function FormSelectField({
   onPress,
   error,
   disabled = false,
+  info,
+  onInfoPress,
 }: Props) {
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>
-        {label}
-        {required ? <Text style={styles.required}> *</Text> : null}
-      </Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>
+          {label}
+          {required ? <Text style={styles.required}> *</Text> : null}
+        </Text>
+        {info ? (
+          <Pressable onPress={onInfoPress} hitSlop={8} accessibilityRole="button">
+            <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+          </Pressable>
+        ) : null}
+      </View>
       <Pressable
         onPress={onPress}
         disabled={disabled}
@@ -56,6 +67,11 @@ export default React.memo(FormSelectField);
 const styles = StyleSheet.create({
   wrapper: {
     gap: 8,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   label: {
     fontSize: 14,

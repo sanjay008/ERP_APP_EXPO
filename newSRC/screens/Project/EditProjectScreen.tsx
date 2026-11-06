@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -43,10 +42,8 @@ import {
 } from "../../services/projectService";
 import {
   projectFileComment,
-  projectFileLabel,
   projectFileShortLabel,
   projectFileThumb,
-  projectFileUrl,
 } from "./ProjectFilesSections";
 import { fetchCompanyCurrencies, type CurrencyOption } from "../../services/taskService";
 import { pickProfileImage } from "../../utils/profileImagePicker";
@@ -70,7 +67,6 @@ export default function EditProjectScreen() {
 
   const canUpdateProject = hasPermission(permissions, "project_mobile", "update");
   const canDeleteDocument = hasPermission(permissions, "project_documents_mobile", "delete");
-  const canDeletePhoto = hasPermission(permissions, "project_photos_mobile", "delete");
 
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [currencies, setCurrencies] = useState<CurrencyOption[]>([]);
@@ -533,64 +529,24 @@ export default function EditProjectScreen() {
               <Text style={styles.blockTitle}>{t("Photos")}</Text>
               {Object.keys(photosByFolder).length ? (
                 Object.entries(photosByFolder).map(([name, photos]) => (
-                  <View key={name} style={styles.folderBlock}>
+                  <Pressable
+                    key={name}
+                    style={styles.folderRow}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(app)/projects/photos",
+                        params: {
+                          projectId: String(params.id || ""),
+                          folder: name,
+                        },
+                      })
+                    }
+                  >
                     <Text style={styles.folderTitle}>{name}</Text>
                     {photos.length ? (
-                      <View style={styles.photoGrid}>
-                        {photos.map((photo, index) => {
-                          const url = projectFileUrl(photo);
-                          const fileId = projectFileId(photo);
-                          const title = projectFileShortLabel(photo, 10);
-                          const comment = projectFileComment(photo);
-                          const removing =
-                            deleteLoading &&
-                            pendingFile?.type === "photo" &&
-                            String(projectFileId(pendingFile.file) ?? "") === String(fileId ?? "");
-                          return (
-                            <View key={`photo-${fileId ?? index}`} style={styles.photoCell}>
-                              <View style={styles.photoThumb}>
-                                {url ? (
-                                  <Image source={{ uri: url }} style={styles.photo} />
-                                ) : (
-                                  <View style={styles.photoFallback}>
-                                    <Text style={styles.emptyText} numberOfLines={2}>
-                                      {projectFileLabel(photo, t("Photos"))}
-                                    </Text>
-                                  </View>
-                                )}
-                                {canDeletePhoto ? (
-                                  <Pressable
-                                    onPress={() => askRemoveFile("photo", photo)}
-                                    disabled={deleteLoading}
-                                    hitSlop={6}
-                                    style={styles.photoRemove}
-                                  >
-                                    {removing ? (
-                                      <ActivityIndicator size="small" color={Colors.dicline} />
-                                    ) : (
-                                      <FallBackImage
-                                        source={Images.CloseIcon}
-                                        style={styles.photoRemoveIcon}
-                                        resizeMode="contain"
-                                      />
-                                    )}
-                                  </Pressable>
-                                ) : null}
-                              </View>
-                              {title ? (
-                                <Text style={styles.docName} numberOfLines={1}>
-                                  {title}
-                                </Text>
-                              ) : null}
-                              {comment ? <HtmlContent html={comment} variant="note" /> : null}
-                            </View>
-                          );
-                        })}
-                      </View>
-                    ) : (
-                      <Text style={styles.emptyText}>{t("No photos")}</Text>
-                    )}
-                  </View>
+                      <Text style={styles.folderCount}>{photos.length}</Text>
+                    ) : null}
+                  </Pressable>
                 ))
               ) : (
                 <Text style={styles.emptyText}>{t("No photos")}</Text>
@@ -905,9 +861,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   folderTitle: {
-    fontSize: 13,
+    flex: 1,
+    fontSize: 14,
     fontFamily: FONTS.OutfitMedium,
     color: Colors.black,
+  },
+  folderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEF1F5",
+  },
+  folderCount: {
+    minWidth: 24,
+    textAlign: "center",
+    fontSize: 13,
+    fontFamily: FONTS.OutfitSemiBold,
+    color: Colors.primary,
   },
   photoGrid: {
     flexDirection: "row",
