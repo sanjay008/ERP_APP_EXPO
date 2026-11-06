@@ -436,7 +436,7 @@ export default function TimelineTravelCheckInOutModal({
 
                     {step === "summary" ? (
                       <>
-                        {session.canEditDateTime ? (
+                        {session.canEditDateTime || isSimpleProject ? (
                           <>
                             <Text style={styles.fieldLabel}>{t("Date")} :</Text>
                             <Pressable

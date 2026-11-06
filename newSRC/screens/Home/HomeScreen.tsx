@@ -41,10 +41,8 @@ import {
 import { LIST_UI } from "../../utils/connectionTheme";
 import { LIST_CARD_SHADOW } from "../../utils/listScreenStyles";
 import EmployeeCheckInOutModal from "../../Components/EmployeeCheckInOutModal";
-import ProjectCheckInOutModal from "../../Components/ProjectCheckInOutModal";
 import {
   fetchCheckInOutState,
-  fetchProjectCheckInOutState,
   getTodayFormats,
   isCheckedInFlag,
 } from "../../services/checkInOutService";
@@ -66,9 +64,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [employeeModalMode, setEmployeeModalMode] = useState<"check-in" | "check-out" | null>(null);
-  const [projectModalMode, setProjectModalMode] = useState<"check-in" | "check-out" | null>(null);
   const menuItems = homeData.filter((item) => {
     const link = item.link_to?.trim();
+    if (link === "Check_In/Out_for_Project") return false;
     if (link === "project_photos" || link === "add_project_photos") {
       return canCreateProjectPhotos;
     }
@@ -84,10 +82,7 @@ export default function HomeScreen() {
   const refreshCheckInOutStatus = useCallback(async () => {
     const { displayDate } = getTodayFormats();
     try {
-      await Promise.all([
-        fetchCheckInOutState(displayDate),
-        fetchProjectCheckInOutState(displayDate),
-      ]);
+      await fetchCheckInOutState(displayDate);
     } catch {
       // Keep last known status if refresh fails silently.
     }
@@ -163,20 +158,10 @@ export default function HomeScreen() {
     const linkTo = item.link_to?.trim();
 
     if (linkTo === "checkinout") {
-      setProjectModalMode(null);
       const { displayDate } = getTodayFormats();
       const state = await fetchCheckInOutState(displayDate);
       const checkedIn = isCheckedInFlag(state.checkData?.check_in_out);
       setEmployeeModalMode(checkedIn ? "check-out" : "check-in");
-      return;
-    }
-
-    if (linkTo === "Check_In/Out_for_Project") {
-      setEmployeeModalMode(null);
-      const { displayDate } = getTodayFormats();
-      const state = await fetchProjectCheckInOutState(displayDate);
-      const checkedIn = isCheckedInFlag(state.checkData?.check_in_out);
-      setProjectModalMode(checkedIn ? "check-out" : "check-in");
       return;
     }
 
@@ -334,13 +319,6 @@ export default function HomeScreen() {
         visible={employeeModalMode !== null}
         mode={employeeModalMode ?? "check-in"}
         onClose={() => setEmployeeModalMode(null)}
-        onComplete={refreshCheckInOutStatus}
-      />
-
-      <ProjectCheckInOutModal
-        visible={projectModalMode !== null}
-        mode={projectModalMode ?? "check-in"}
-        onClose={() => setProjectModalMode(null)}
         onComplete={refreshCheckInOutStatus}
       />
     </View>

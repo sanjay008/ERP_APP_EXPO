@@ -20,7 +20,6 @@ import { useTranslation } from "react-i18next";
 import LanguageChange from "../../Components/LanguageChange";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
 import TimelineTravelCheckInOutModal from "../../Components/TimelineTravelCheckInOutModal";
-import ProjectCheckInOutModal from "../../Components/ProjectCheckInOutModal";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
   fetchTimelineCheckInOut,
@@ -30,17 +29,13 @@ import {
   getTimelineItemDate,
   type TimelineItem,
 } from "../../services/timelineService";
-import {
-  fetchProjectCheckInOutState,
-  getTodayFormats,
-} from "../../services/checkInOutService";
+import { getTodayFormats } from "../../services/checkInOutService";
 import { getData } from "../../utils/storeData";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
 import { LIST_UI } from "../../utils/connectionTheme";
-import { useAppData } from "../../context/AppDataContext";
 
 function DashedVerticalLine({ height }: { height: number }) {
   if (height <= 0) return null;
@@ -139,7 +134,6 @@ export default function TimelineScreen() {
   const { t } = useTranslation();
   const { top, scrollPadding, fabBottom } = useScreenInsets({ includeTabBar: true });
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
-  const { permissions } = useAppData();
 
   const [logo, setLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -147,23 +141,14 @@ export default function TimelineScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [employeeModalVisible, setEmployeeModalVisible] = useState(false);
-  const [projectModalMode, setProjectModalMode] = useState<"check-in" | "check-out" | null>(null);
   const [checkInOutStatus, setCheckInOutStatus] = useState<"check_in" | "check_out">("check_in");
-  const [checkInOutStatusProject, setCheckInOutStatusProject] = useState(0);
-
-  const canEmployeeCheckIn = true;
-  const canProjectCheckIn = String(permissions?.project_check_in_out?.read) === "1";
 
   const refreshCheckInOutStatus = useCallback(async () => {
-    const { displayDate, apiDate } = getTodayFormats();
+    const { apiDate } = getTodayFormats();
     try {
       const { fetchCicoSession } = await import("../../services/timelineCicoService");
-      const [cico, projectState] = await Promise.all([
-        fetchCicoSession(apiDate),
-        fetchProjectCheckInOutState(displayDate),
-      ]);
+      const cico = await fetchCicoSession(apiDate);
       setCheckInOutStatus(cico.cicoStatus === "check_out" ? "check_out" : "check_in");
-      setCheckInOutStatusProject(Number(projectState.checkData?.check_in_out ?? 0));
     } catch {
       // Keep last known status if refresh fails.
     }
@@ -300,7 +285,7 @@ export default function TimelineScreen() {
             styles.listContent,
             {
               paddingBottom:
-                scrollPadding + (canEmployeeCheckIn || canProjectCheckIn ? 72 : 0),
+                scrollPadding + 72,
             },
           ]}
           refreshControl={
@@ -320,51 +305,23 @@ export default function TimelineScreen() {
         />
       </ListScreenBody>
 
-      {canEmployeeCheckIn || canProjectCheckIn ? (
-        <View style={[styles.fabStack, { bottom: fabBottom }]}>
-          {canProjectCheckIn ? (
-            <Pressable
-              style={[
-                styles.fabBtn,
-                checkInOutStatusProject === 1 ? styles.checkOutBtn : styles.projectBtn,
-              ]}
-              onPress={() =>
-                setProjectModalMode(checkInOutStatusProject === 1 ? "check-out" : "check-in")
-              }
-            >
-              <Text style={styles.actionBtnText}>
-                {checkInOutStatusProject === 1
-                  ? t("Project Check Out")
-                  : t("Project Check In")}
-              </Text>
-            </Pressable>
-          ) : null}
-          {canEmployeeCheckIn ? (
-            <Pressable
-              style={[
-                styles.fabBtn,
-                checkInOutStatus === "check_out" ? styles.checkOutBtn : styles.checkInBtn,
-              ]}
-              onPress={() => setEmployeeModalVisible(true)}
-            >
-              <Text style={styles.actionBtnText}>
-                {checkInOutStatus === "check_out" ? t("Check Out") : t("Check In")}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      <View style={[styles.fabStack, { bottom: fabBottom }]}>
+        <Pressable
+          style={[
+            styles.fabBtn,
+            checkInOutStatus === "check_out" ? styles.checkOutBtn : styles.checkInBtn,
+          ]}
+          onPress={() => setEmployeeModalVisible(true)}
+        >
+          <Text style={styles.actionBtnText}>
+            {checkInOutStatus === "check_out" ? t("Check Out") : t("Check In")}
+          </Text>
+        </Pressable>
+      </View>
 
       <TimelineTravelCheckInOutModal
         visible={employeeModalVisible}
         onClose={() => setEmployeeModalVisible(false)}
-        onComplete={handleCheckInComplete}
-      />
-
-      <ProjectCheckInOutModal
-        visible={projectModalMode !== null}
-        mode={projectModalMode ?? "check-in"}
-        onClose={() => setProjectModalMode(null)}
         onComplete={handleCheckInComplete}
       />
     </View>
@@ -425,9 +382,6 @@ const styles = StyleSheet.create({
   },
   checkOutBtn: {
     backgroundColor: AppColors.dicline,
-  },
-  projectBtn: {
-    backgroundColor: "#0F766E",
   },
   actionBtnText: {
     fontFamily: FONTS.LexendSemiBold,
