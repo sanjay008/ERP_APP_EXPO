@@ -3,6 +3,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -110,21 +111,29 @@ export default function AllRelationsScreen() {
         />
       </View>
 
-      <View style={styles.tabs}>
-        {TABS.map((item) => {
-          const selected = item.id === tab;
-          return (
-            <Pressable
-              key={item.id}
-              style={[styles.tab, selected && styles.tabSelected]}
-              onPress={() => setTab(item.id)}
-            >
-              <Text style={[styles.tabText, selected && styles.tabTextSelected]} numberOfLines={2}>
-                {t(item.label)}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.tabBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabs}
+        >
+          {TABS.map((item) => {
+            const selected = item.id === tab;
+            return (
+              <Pressable
+                key={item.id}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                style={[styles.tab, selected && styles.tabSelected]}
+                onPress={() => setTab(item.id)}
+              >
+                <Text style={[styles.tabText, selected && styles.tabTextSelected]} numberOfLines={1}>
+                  {t(item.label)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ListScreenBody
@@ -135,6 +144,7 @@ export default function AllRelationsScreen() {
       >
         <FlatList
           data={visibleItems}
+          key={tab}
           keyExtractor={(item) => String(item.id)}
           style={styles.list}
           contentContainerStyle={[styles.listContent, { paddingBottom: scrollPadding }]}
@@ -196,23 +206,29 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.white,
     paddingHorizontal: 12,
   },
-  tabs: {
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
+  tabBar: {
+    backgroundColor: AppColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: CONNECTION_UI.cardBorder,
+    paddingTop: 12,
     paddingBottom: 12,
   },
+  tabs: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: CONNECTION_UI.screenPadding,
+  },
   tab: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 8,
+    minHeight: 40,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: CONNECTION_UI.cardBorder,
-    backgroundColor: AppColors.white,
+    backgroundColor: CONNECTION_UI.surface,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   tabSelected: {
     backgroundColor: AppColors.primary,
@@ -220,10 +236,9 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: FONTS.LexendMedium,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     color: AppColors.black,
-    textAlign: "center",
   },
   tabTextSelected: {
     color: AppColors.white,
