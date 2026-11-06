@@ -30,6 +30,7 @@ import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { Images } from "../../utils/Images";
 import { useAppData } from "../../context/AppDataContext";
+import { hasPermission } from "../../utils/permissionFlags";
 import {
   homeItemIcon,
   homeItemLabel,
@@ -54,7 +55,8 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { top, scrollPadding, modalPadding } = useScreenInsets({ includeTabBar: true });
-  const { clearAppData } = useAppData();
+  const { clearAppData, permissions } = useAppData();
+  const canCreateProjectPhotos = hasPermission(permissions, "project_photos_mobile", "create");
 
   const [logo, setLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -64,6 +66,13 @@ export default function HomeScreen() {
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [employeeModalMode, setEmployeeModalMode] = useState<"check-in" | "check-out" | null>(null);
   const [projectModalMode, setProjectModalMode] = useState<"check-in" | "check-out" | null>(null);
+  const menuItems = homeData.filter((item) => {
+    const link = item.link_to?.trim();
+    if (link === "project_photos" || link === "add_project_photos") {
+      return canCreateProjectPhotos;
+    }
+    return true;
+  });
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
   const clearApiErrorRef = useRef(clearApiError);
   const captureApiErrorRef = useRef(captureApiError);
@@ -187,7 +196,7 @@ export default function HomeScreen() {
     <TouchableOpacity
       style={[
         styles.card,
-        { marginBottom: index === homeData.length - 1 ? 80 : LIST_UI.cardGap },
+        { marginBottom: index === menuItems.length - 1 ? 80 : LIST_UI.cardGap },
       ]}
       onPress={() => handleItemPress(item)}
       activeOpacity={0.85}
@@ -258,7 +267,7 @@ export default function HomeScreen() {
         onRetry={() => fetchHomeItems()}
       >
         <FlatList
-          data={homeData}
+          data={menuItems}
           renderItem={renderItem}
           keyExtractor={(item, index) => `${item.id}-${index}`}
           showsVerticalScrollIndicator={false}

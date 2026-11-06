@@ -27,6 +27,9 @@ export function homeItemIcon(linkTo?: string) {
       return "ribbon-outline";
     case "relation":
       return "people-outline";
+    case "project_photos":
+    case "add_project_photos":
+      return "images-outline";
     default:
       return undefined;
   }
@@ -62,7 +65,8 @@ type HomeRoute = {
     | "/(app)/announcements"
     | "/(app)/payslips"
     | "/(app)/performance-reviews"
-    | "/(app)/relation";
+    | "/(app)/relation"
+    | "/(app)/projects/add-photos";
   params?: Record<string, string>;
 };
 
@@ -293,6 +297,20 @@ const HOME_ROUTE_MAP: Record<string, (item: HomeMenuItem) => HomeRoute> = {
     params: {
       color: item.color_code || "",
       title: homeItemLabel(item) || "Relation",
+    },
+  }),
+  project_photos: (item) => ({
+    pathname: "/(app)/projects/add-photos",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Project foto's",
+    },
+  }),
+  add_project_photos: (item) => ({
+    pathname: "/(app)/projects/add-photos",
+    params: {
+      color: item.color_code || "",
+      title: homeItemLabel(item) || "Project foto's",
     },
   }),
 };
