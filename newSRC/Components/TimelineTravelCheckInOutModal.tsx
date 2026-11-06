@@ -98,7 +98,9 @@ export default function TimelineTravelCheckInOutModal({
   const { permissions } = useAppData();
   const { modalPadding } = useScreenInsets();
   const liftStyle = useKeyboardLiftStyle(visible);
-  const isSimple = String(permissions?.simpel_check_in_out?.read) === "1";
+  const isSimpleHome = String(permissions?.simpel_check_in_out?.read) === "1";
+  const isSimpleProject = String(permissions?.project_check_in_out?.read) === "1";
+  const isSimple = isSimpleHome || isSimpleProject;
 
   const [step, setStep] = useState<Step>("loading");
   const [session, setSession] = useState<CicoSession | null>(null);
@@ -159,22 +161,35 @@ export default function TimelineTravelCheckInOutModal({
       const checkingOut = cico.cicoStatus === "check_out";
       let nextStart = checkingOut ? "Office" : "Home";
       let nextEnd = checkingOut ? "Home" : "Office";
+      const projectAddresses = cico.addressBuckets?.Project || [];
 
-      if (checkingOut && cico.openEndPointType) {
-        nextStart = cico.openEndPointType;
+      if (isSimpleProject) {
+        nextStart = "Project";
+        nextEnd = "Project";
+      } else {
+        if (checkingOut && cico.openEndPointType) {
+          nextStart = cico.openEndPointType;
+        }
+        const startTypes = getTypeOptions(cico, "start");
+        const endTypes = getTypeOptions(cico, "end");
+        if (!startTypes.includes(nextStart)) nextStart = startTypes[0] || "";
+        if (!endTypes.includes(nextEnd)) nextEnd = endTypes[0] || "";
       }
-
-      const startTypes = getTypeOptions(cico, "start");
-      const endTypes = getTypeOptions(cico, "end");
-      if (!startTypes.includes(nextStart)) nextStart = startTypes[0] || "";
-      if (!endTypes.includes(nextEnd)) nextEnd = endTypes[0] || "";
 
       setStartType(nextStart);
       setEndType(nextEnd);
-      setStartAddress(resolveDefaultAddress(cico.addressBuckets, nextStart));
-      setEndAddress(resolveDefaultAddress(cico.addressBuckets, nextEnd));
-      setClosingDay(nextEnd === "Home");
-      setStep("summary");
+      if (isSimpleProject) {
+        const onlyProject = projectAddresses.length === 1 ? projectAddresses[0] : null;
+        setStartAddress(onlyProject);
+        setEndAddress(onlyProject);
+        setClosingDay(false);
+        setStep(projectAddresses.length > 1 ? "startAddress" : "summary");
+      } else {
+        setStartAddress(resolveDefaultAddress(cico.addressBuckets, nextStart));
+        setEndAddress(resolveDefaultAddress(cico.addressBuckets, nextEnd));
+        setClosingDay(nextEnd === "Home");
+        setStep("summary");
+      }
 
       getDeviceCoordinates()
         .then(setCoords)
@@ -182,7 +197,7 @@ export default function TimelineTravelCheckInOutModal({
     } catch (error) {
       setFormError(getApiErrorMessage(error, t("Something went wrong")));
     }
-  }, [onClose, t]);
+  }, [isSimpleProject, onClose, t]);
 
   useEffect(() => {
     if (!visible) {
@@ -239,8 +254,9 @@ export default function TimelineTravelCheckInOutModal({
 
   const submit = async () => {
     if (!session) return;
-    if (!startType || !endType) {
+    if (!startType || !endType || (isSimpleProject && !startAddress)) {
       setFormError(t("Please select start and destination"));
+      if (isSimpleProject) setStep("startAddress");
       return;
     }
     setFormError("");
@@ -285,6 +301,11 @@ export default function TimelineTravelCheckInOutModal({
   };
 
   const goNextFromSummary = () => {
+    if (isSimpleProject && (session?.addressBuckets?.Project || []).length > 1 && !startAddress) {
+      setFormError("");
+      setStep("startAddress");
+      return;
+    }
     if (isSimple) {
       submit();
       return;
@@ -319,7 +340,7 @@ export default function TimelineTravelCheckInOutModal({
 
   const goBack = () => {
     if (step === "startType") setStep("summary");
-    else if (step === "startAddress") setStep("startType");
+    else if (step === "startAddress") setStep(isSimpleProject ? "summary" : "startType");
     else if (step === "endType") {
       setStep(startAddresses.length <= 1 ? "startType" : "startAddress");
     } else if (step === "endAddress") setStep("endType");
@@ -520,6 +541,13 @@ export default function TimelineTravelCheckInOutModal({
                             style={styles.infoRow}
                             onPress={() => {
                               setStartAddress(item);
+                              if (isSimpleProject) {
+                                setEndAddress(item);
+                                setStartType("Project");
+                                setEndType("Project");
+                                setStep("summary");
+                                return;
+                              }
                               setStep("endType");
                             }}
                           >
