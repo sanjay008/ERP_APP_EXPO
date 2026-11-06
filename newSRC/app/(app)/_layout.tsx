@@ -67,6 +67,7 @@ function AppStack() {
       <Stack.Screen name="tickets/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="tickets/create" options={{ headerShown: false }} />
       <Stack.Screen name="connections/index" options={{ headerShown: false }} />
+      <Stack.Screen name="all-relations/index" options={{ headerShown: false }} />
       <Stack.Screen name="connections/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="projects/index" options={{ headerShown: false }} />
       <Stack.Screen name="projects/create" options={{ headerShown: false }} />

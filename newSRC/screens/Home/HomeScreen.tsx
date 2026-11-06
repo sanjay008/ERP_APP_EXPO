@@ -57,6 +57,7 @@ export default function HomeScreen() {
   const { top, scrollPadding, modalPadding } = useScreenInsets({ includeTabBar: true });
   const { clearAppData, permissions } = useAppData();
   const canCreateProjectPhotos = hasPermission(permissions, "project_photos_mobile", "create");
+  const canReadAllRelations = hasPermission(permissions, "all_relations_mobile", "read");
 
   const [logo, setLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export default function HomeScreen() {
     if (link === "project_photos" || link === "add_project_photos") {
       return canCreateProjectPhotos;
     }
+    if (link === "all_relations") return canReadAllRelations;
     return true;
   });
   const { apiError, clearApiError, captureApiError } = useApiErrorState();

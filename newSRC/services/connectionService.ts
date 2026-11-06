@@ -63,6 +63,122 @@ async function getUserContext() {
   };
 }
 
+export type AllRelationItem = {
+  id: number | string;
+  display_name?: string;
+  bedrijfsnaam?: string;
+  voornaam?: string;
+  achternaam?: string;
+  soort_relatie?: string;
+  bedrijf_particulier?: number | string;
+  category_id?: number | string;
+  file_path?: string;
+};
+
+export type AllRelationTab = "company" | "person" | "employee";
+
+function relationText(item: AllRelationItem) {
+  return String(item.soort_relatie || "").toLowerCase();
+}
+
+function relationCategory(item: AllRelationItem) {
+  const value = Number(item.bedrijf_particulier ?? item.category_id);
+  return Number.isFinite(value) ? value : 0;
+}
+
+export function isEmployeeRelation(item: AllRelationItem) {
+  const value = relationText(item);
+  return (
+    value.includes("medewerker") ||
+    value.includes("employee") ||
+    value.includes("werknemer") ||
+    value.includes("personeel") ||
+    value === "staff"
+  );
+}
+
+function isClientRelation(item: AllRelationItem) {
+  if (isEmployeeRelation(item)) return false;
+  const value = relationText(item);
+  const category = relationCategory(item);
+  if (!value) return category === 1 || category === 2;
+  return (
+    value.includes("opdrachtgever") ||
+    value.includes("klant") ||
+    value.includes("client") ||
+    value.includes("customer")
+  );
+}
+
+export function matchesAllRelationTab(item: AllRelationItem, tab: AllRelationTab) {
+  if (tab === "employee") return isEmployeeRelation(item);
+  if (!isClientRelation(item)) return false;
+
+  const category = relationCategory(item);
+  if (tab === "company") {
+    if (category === 1) return true;
+    if (category === 2) return false;
+    return Boolean(item.bedrijfsnaam) && !item.voornaam;
+  }
+
+  if (category === 2) return true;
+  if (category === 1) return false;
+  return Boolean(item.voornaam) || !item.bedrijfsnaam;
+}
+
+function normalizeAllRelation(raw: unknown): AllRelationItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw as AllRelationItem;
+  if (item.id == null || item.id === "") return null;
+  const image = item.file_path || (raw as { profile_image?: { file_path?: string } }).profile_image?.file_path;
+  return {
+    id: item.id,
+    display_name: item.display_name,
+    bedrijfsnaam: item.bedrijfsnaam,
+    voornaam: item.voornaam,
+    achternaam: item.achternaam,
+    soort_relatie: item.soort_relatie,
+    bedrijf_particulier: item.bedrijf_particulier,
+    category_id: item.category_id,
+    file_path: image,
+  };
+}
+
+export async function fetchAllRelations() {
+  const ctx = await getUserContext();
+  const [filtered, connections] = await Promise.all([
+    ApiService<unknown[]>(apiConstants.get_filtered_relaties_list, {
+      includeToken: true,
+      customData: {
+        relaties_id: ctx.relaties_id,
+        role: ctx.role,
+        user_id: ctx.user_id,
+      },
+    }).catch(() => null),
+    fetchConnections().catch(() => null),
+  ]);
+
+  if (!filtered?.status && !connections?.status) {
+    throw filtered || connections || new Error("Something went wrong");
+  }
+
+  const merged = new Map<string, AllRelationItem>();
+  const add = (list: unknown) => {
+    if (!Array.isArray(list)) return;
+    list.forEach((raw) => {
+      const item = normalizeAllRelation(raw);
+      if (!item) return;
+      const key = String(item.id);
+      const current = merged.get(key);
+      merged.set(key, current ? { ...current, ...item } : item);
+    });
+  };
+
+  if (filtered?.status) add(filtered.data);
+  if (connections?.status) add(connections.data);
+  return [...merged.values()];
+}
+
 export async function fetchConnections(type?: string) {
   const ctx = await getUserContext();
   return ApiService<ConnectionItem[]>(apiConstants.Connections, {
