@@ -116,9 +116,14 @@ export default function RelationFormScreen() {
   const countries = useAuthStore((state) => state.countries);
   const mergedCountries = useMemo(() => mergeApiCountries(countries), [countries]);
   const defaultCountryCode = normalizeCallingCode(item?.default_country_code) || "31";
-  const screenTitle = item?.popup_text || item?.title || t("Relation");
+  const text = (value?: string | null) => {
+    const raw = String(value || "").trim();
+    return raw ? String(t(raw)) : "";
+  };
+  const fieldText = (field: QuickRelationField) => text(field.label || field.name);
+  const screenTitle = text(item?.popup_text || item?.title) || t("Relation");
   const itemId = item?.id;
-  const badge = item?.category_name || item?.relation_type_name || "";
+  const badge = text(item?.category_name || item?.relation_type_name);
 
   const visibleFields = useMemo(() => {
     const fields = (form?.fields ?? []).filter(
@@ -131,7 +136,10 @@ export default function RelationFormScreen() {
   const selectedSheetField = visibleFields.find((field) => field.name === activeField);
   const selectedSheetOptions = toSheetOptions(
     selectedSheetField?.options_key ? form?.options?.[selectedSheetField.options_key] ?? [] : []
-  );
+  ).map((option) => ({
+    ...option,
+    label: text(option.label),
+  }));
 
   const screenHeight = Dimensions.get("screen").height;
   const windowHeight = Dimensions.get("window").height;
@@ -205,13 +213,13 @@ export default function RelationFormScreen() {
   const showFieldInfo = (field: QuickRelationField) => {
     const message = field.info?.trim();
     if (!message) return;
-    Alert.alert(field.label || field.name, message);
+    Alert.alert(fieldText(field), text(message));
   };
 
   const renderLabel = (field: QuickRelationField) => (
     <View style={styles.labelRow}>
       <Text style={styles.label}>
-        {field.label || field.name}
+        {fieldText(field)}
         {isQuickRelationFieldRequired(field) ? <Text style={styles.required}> *</Text> : null}
       </Text>
       {field.info?.trim() ? (
@@ -250,7 +258,7 @@ export default function RelationFormScreen() {
   const renderField = (field: QuickRelationField) => {
     const kind = getQuickRelationFieldKind(field);
     const required = isQuickRelationFieldRequired(field);
-    const label = field.label || field.name;
+    const label = fieldText(field);
     const value = values[field.name] || "";
     const error = errors[field.name];
     const icon = fieldIcon(field);
@@ -265,7 +273,7 @@ export default function RelationFormScreen() {
           {renderLabel(field)}
           <GooglePlacesInput
             value={value}
-            onChangeText={(text) => setFieldValue(field.name, text)}
+            onChangeText={(next) => setFieldValue(field.name, next)}
             onSelect={(place: GooglePlacePrediction) => {
               void applyGoogleAddress(field.name, place);
             }}
@@ -288,7 +296,7 @@ export default function RelationFormScreen() {
           label={label}
           required={required}
           placeholder={t("Select")}
-          value={selected?.label || ""}
+          value={text(selected?.label)}
           error={error}
           info={info}
           onInfoPress={() => showFieldInfo(field)}
@@ -425,7 +433,7 @@ export default function RelationFormScreen() {
 
       <SelectionBottomSheet
         visible={Boolean(selectedSheetField)}
-        title={selectedSheetField?.label || t("Select")}
+        title={selectedSheetField ? fieldText(selectedSheetField) : t("Select")}
         searchPlaceholder={t("Search")}
         confirmText={t("Done")}
         options={selectedSheetOptions}

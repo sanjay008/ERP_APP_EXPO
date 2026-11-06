@@ -584,47 +584,39 @@ export default function ProjectDetailsScreen() {
             </>
           ) : null}
 
-          {canReadTasks ? (
+          {canReadTasks && data?.task_data?.length ? (
             <>
               <SectionTitle title={t("Tasks")} />
               <SectionCard>
-                {data?.task_data?.length ? (
-                  data.task_data.map((task, index) => (
-                    <TaskCard key={`task-${index}`} task={task} />
-                  ))
-                ) : (
-                  <Text style={styles.emptyMeta}>--</Text>
-                )}
+                {data.task_data.map((task, index) => (
+                  <TaskCard key={`task-${index}`} task={task} />
+                ))}
               </SectionCard>
             </>
           ) : null}
 
-          {canReadTickets ? (
+          {canReadTickets && data?.ticket_data?.length ? (
             <>
               <SectionTitle title={t("Ticket")} />
               <SectionCard>
-                {data?.ticket_data?.length ? (
-                  data.ticket_data.map((ticket, index) => (
-                    <TicketCard
-                      key={`ticket-${ticket.id ?? index}`}
-                      ticket={ticket}
-                      onPress={
-                        ticket.id != null
-                          ? () =>
-                              router.push({
-                                pathname: "/(app)/tickets/[id]",
-                                params: {
-                                  id: String(ticket.id),
-                                  item: JSON.stringify(ticket),
-                                },
-                              })
-                          : undefined
-                      }
-                    />
-                  ))
-                ) : (
-                  <Text style={styles.emptyMeta}>--</Text>
-                )}
+                {data.ticket_data.map((ticket, index) => (
+                  <TicketCard
+                    key={`ticket-${ticket.id ?? index}`}
+                    ticket={ticket}
+                    onPress={
+                      ticket.id != null
+                        ? () =>
+                            router.push({
+                              pathname: "/(app)/tickets/[id]",
+                              params: {
+                                id: String(ticket.id),
+                                item: JSON.stringify(ticket),
+                              },
+                            })
+                        : undefined
+                    }
+                  />
+                ))}
               </SectionCard>
             </>
           ) : null}

@@ -95,21 +95,24 @@ export default function RelationScreen() {
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.title} numberOfLines={2}>
-          {item.title || "-"}
+          {item.title ? t(item.title) : "-"}
         </Text>
         {item.hover_text ? (
           <Text style={styles.subtitle} numberOfLines={2}>
-            {item.hover_text}
+            {t(item.hover_text)}
           </Text>
         ) : null}
         {item.popup_text && item.popup_text !== item.hover_text ? (
           <Text style={styles.subtitle} numberOfLines={2}>
-            {item.popup_text}
+            {t(item.popup_text)}
           </Text>
         ) : null}
         {item.category_name || item.relation_type_name ? (
           <Text style={styles.meta} numberOfLines={1}>
-            {[item.category_name, item.relation_type_name].filter(Boolean).join(" · ")}
+            {[item.category_name, item.relation_type_name]
+              .filter(Boolean)
+              .map((value) => t(String(value)))
+              .join(" · ")}
           </Text>
         ) : null}
       </View>
