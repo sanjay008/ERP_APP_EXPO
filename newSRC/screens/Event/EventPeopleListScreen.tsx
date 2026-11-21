@@ -20,11 +20,16 @@ import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
   fetchEventBookings,
   fetchEventGuests,
+  flattenEventGuestTickets,
+  formatEventDate,
+  getEventBookingDate,
   getEventBookingPhone,
   getEventPersonName,
   getEventTicketCode,
+  getEventTicketSeat,
   isEventBookingScanned,
   type EventBookingItem,
+  type EventGuestTicketRow,
 } from "../../services/eventService";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
@@ -69,7 +74,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [selected, setSelected] = useState<EventBookingItem | null>(null);
+  const [selected, setSelected] = useState<EventGuestTicketRow | null>(null);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const fetchPage = mode === "bookings" ? fetchEventBookings : fetchEventGuests;
@@ -123,29 +128,37 @@ export default function EventPeopleListScreen({ mode }: Props) {
     loadData(true);
   }, [eventId, mode]);
 
-  const filteredItems = useMemo(() => {
+  const ticketRows = useMemo(() => flattenEventGuestTickets(items), [items]);
+
+  const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return items;
-    return items.filter((item) => {
-      const name = getEventPersonName(item).toLowerCase();
-      const email = String(item.email || item.relaties_data?.email_adres || "").toLowerCase();
-      return name.includes(query) || email.includes(query);
+    if (!query) return ticketRows;
+    return ticketRows.filter((row) => {
+      const name = getEventPersonName(row.booking).toLowerCase();
+      const email = String(
+        row.booking.email || row.booking.relaties_data?.email_adres || ""
+      ).toLowerCase();
+      const code = getEventTicketCode(row.booking, row.single).toLowerCase();
+      return name.includes(query) || email.includes(query) || code.includes(query);
     });
-  }, [items, search]);
+  }, [ticketRows, search]);
 
-  const selectedScanned = isEventBookingScanned(selected);
-  const selectedSeat = selected?.booking_single?.[0]?.seat_data?.seat_number;
+  const selectedScanned = isEventBookingScanned(selected?.booking, selected?.single);
+  const selectedDate = selected
+    ? formatEventDate(getEventBookingDate(selected.booking)) ||
+      emptyToDash(getEventBookingDate(selected.booking))
+    : "-";
 
-  const renderItem = ({ item }: { item: EventBookingItem }) => {
-    const scanned = isEventBookingScanned(item);
+  const renderItem = ({ item }: { item: EventGuestTicketRow }) => {
+    const scanned = isEventBookingScanned(item.booking, item.single);
     return (
       <Pressable style={styles.card} onPress={() => setSelected(item)}>
         <View style={styles.cardBody}>
           <Text style={styles.name} numberOfLines={1}>
-            {getEventPersonName(item)}
+            {getEventPersonName(item.booking)}
           </Text>
           <Text style={styles.subText} numberOfLines={1}>
-            {item.email || item.relaties_data?.email_adres || "-"}
+            {item.booking.email || item.booking.relaties_data?.email_adres || "-"}
           </Text>
         </View>
         <View
@@ -179,13 +192,13 @@ export default function EventPeopleListScreen({ mode }: Props) {
 
       <ListScreenBody
         loading={loading}
-        itemCount={filteredItems.length}
+        itemCount={filteredRows.length}
         apiError={apiError}
         onRetry={() => loadData(true)}
       >
         <FlatList
-          data={filteredItems}
-          keyExtractor={(item, index) => String(item.id ?? index)}
+          data={filteredRows}
+          keyExtractor={(item) => item.key}
           renderItem={renderItem}
           contentContainerStyle={{
             paddingBottom: scrollPadding,
@@ -255,50 +268,33 @@ export default function EventPeopleListScreen({ mode }: Props) {
               </Text>
             </View>
 
-            <DetailRow label={t("Name")} value={emptyToDash(getEventPersonName(selected))} />
+            <DetailRow
+              label={t("Name")}
+              value={emptyToDash(getEventPersonName(selected.booking))}
+            />
             <DetailRow
               label={t("Email")}
-              value={emptyToDash(selected.email || selected.relaties_data?.email_adres)}
-            />
-            <DetailRow label={t("Phone")} value={emptyToDash(getEventBookingPhone(selected))} />
-            <DetailRow label={t("Booking ID")} value={emptyToDash(selected.id)} />
-            <DetailRow label={t("Ticket Code")} value={emptyToDash(getEventTicketCode(selected))} />
-            <DetailRow
-              label={t("Ticket")}
-              value={emptyToDash(selected.event_tickets?.title)}
-            />
-            <DetailRow label={t("Seat")} value={emptyToDash(selectedSeat)} />
-            <DetailRow label={t("Quantity")} value={emptyToDash(selected.quantity)} />
-            <DetailRow
-              label={t("Payment status")}
-              value={emptyToDash(selected.payment_status)}
+              value={emptyToDash(
+                selected.booking.email || selected.booking.relaties_data?.email_adres
+              )}
             />
             <DetailRow
-              label={t("Payment method")}
-              value={emptyToDash(selected.payment_method)}
+              label={t("Phone")}
+              value={emptyToDash(getEventBookingPhone(selected.booking))}
             />
             <DetailRow
-              label={t("Total")}
-              value={emptyToDash(selected.total_price || selected.amount)}
+              label={t("Ticket Code")}
+              value={emptyToDash(getEventTicketCode(selected.booking, selected.single))}
             />
             <DetailRow
-              label={t("Event")}
-              value={emptyToDash(selected.event_data?.name || params.eventName)}
+              label={t("Seat")}
+              value={emptyToDash(getEventTicketSeat(selected.booking, selected.single))}
             />
-
-            <Pressable
-              style={[
-                styles.actionBtn,
-                { backgroundColor: selectedScanned ? AppColors.primary : AppColors.dicline },
-              ]}
-              onPress={() => {
-                // API + permission later
-              }}
-            >
-              <Text style={styles.actionBtnText}>
-                {selectedScanned ? t("Unclose ticket") : t("Close ticket")}
-              </Text>
-            </Pressable>
+            <DetailRow
+              label={t("Scanned")}
+              value={selectedScanned ? t("Scanned") : t("Not scanned")}
+            />
+            <DetailRow label={t("Date")} value={emptyToDash(selectedDate)} />
           </>
         ) : null}
       </FormModal>
@@ -398,17 +394,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: AppColors.black,
     textAlign: "right",
-  },
-  actionBtn: {
-    marginTop: 18,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionBtnText: {
-    fontFamily: FONTS.LexendSemiBold,
-    fontSize: 14,
-    color: AppColors.white,
   },
 });

@@ -8,7 +8,6 @@ import { I18nextProvider } from "react-i18next";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AppToast from "../Components/AppToast";
 import NoInternetOverlay from "../Components/NoInternetOverlay";
-import OtaAutoReload from "../Components/OtaAutoReload";
 import { RegisterBackProvider } from "../constants/GoBackContext";
 import { NetworkProvider } from "../context/NetworkContext";
 import { useThemeStore } from "../store/themeStore";
@@ -42,12 +41,11 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) {
-    return <OtaAutoReload />;
+    return null;
   }
 
   return (
     <I18nextProvider i18n={i18n}>
-      <OtaAutoReload />
       <SafeAreaProvider>
         <RegisterBackProvider>
           <View style={{ flex: 1 }}>

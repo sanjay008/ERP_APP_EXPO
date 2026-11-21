@@ -15,6 +15,13 @@ export type EventListItem = {
   images?: EventImage[];
 };
 
+export type EventBookingSingle = {
+  id?: number | string;
+  unique_code?: string;
+  scan_info?: number | string;
+  seat_data?: { seat_number?: string };
+};
+
 export type EventBookingItem = {
   id?: number | string;
   first_name?: string;
@@ -24,6 +31,7 @@ export type EventBookingItem = {
   mobile?: string;
   country_code?: string;
   unique_id?: string;
+  created_at?: string;
   payment_status?: string;
   payment_method?: string;
   quantity?: number | string;
@@ -42,22 +50,48 @@ export type EventBookingItem = {
     mobiel?: string;
     whatsapp_number?: string;
   };
-  booking_single?: Array<{
-    id?: number | string;
-    unique_code?: string;
-    scan_info?: number | string;
-    seat_data?: { seat_number?: string };
-  }>;
+  booking_single?: EventBookingSingle[];
 };
 
-export function isEventBookingScanned(item?: EventBookingItem | null) {
+export type EventGuestTicketRow = {
+  key: string;
+  booking: EventBookingItem;
+  single?: EventBookingSingle;
+};
+
+/** Guest list: one row per booking_single ticket (scan_info lives there). */
+export function flattenEventGuestTickets(items: EventBookingItem[]): EventGuestTicketRow[] {
+  const rows: EventGuestTicketRow[] = [];
+  items.forEach((booking, index) => {
+    const singles = Array.isArray(booking.booking_single) ? booking.booking_single : [];
+    if (!singles.length) {
+      rows.push({ key: `booking-${booking.id ?? index}`, booking });
+      return;
+    }
+    singles.forEach((single, singleIndex) => {
+      rows.push({
+        key: `booking-${booking.id ?? index}-single-${single.id ?? singleIndex}`,
+        booking,
+        single,
+      });
+    });
+  });
+  return rows;
+}
+
+/** Prefer booking_single.scan_info: 0 = not scanned, >= 1 = scanned. */
+export function isEventBookingScanned(
+  item?: EventBookingItem | null,
+  single?: EventBookingSingle | null
+) {
+  if (single?.scan_info != null) return Number(single.scan_info) >= 1;
   if (!item) return false;
+  const firstSingle = item.booking_single?.[0];
+  if (firstSingle?.scan_info != null) return Number(firstSingle.scan_info) >= 1;
   if (item.scan_info != null) return Number(item.scan_info) >= 1;
   if (item.is_scanned != null) {
     return item.is_scanned === true || Number(item.is_scanned) >= 1;
   }
-  const single = item.booking_single?.[0];
-  if (single?.scan_info != null) return Number(single.scan_info) >= 1;
   return false;
 }
 
@@ -74,13 +108,26 @@ export function getEventBookingPhone(item?: EventBookingItem | null) {
   return code ? `${code} ${phone}` : String(phone);
 }
 
-export function getEventTicketCode(item?: EventBookingItem | null) {
+export function getEventTicketCode(
+  item?: EventBookingItem | null,
+  single?: EventBookingSingle | null
+) {
+  if (single?.unique_code) return String(single.unique_code);
   if (!item) return "";
-  return (
-    item.unique_id ||
-    item.booking_single?.[0]?.unique_code ||
-    ""
-  );
+  return item.unique_id || item.booking_single?.[0]?.unique_code || "";
+}
+
+export function getEventTicketSeat(
+  item?: EventBookingItem | null,
+  single?: EventBookingSingle | null
+) {
+  if (single?.seat_data?.seat_number) return String(single.seat_data.seat_number);
+  return item?.booking_single?.[0]?.seat_data?.seat_number || "";
+}
+
+export function getEventBookingDate(item?: EventBookingItem | null) {
+  if (!item) return "";
+  return item.event_data?.date || item.created_at || "";
 }
 
 type PaginatedBody<T> = {

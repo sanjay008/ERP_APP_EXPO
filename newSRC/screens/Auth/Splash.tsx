@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { Images } from "../../utils/Images";
 import { AppColors } from "../../utils/theme";
 import { resolveInitialRoute } from "../../utils/authSession";
+import { applyOtaUpdateOnSplash } from "../../utils/otaUpdate";
 
 const SPLASH_DURATION_MS = 1600;
 
@@ -14,8 +15,10 @@ export default function SplashScreen() {
     let mounted = true;
 
     const navigate = async () => {
-      // OTA download/reload is handled by root OtaAutoReload —
-      // do not reloadAsync here (Android first-open crash).
+      // Apply OTA here before session routing so login is never reset mid-session.
+      await applyOtaUpdateOnSplash();
+      if (!mounted) return;
+
       const route = await resolveInitialRoute();
       if (!mounted) return;
 
@@ -26,7 +29,7 @@ export default function SplashScreen() {
       }, SPLASH_DURATION_MS);
     };
 
-    navigate();
+    void navigate();
 
     return () => {
       mounted = false;

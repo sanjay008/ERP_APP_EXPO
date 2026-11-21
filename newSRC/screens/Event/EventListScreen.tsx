@@ -129,21 +129,6 @@ export default function EventListScreen() {
               <HtmlContent html={item.description} variant="note" />
             </View>
           ) : null}
-          <Pressable
-            style={styles.actionBtn}
-            onPress={() =>
-              router.push({
-                pathname: "/(app)/events/[id]/bookings",
-                params: {
-                  id: String(item.id),
-                  eventName: item.name || "",
-                  color: params.color || "",
-                },
-              })
-            }
-          >
-            <Text style={styles.actionBtnText}>{t("Booking List")}</Text>
-          </Pressable>
           {item.location ? (
             <View style={styles.locationRow}>
               <FallBackImage
@@ -314,14 +299,6 @@ const styles = StyleSheet.create({
   eventDescription: {
     maxHeight: 40,
     overflow: "hidden",
-  },
-  actionBtn: {
-    alignSelf: "flex-start",
-    backgroundColor: AppColors.primary,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 4,
   },
   fullBtn: {
     marginTop: 10,
