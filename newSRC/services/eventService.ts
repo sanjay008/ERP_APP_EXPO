@@ -17,6 +17,7 @@ export type EventListItem = {
 
 export type EventBookingSingle = {
   id?: number | string;
+  event_id?: number | string;
   unique_code?: string;
   scan_info?: number | string;
   seat_data?: { seat_number?: string };
@@ -327,14 +328,21 @@ export async function confirmEventBooking(params: {
   eventId: string | number;
   bookingId: string | number;
   token: string;
+  /** Pass 0 to Unclose (reset scan). Omit on Close — API sets scan_info to 1. */
+  scanInfo?: number;
 }) {
+  const payload: Record<string, string | number> = {
+    token: params.token,
+    event_id: params.eventId,
+    booking_id: params.bookingId,
+  };
+  if (params.scanInfo != null) {
+    payload.scan_info = params.scanInfo;
+  }
+
   const response = await apiClient.post<{ status?: boolean; message?: string }>(
     apiConstants.event_booking_confirmation,
-    {
-      token: params.token,
-      event_id: params.eventId,
-      booking_id: params.bookingId,
-    }
+    payload
   );
 
   const body = response.data;

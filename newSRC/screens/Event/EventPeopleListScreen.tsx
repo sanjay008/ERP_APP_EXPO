@@ -203,6 +203,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
   const handleToggleScan = useCallback(async () => {
     if (!selected || !canUpdateTicketScan || scanSubmitting) return;
 
+    // booking_id must be booking_single.id
     const bookingId = selected.single?.id;
     if (bookingId == null || bookingId === "") {
       setToast({
@@ -224,19 +225,29 @@ export default function EventPeopleListScreen({ mode }: Props) {
       }
 
       const resolvedEventId =
-        eventId || selected.booking.event_id || selected.booking.event_data?.id || "";
+        eventId ||
+        selected.single?.event_id ||
+        selected.booking.event_id ||
+        selected.booking.event_data?.id ||
+        "";
 
+      if (resolvedEventId === "") {
+        throw new Error(t("Something went wrong"));
+      }
+
+      // Close: token + event_id + booking_id → scan_info becomes 1
+      // Unclose: same endpoint + scan_info 0 → scan_info becomes 0
       await confirmEventBooking({
         token,
         eventId: resolvedEventId,
         bookingId,
+        ...(closing ? {} : { scanInfo: 0 }),
       });
 
-      // Close → scan_info 1; Unclose → scan_info 0 (local UI after API success).
       applyLocalScanInfo(selected, closing ? 1 : 0);
       setToast({
         top: 45,
-        text: closing ? t("Close ticket") : t("Unclose ticket"),
+        text: closing ? t("Close") : t("Unclose"),
         type: "success",
         visible: true,
       });
@@ -428,7 +439,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
                   <ActivityIndicator color={AppColors.white} />
                 ) : (
                   <Text style={styles.actionBtnText}>
-                    {selectedScanned ? t("Unclose ticket") : t("Close ticket")}
+                    {selectedScanned ? t("Unclose") : t("Close")}
                   </Text>
                 )}
               </Pressable>
