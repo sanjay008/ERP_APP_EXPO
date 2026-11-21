@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,8 +16,11 @@ import ScreenHeader from "../../Components/ScreenHeader";
 import SearchBox from "../../Components/SearchBox";
 import FormModal from "../../Components/FormModal";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
+import { RegisterBackContext } from "../../constants/GoBackContext";
+import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
+  confirmEventBooking,
   fetchEventBookings,
   fetchEventGuests,
   flattenEventGuestTickets,
@@ -31,6 +34,9 @@ import {
   type EventBookingItem,
   type EventGuestTicketRow,
 } from "../../services/eventService";
+import { hasPermission } from "../../utils/permissionFlags";
+import { getData } from "../../utils/storeData";
+import { getApiErrorMessage } from "../../utils/validation";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
@@ -64,8 +70,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 export default function EventPeopleListScreen({ mode }: Props) {
   const { t } = useTranslation();
   const { top, scrollPadding } = useScreenInsets();
+  const { permissions } = useAppData();
+  const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id?: string; eventName?: string; color?: string }>();
   const eventId = params.id ?? "";
+  const canUpdateTicketScan = hasPermission(permissions, "event_ticket_scan_mobile", "update");
 
   const [items, setItems] = useState<EventBookingItem[]>([]);
   const [search, setSearch] = useState("");
@@ -75,6 +84,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [selected, setSelected] = useState<EventGuestTicketRow | null>(null);
+  const [scanSubmitting, setScanSubmitting] = useState(false);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
   const fetchPage = mode === "bookings" ? fetchEventBookings : fetchEventGuests;
@@ -148,6 +158,108 @@ export default function EventPeopleListScreen({ mode }: Props) {
     ? formatEventDate(getEventBookingDate(selected.booking)) ||
       emptyToDash(getEventBookingDate(selected.booking))
     : "-";
+
+  const applyLocalScanInfo = useCallback((row: EventGuestTicketRow, nextScanInfo: number) => {
+    const singleId = row.single?.id;
+    setItems((prev) =>
+      prev.map((booking) => {
+        if (String(booking.id) !== String(row.booking.id)) return booking;
+        const singles = Array.isArray(booking.booking_single) ? booking.booking_single : [];
+        if (!singles.length) {
+          return { ...booking, scan_info: nextScanInfo };
+        }
+        return {
+          ...booking,
+          booking_single: singles.map((single) => {
+            if (singleId != null && String(single.id) === String(singleId)) {
+              return { ...single, scan_info: nextScanInfo };
+            }
+            if (singleId == null && singles[0] === single) {
+              return { ...single, scan_info: nextScanInfo };
+            }
+            return single;
+          }),
+        };
+      })
+    );
+    setSelected((prev) => {
+      if (!prev || prev.key !== row.key) return prev;
+      return {
+        ...prev,
+        single: prev.single ? { ...prev.single, scan_info: nextScanInfo } : prev.single,
+        booking: {
+          ...prev.booking,
+          scan_info: nextScanInfo,
+          booking_single: prev.booking.booking_single?.map((single) =>
+            prev.single?.id != null && String(single.id) === String(prev.single.id)
+              ? { ...single, scan_info: nextScanInfo }
+              : single
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const handleToggleScan = useCallback(async () => {
+    if (!selected || !canUpdateTicketScan || scanSubmitting) return;
+
+    const bookingId = selected.single?.id;
+    if (bookingId == null || bookingId === "") {
+      setToast({
+        top: 45,
+        text: t("Something went wrong"),
+        type: "error",
+        visible: true,
+      });
+      return;
+    }
+
+    const closing = !selectedScanned;
+    setScanSubmitting(true);
+    try {
+      const userData = await getData("USERDATA");
+      const token = userData?.data?.user?.verify_token;
+      if (!token) {
+        throw new Error(t("Something went wrong"));
+      }
+
+      const resolvedEventId =
+        eventId || selected.booking.event_id || selected.booking.event_data?.id || "";
+
+      await confirmEventBooking({
+        token,
+        eventId: resolvedEventId,
+        bookingId,
+      });
+
+      // Close → scan_info 1; Unclose → scan_info 0 (local UI after API success).
+      applyLocalScanInfo(selected, closing ? 1 : 0);
+      setToast({
+        top: 45,
+        text: closing ? t("Close ticket") : t("Unclose ticket"),
+        type: "success",
+        visible: true,
+      });
+    } catch (error) {
+      setToast({
+        top: 45,
+        text: getApiErrorMessage(error, t("Something went wrong")),
+        type: "error",
+        visible: true,
+      });
+    } finally {
+      setScanSubmitting(false);
+    }
+  }, [
+    applyLocalScanInfo,
+    canUpdateTicketScan,
+    eventId,
+    scanSubmitting,
+    selected,
+    selectedScanned,
+    setToast,
+    t,
+  ]);
 
   const renderItem = ({ item }: { item: EventGuestTicketRow }) => {
     const scanned = isEventBookingScanned(item.booking, item.single);
@@ -295,6 +407,32 @@ export default function EventPeopleListScreen({ mode }: Props) {
               value={selectedScanned ? t("Scanned") : t("Not scanned")}
             />
             <DetailRow label={t("Date")} value={emptyToDash(selectedDate)} />
+
+            {canUpdateTicketScan ? (
+              <Pressable
+                style={[
+                  styles.actionBtn,
+                  {
+                    backgroundColor: selectedScanned
+                      ? AppColors.primary
+                      : AppColors.dicline,
+                  },
+                  scanSubmitting ? styles.actionBtnDisabled : null,
+                ]}
+                onPress={() => {
+                  void handleToggleScan();
+                }}
+                disabled={scanSubmitting}
+              >
+                {scanSubmitting ? (
+                  <ActivityIndicator color={AppColors.white} />
+                ) : (
+                  <Text style={styles.actionBtnText}>
+                    {selectedScanned ? t("Unclose ticket") : t("Close ticket")}
+                  </Text>
+                )}
+              </Pressable>
+            ) : null}
           </>
         ) : null}
       </FormModal>
@@ -394,5 +532,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: AppColors.black,
     textAlign: "right",
+  },
+  actionBtn: {
+    marginTop: 18,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
+  },
+  actionBtnDisabled: {
+    opacity: 0.7,
+  },
+  actionBtnText: {
+    fontFamily: FONTS.LexendSemiBold,
+    fontSize: 14,
+    color: AppColors.white,
   },
 });

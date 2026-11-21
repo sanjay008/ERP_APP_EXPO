@@ -41,7 +41,8 @@ export type EventBookingItem = {
   scan_info?: number | string;
   is_scanned?: number | string | boolean;
   event_tickets?: { title?: string; ticket_note?: string };
-  event_data?: { name?: string; date?: string; location?: string };
+  event_data?: { id?: number | string; name?: string; date?: string; location?: string };
+  event_id?: number | string;
   relaties_data?: {
     voornaam?: string;
     achternaam?: string;
@@ -342,3 +343,4 @@ export async function confirmEventBooking(params: {
   }
   return body;
 }
+
