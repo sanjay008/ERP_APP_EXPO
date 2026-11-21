@@ -5,11 +5,13 @@ import {
   fetchQuickRelationForm,
   findCountryCodeField,
   getQuickRelationFieldKind,
+  isCompanyLinkField,
   isDutchWhatsAppValid,
   isPersonWhatsAppField,
   isQuickRelationFieldRequired,
   isRelationDateValid,
   isRelationFlagOn,
+  optionValue,
   parseQuickRelationItem,
   saveQuickRelation,
   toApiDate,
@@ -116,9 +118,18 @@ export const useRelationFormStore = create<RelationFormStore>((set, get) => ({
     try {
       set({ loading: true, apiError: null });
       const response = await fetchQuickRelationForm(item.id);
+      const values = buildInitialValues(response.data.fields, item.default_country_code);
+      response.data.fields.forEach((field) => {
+        if (!isCompanyLinkField(field)) return;
+        if (String(values[field.name] || "").trim()) return;
+        const options = response.data.options?.[field.options_key || "companies"] ?? [];
+        if (options.length === 1) {
+          values[field.name] = optionValue(options[0]);
+        }
+      });
       set({
         form: response.data,
-        values: buildInitialValues(response.data.fields, item.default_country_code),
+        values,
         errors: {},
         loading: false,
       });

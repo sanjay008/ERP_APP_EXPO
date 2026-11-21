@@ -21,14 +21,67 @@ export type EventBookingItem = {
   last_name?: string;
   email?: string;
   phone?: string;
-  event_data?: { name?: string };
+  mobile?: string;
+  country_code?: string;
+  unique_id?: string;
+  payment_status?: string;
+  payment_method?: string;
+  quantity?: number | string;
+  total_price?: string;
+  amount?: string;
+  status?: number | string;
+  scan_info?: number | string;
+  is_scanned?: number | string | boolean;
+  event_tickets?: { title?: string; ticket_note?: string };
+  event_data?: { name?: string; date?: string; location?: string };
   relaties_data?: {
     voornaam?: string;
     achternaam?: string;
     display_name?: string;
     email_adres?: string;
+    mobiel?: string;
+    whatsapp_number?: string;
   };
+  booking_single?: Array<{
+    id?: number | string;
+    unique_code?: string;
+    scan_info?: number | string;
+    seat_data?: { seat_number?: string };
+  }>;
 };
+
+export function isEventBookingScanned(item?: EventBookingItem | null) {
+  if (!item) return false;
+  if (item.scan_info != null) return Number(item.scan_info) >= 1;
+  if (item.is_scanned != null) {
+    return item.is_scanned === true || Number(item.is_scanned) >= 1;
+  }
+  const single = item.booking_single?.[0];
+  if (single?.scan_info != null) return Number(single.scan_info) >= 1;
+  return false;
+}
+
+export function getEventBookingPhone(item?: EventBookingItem | null) {
+  if (!item) return "";
+  const phone =
+    item.phone ||
+    item.mobile ||
+    item.relaties_data?.mobiel ||
+    item.relaties_data?.whatsapp_number ||
+    "";
+  const code = String(item.country_code || "").trim();
+  if (!phone) return "";
+  return code ? `${code} ${phone}` : String(phone);
+}
+
+export function getEventTicketCode(item?: EventBookingItem | null) {
+  if (!item) return "";
+  return (
+    item.unique_id ||
+    item.booking_single?.[0]?.unique_code ||
+    ""
+  );
+}
 
 type PaginatedBody<T> = {
   status?: boolean;
@@ -178,7 +231,8 @@ export function formatEventDate(inputDate?: string) {
   return `${day} ${month} ${year} (${label})`;
 }
 
-export function getEventPersonName(item: EventBookingItem) {
+export function getEventPersonName(item?: EventBookingItem | null) {
+  if (!item) return "-";
   const fullName = [item.first_name || item.relaties_data?.voornaam, item.last_name || item.relaties_data?.achternaam]
     .filter(Boolean)
     .join(" ");

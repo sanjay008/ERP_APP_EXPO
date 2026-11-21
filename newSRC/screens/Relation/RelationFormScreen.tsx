@@ -32,7 +32,7 @@ import {
   findCountryCodeField,
   formatDisplayDate,
   getQuickRelationFieldKind,
-  isCompanyConnectionField,
+  isCompanyLinkField,
   isQuickRelationFieldRequired,
   optionLabel,
   optionValue,
@@ -120,7 +120,10 @@ export default function RelationFormScreen() {
     const raw = String(value || "").trim();
     return raw ? String(t(raw)) : "";
   };
-  const fieldText = (field: QuickRelationField) => text(field.label || field.name);
+  const fieldText = (field: QuickRelationField) => {
+    if (isCompanyLinkField(field)) return String(t("Company (Relaties)"));
+    return text(field.label || field.name);
+  };
   const screenTitle = text(item?.popup_text || item?.title) || t("Relation");
   const itemId = item?.id;
   const badge = text(item?.category_name || item?.relation_type_name);
@@ -129,8 +132,8 @@ export default function RelationFormScreen() {
     const fields = (form?.fields ?? []).filter(
       (field) => getQuickRelationFieldKind(field) !== "hidden"
     );
-    const companyFields = fields.filter((field) => isCompanyConnectionField(field));
-    const otherFields = fields.filter((field) => !isCompanyConnectionField(field));
+    const companyFields = fields.filter((field) => isCompanyLinkField(field));
+    const otherFields = fields.filter((field) => !isCompanyLinkField(field));
     return [...companyFields, ...otherFields];
   }, [form]);
   const selectedSheetField = visibleFields.find((field) => field.name === activeField);

@@ -92,7 +92,7 @@ export function parseQuickRelationItem(raw?: string): QuickRelationItem | null {
   }
 }
 
-export function isCompanyConnectionField(field?: { name?: string; options_key?: string } | null) {
+export function isCompanyLinkField(field?: { name?: string; options_key?: string } | null) {
   const name = String(field?.name || "").toLowerCase();
   const key = String(field?.options_key || "").toLowerCase();
   return (
@@ -103,7 +103,6 @@ export function isCompanyConnectionField(field?: { name?: string; options_key?: 
 }
 
 export function isQuickRelationFieldRequired(field: QuickRelationField) {
-  if (isCompanyConnectionField(field)) return false;
   return (
     field.required === true ||
     field.required === 1 ||
