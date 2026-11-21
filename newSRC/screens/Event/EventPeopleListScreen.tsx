@@ -74,7 +74,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
   const { setToast } = useContext(RegisterBackContext);
   const params = useLocalSearchParams<{ id?: string; eventName?: string; color?: string }>();
   const eventId = params.id ?? "";
-  const canUpdateTicketScan = hasPermission(permissions, "event_ticket_scan_mobile", "update");
+  const canUpdateTicketScan = hasPermission(permissions, "event_ticket_scan_mobile", "read");
 
   const [items, setItems] = useState<EventBookingItem[]>([]);
   const [search, setSearch] = useState("");
