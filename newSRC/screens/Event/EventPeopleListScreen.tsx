@@ -28,6 +28,7 @@ import {
   getEventBookingDate,
   getEventBookingPhone,
   getEventPersonName,
+  getEventScanInfoValue,
   getEventTicketCode,
   getEventTicketSeat,
   isEventBookingScanned,
@@ -154,10 +155,13 @@ export default function EventPeopleListScreen({ mode }: Props) {
   }, [ticketRows, search]);
 
   const selectedScanned = isEventBookingScanned(selected?.booking, selected?.single);
+  const selectedScanInfo = getEventScanInfoValue(selected?.booking, selected?.single);
   const selectedDate = selected
     ? formatEventDate(getEventBookingDate(selected.booking)) ||
       emptyToDash(getEventBookingDate(selected.booking))
     : "-";
+  const selectedBookingId =
+    selected?.booking.id ?? selected?.single?.id ?? "";
 
   const applyLocalScanInfo = useCallback((row: EventGuestTicketRow, nextScanInfo: number) => {
     const singleId = row.single?.id;
@@ -392,6 +396,10 @@ export default function EventPeopleListScreen({ mode }: Props) {
             </View>
 
             <DetailRow
+              label={t("Booking ID")}
+              value={emptyToDash(selectedBookingId)}
+            />
+            <DetailRow
               label={t("Name")}
               value={emptyToDash(getEventPersonName(selected.booking))}
             />
@@ -410,14 +418,34 @@ export default function EventPeopleListScreen({ mode }: Props) {
               value={emptyToDash(getEventTicketCode(selected.booking, selected.single))}
             />
             <DetailRow
-              label={t("Seat")}
+              label={t("Seat/Table")}
               value={emptyToDash(getEventTicketSeat(selected.booking, selected.single))}
             />
             <DetailRow
               label={t("Scanned")}
               value={selectedScanned ? t("Scanned") : t("Not scanned")}
             />
+            <DetailRow
+              label={t("Scanned Info")}
+              value={emptyToDash(selectedScanInfo)}
+            />
             <DetailRow label={t("Date")} value={emptyToDash(selectedDate)} />
+            <DetailRow
+              label={t("Ticket")}
+              value={emptyToDash(selected.booking.event_tickets?.title)}
+            />
+            <DetailRow
+              label={t("Payment status")}
+              value={emptyToDash(selected.booking.payment_status)}
+            />
+            <DetailRow
+              label={t("Payment method")}
+              value={emptyToDash(selected.booking.payment_method)}
+            />
+            <DetailRow
+              label={t("Quantity")}
+              value={emptyToDash(selected.booking.quantity)}
+            />
 
             {canUpdateTicketScan ? (
               <Pressable

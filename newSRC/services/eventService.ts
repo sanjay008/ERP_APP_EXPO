@@ -132,6 +132,18 @@ export function getEventBookingDate(item?: EventBookingItem | null) {
   return item.event_data?.date || item.created_at || "";
 }
 
+export function getEventScanInfoValue(
+  item?: EventBookingItem | null,
+  single?: EventBookingSingle | null
+) {
+  if (single?.scan_info != null) return Number(single.scan_info);
+  if (item?.booking_single?.[0]?.scan_info != null) {
+    return Number(item.booking_single[0].scan_info);
+  }
+  if (item?.scan_info != null) return Number(item.scan_info);
+  return 0;
+}
+
 type PaginatedBody<T> = {
   status?: boolean;
   data?: T;
