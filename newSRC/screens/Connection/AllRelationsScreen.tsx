@@ -17,10 +17,11 @@ import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBo
 import { useAppData } from "../../context/AppDataContext";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
-  fetchAllRelations,
-  matchesAllRelationTab,
+  fetchAllRelationTabs,
+  fetchAllRelationsList,
+  getRelationKindLabel,
   type AllRelationItem,
-  type AllRelationTab,
+  type AllRelationTabItem,
 } from "../../services/connectionService";
 import { hasPermission } from "../../utils/permissionFlags";
 import { useScreenInsets } from "../../utils/screenInsets";
@@ -28,12 +29,6 @@ import { AppColors } from "../../utils/theme";
 import { FONTS } from "../../utils/FONTS";
 import { CONNECTION_UI } from "../../utils/connectionTheme";
 import { listScreenStyles } from "../../utils/listScreenStyles";
-
-const TABS: { id: AllRelationTab; label: string }[] = [
-  { id: "company", label: "Company Clients" },
-  { id: "person", label: "Person Clients" },
-  { id: "employee", label: "Employees" },
-];
 
 export default function AllRelationsScreen() {
   const { t } = useTranslation();
@@ -45,20 +40,27 @@ export default function AllRelationsScreen() {
   const color = Array.isArray(params.color) ? params.color[0] : params.color;
   const canRead = hasPermission(permissions, "all_relations_mobile", "read");
 
+  const [tabs, setTabs] = useState<AllRelationTabItem[]>([]);
+  const [tab, setTab] = useState("");
   const [items, setItems] = useState<AllRelationItem[]>([]);
-  const [tab, setTab] = useState<AllRelationTab>("company");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { apiError, clearApiError, captureApiError } = useApiErrorState();
 
-  const loadData = useCallback(
-    async (pull = false) => {
+  const loadList = useCallback(
+    async (tabId: string, pull = false) => {
+      if (!tabId) {
+        setItems([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       if (pull) setRefreshing(true);
       else setLoading(true);
       clearApiError();
       try {
-        setItems(await fetchAllRelations());
+        setItems(await fetchAllRelationsList(tabId));
       } catch (error) {
         captureApiError(error);
         setItems([]);
@@ -70,25 +72,56 @@ export default function AllRelationsScreen() {
     [captureApiError, clearApiError]
   );
 
+  const loadTabs = useCallback(
+    async (pull = false) => {
+      if (pull) setRefreshing(true);
+      else setLoading(true);
+      clearApiError();
+      try {
+        const result = await fetchAllRelationTabs();
+        setTabs(result.tabs);
+        const nextTab = result.defaultTab || result.tabs[0]?.id || "";
+        setTab(nextTab);
+        if (!nextTab) {
+          setItems([]);
+          return;
+        }
+        setItems(await fetchAllRelationsList(nextTab));
+      } catch (error) {
+        captureApiError(error);
+        setTabs([]);
+        setTab("");
+        setItems([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [captureApiError, clearApiError]
+  );
+
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void loadTabs();
+  }, [loadTabs]);
+
+  const onSelectTab = useCallback(
+    (tabId: string) => {
+      if (tabId === tab) return;
+      setSearch("");
+      setTab(tabId);
+      void loadList(tabId);
+    },
+    [loadList, tab]
+  );
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return items
-      .filter((item) => matchesAllRelationTab(item, tab))
-      .filter((item) => {
-        if (!query) return true;
-        const name = `${item.display_name || ""} ${item.bedrijfsnaam || ""}`.toLowerCase();
-        return name.includes(query);
-      })
-      .sort((left, right) =>
-        (left.display_name || left.bedrijfsnaam || "").localeCompare(
-          right.display_name || right.bedrijfsnaam || ""
-        )
-      );
-  }, [items, search, tab]);
+    if (!query) return items;
+    return items.filter((item) => {
+      const name = `${item.display_name || ""} ${item.bedrijfsnaam || ""}`.toLowerCase();
+      return name.includes(query);
+    });
+  }, [items, search]);
 
   if (!canRead) {
     return <Redirect href="/(app)/(tabs)/menu" />;
@@ -98,7 +131,7 @@ export default function AllRelationsScreen() {
     <View style={[styles.container, { paddingTop: top }]}>
       <ScreenHeader
         title={titleParam ? t(titleParam) : t("Alle relaties")}
-        refreshOnPress={() => loadData(true)}
+        refreshOnPress={() => loadTabs(true)}
       />
 
       <View style={styles.searchWrap}>
@@ -111,36 +144,41 @@ export default function AllRelationsScreen() {
         />
       </View>
 
-      <View style={styles.tabBar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabs}
-        >
-          {TABS.map((item) => {
-            const selected = item.id === tab;
-            return (
-              <Pressable
-                key={item.id}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                style={[styles.tab, selected && styles.tabSelected]}
-                onPress={() => setTab(item.id)}
-              >
-                <Text style={[styles.tabText, selected && styles.tabTextSelected]} numberOfLines={1}>
-                  {t(item.label)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {tabs.length ? (
+        <View style={styles.tabBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabs}
+          >
+            {tabs.map((item) => {
+              const selected = item.id === tab;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  style={[styles.tab, selected && styles.tabSelected]}
+                  onPress={() => onSelectTab(item.id)}
+                >
+                  <Text
+                    style={[styles.tabText, selected && styles.tabTextSelected]}
+                    numberOfLines={1}
+                  >
+                    {t(item.label)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
 
       <ListScreenBody
         loading={loading}
         itemCount={visibleItems.length}
         apiError={apiError}
-        onRetry={() => loadData()}
+        onRetry={() => loadTabs()}
       >
         <FlatList
           data={visibleItems}
@@ -152,7 +190,7 @@ export default function AllRelationsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => loadData(true)}
+              onRefresh={() => loadList(tab, true)}
               colors={[AppColors.primary]}
               tintColor={AppColors.primary}
             />
@@ -160,7 +198,7 @@ export default function AllRelationsScreen() {
           ListEmptyComponent={listEmptyFeedback({
             loading,
             apiError,
-            onRetry: () => loadData(),
+            onRetry: () => loadTabs(),
             emptyMessage: t("No relations"),
           })}
           renderItem={({ item }) => (
@@ -169,7 +207,11 @@ export default function AllRelationsScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/(app)/connections/[id]",
-                  params: { id: String(item.id), color: color || "" },
+                  params: {
+                    id: String(item.id),
+                    color: color || "",
+                    relation_kind: getRelationKindLabel(item),
+                  },
                 })
               }
             >

@@ -19,6 +19,7 @@ import { useScreenInsets } from "../../utils/screenInsets";
 import {
   fetchConnectionDetails,
   fetchConnectionDocuments,
+  getRelationKindLabel,
   parseConnectionDocuments,
   type ConnectionDetail,
   type ConnectionDocument,
@@ -334,7 +335,10 @@ function DetailValue({
 export default function ConnectionDetailsScreen() {
   const { t } = useTranslation();
   const { top, scrollPadding } = useScreenInsets();
-  const params = useLocalSearchParams<{ id: string; color?: string }>();
+  const params = useLocalSearchParams<{ id: string; color?: string; relation_kind?: string }>();
+  const relationKindParam = Array.isArray(params.relation_kind)
+    ? params.relation_kind[0]
+    : params.relation_kind;
 
   const [data, setData] = useState<ConnectionDetail | null>(null);
   const [documents, setDocuments] = useState<ConnectionDocument[]>([]);
@@ -376,6 +380,15 @@ export default function ConnectionDetailsScreen() {
     [data, t]
   );
 
+  const relationKind =
+    getRelationKindLabel(data) ||
+    (relationKindParam === "Company" ||
+    relationKindParam === "Person" ||
+    relationKindParam === "Object" ||
+    relationKindParam === "Vehicle"
+      ? relationKindParam
+      : "");
+
   const openLink = async (url?: string, isMap?: boolean) => {
     if (!url) return;
     if (isMap) {
@@ -409,9 +422,18 @@ export default function ConnectionDetailsScreen() {
               resizeMode="cover"
             />
             <View style={styles.profileText}>
-              <Text style={styles.profileName}>{data?.display_name || "-"}</Text>
-              <Text style={styles.profileRole}>{data?.soort_relatie || "-"}</Text>
+              <Text style={styles.profileName} numberOfLines={2}>
+                {data?.display_name || "-"}
+              </Text>
+              <Text style={styles.profileRole} numberOfLines={1}>
+                {data?.soort_relatie || "-"}
+              </Text>
             </View>
+            {relationKind ? (
+              <View style={styles.kindBadge}>
+                <Text style={styles.kindBadgeText}>{t(relationKind)}</Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.infoCard}>
@@ -516,9 +538,9 @@ const styles = StyleSheet.create({
   },
   profileRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 24,
-    gap: 16,
+    gap: 12,
   },
   profileImage: {
     width: 80,
@@ -528,6 +550,21 @@ const styles = StyleSheet.create({
   },
   profileText: {
     flex: 1,
+    minWidth: 0,
+    paddingTop: 4,
+  },
+  kindBadge: {
+    borderRadius: 4,
+    backgroundColor: AppColors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: 4,
+  },
+  kindBadgeText: {
+    fontFamily: FONTS.LexendMedium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: AppColors.white,
   },
   profileName: {
     fontFamily: FONTS.LexendSemiBold,
