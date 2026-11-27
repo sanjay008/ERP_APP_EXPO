@@ -79,6 +79,17 @@ export const fallbackResources = {
       "Your app version is outdated. Please update to the latest version.":
         "Your app version is outdated. Please update to the latest version.",
       "Update Now": "Update Now",
+      "Update ready": "Update ready",
+      "The new version has finished downloading. Restart to install it now.":
+        "The new version has finished downloading. Restart to install it now.",
+      "A newer version is available on the {{store}}. Update to get the latest app.":
+        "A newer version is available on the {{store}}. Update to get the latest app.",
+      "Restart & install": "Restart & install",
+      "Not now": "Not now",
+      Current: "Current",
+      New: "New",
+      "Play Store": "Play Store",
+      "App Store": "App Store",
       Tour: "Tour",
       Optional: "Optional",
       None: "None",
@@ -596,6 +607,17 @@ export const fallbackResources = {
       "Your app version is outdated. Please update to the latest version.":
         "Je app-versie is verouderd. Update naar de nieuwste versie.",
       "Update Now": "Nu updaten",
+      "Update ready": "Update klaar",
+      "The new version has finished downloading. Restart to install it now.":
+        "De nieuwe versie is gedownload. Herstart om hem nu te installeren.",
+      "A newer version is available on the {{store}}. Update to get the latest app.":
+        "Er is een nieuwere versie op de {{store}}. Update om de nieuwste app te krijgen.",
+      "Restart & install": "Herstart en installeer",
+      "Not now": "Niet nu",
+      Current: "Huidig",
+      New: "Nieuw",
+      "Play Store": "Play Store",
+      "App Store": "App Store",
       Tour: "Tour",
       Optional: "Optioneel",
       None: "Geen",

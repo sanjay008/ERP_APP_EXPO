@@ -22,7 +22,7 @@
       "icon": "./newSRC/assets/Images/appicon.png",
       "bundleIdentifier": "com.erpportaal.app",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "buildNumber": "2",
+      "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [
@@ -122,6 +122,7 @@
       "reactCompiler": true
     },
     "extra": {
+      "iosStoreVersion": "1.8.9",
       "router": {
         "root": "./newSRC/app"
       },

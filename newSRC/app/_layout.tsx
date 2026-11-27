@@ -8,6 +8,7 @@ import { I18nextProvider } from "react-i18next";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AppToast from "../Components/AppToast";
 import NoInternetOverlay from "../Components/NoInternetOverlay";
+import { StoreInAppUpdateGate } from "../Components/StoreUpdatePopup";
 import { RegisterBackProvider } from "../constants/GoBackContext";
 import { NetworkProvider } from "../context/NetworkContext";
 import { useThemeStore } from "../store/themeStore";
@@ -52,6 +53,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             <NetworkProvider>
               <NoInternetOverlay />
+              <StoreInAppUpdateGate />
               <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="splash" />
