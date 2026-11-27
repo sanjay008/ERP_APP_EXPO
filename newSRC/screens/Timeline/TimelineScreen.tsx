@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   BackHandler,
   FlatList,
   Image,
@@ -19,6 +18,7 @@ import { useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import LanguageChange from "../../Components/LanguageChange";
 import ListScreenBody, { listEmptyFeedback } from "../../Components/ListScreenBody";
+import ExitAppConfirmModal from "../../Components/ExitAppConfirmModal";
 import TimelineTravelCheckInOutModal from "../../Components/TimelineTravelCheckInOutModal";
 import { useApiErrorState } from "../../hooks/useApiErrorState";
 import {
@@ -141,6 +141,7 @@ export default function TimelineScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [employeeModalVisible, setEmployeeModalVisible] = useState(false);
+  const [exitVisible, setExitVisible] = useState(false);
   const [checkInOutStatus, setCheckInOutStatus] = useState<"check_in" | "check_out">("check_in");
 
   const refreshCheckInOutStatus = useCallback(async () => {
@@ -189,14 +190,11 @@ export default function TimelineScreen() {
       refreshCheckInOutStatus();
 
       const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-        Alert.alert(t("Hold on!"), t("Are you sure you want to exit?"), [
-          { text: t("Cancel"), style: "cancel" },
-          { text: t("YES"), onPress: () => BackHandler.exitApp() },
-        ]);
+        setExitVisible(true);
         return true;
       });
       return () => subscription.remove();
-    }, [t, loadTimeline, refreshCheckInOutStatus])
+    }, [loadTimeline, refreshCheckInOutStatus])
   );
 
   const onRefresh = useCallback(async () => {
@@ -323,6 +321,15 @@ export default function TimelineScreen() {
         visible={employeeModalVisible}
         onClose={() => setEmployeeModalVisible(false)}
         onComplete={handleCheckInComplete}
+      />
+
+      <ExitAppConfirmModal
+        visible={exitVisible}
+        onCancel={() => setExitVisible(false)}
+        onConfirm={() => {
+          setExitVisible(false);
+          BackHandler.exitApp();
+        }}
       />
     </View>
   );

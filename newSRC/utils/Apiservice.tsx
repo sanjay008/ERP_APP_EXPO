@@ -89,6 +89,9 @@ async function performApiRequest<T = unknown>(
         if (Array.isArray(value)) {
           value.forEach((item) => {
             if (item && typeof item === "object" && "uri" in item) {
+              const uri = String((item as { uri?: string }).uri || "");
+              // Remote http(s) URLs are not local files — uploading them breaks FormData.
+              if (uri.startsWith("http://") || uri.startsWith("https://")) return;
               requestData!.append(key, item as never);
               return;
             }
@@ -98,6 +101,8 @@ async function performApiRequest<T = unknown>(
         }
 
         if (typeof value === "object" && "uri" in (value as object)) {
+          const uri = String((value as { uri?: string }).uri || "");
+          if (uri.startsWith("http://") || uri.startsWith("https://")) return;
           requestData!.append(key, value as never);
           return;
         }

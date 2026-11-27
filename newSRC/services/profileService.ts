@@ -1,4 +1,3 @@
-import axios from "axios";
 import ApiService from "../utils/Apiservice";
 import apiConstants from "../utils/apiConstants";
 import { getData, storeData } from "../utils/storeData";
@@ -8,6 +7,18 @@ export type ProfileImageAsset = {
   type?: string;
   name?: string;
 };
+
+/** Only local picker/camera URIs can be uploaded as multipart files. */
+export function isLocalImageUri(uri?: string | null): boolean {
+  if (!uri) return false;
+  return (
+    uri.startsWith("file://") ||
+    uri.startsWith("content://") ||
+    uri.startsWith("ph://") ||
+    uri.startsWith("assets-library://") ||
+    (!uri.startsWith("http://") && !uri.startsWith("https://") && uri.startsWith("/"))
+  );
+}
 
 export type UpdateProfilePayload = {
   userId: number;
@@ -81,7 +92,10 @@ export async function updateProfileDetails(payload: EditProfilePayload) {
       document_nr: payload.documentNumber || "",
       facebook_url: payload.facebookUrl || "",
       voertuig_kentekencheck: payload.linkedinUrl || "",
-      profile_image: payload.profileImage?.uri ? payload.profileImage : undefined,
+      profile_image:
+        payload.profileImage?.uri && isLocalImageUri(payload.profileImage.uri)
+          ? payload.profileImage
+          : undefined,
     },
   });
 
@@ -95,40 +109,38 @@ export async function updateProfileDetails(payload: EditProfilePayload) {
 }
 
 export async function updateProfile(payload: UpdateProfilePayload) {
-  const formData = new FormData();
+  const localImage =
+    payload.profileImage?.uri && isLocalImageUri(payload.profileImage.uri)
+      ? {
+          uri: payload.profileImage.uri,
+          name: payload.profileImage.name ?? "profile.jpg",
+          type: payload.profileImage.type ?? "image/jpeg",
+        }
+      : undefined;
 
-  formData.append("token", payload.verifyToken);
-  formData.append("company_login", payload.companyLogin);
-  formData.append("username", `${payload.firstName}${payload.lastName}`);
-  formData.append("user_id", String(payload.userId));
-  formData.append("aanhef", payload.salutation);
-  formData.append("voornaam", payload.firstName);
-  formData.append("voorvoegsel", payload.middleName);
-  formData.append("achternaam", payload.lastName);
-  formData.append("email", payload.email);
-  formData.append("address", payload.address);
-  formData.append("google_maps", payload.address);
-  formData.append("department", "");
-  formData.append("category_id", String(payload.categoryId ?? 2));
-  formData.append("whatsapp_number", payload.whatsappNumber ?? "");
-  formData.append("country_code", payload.countryCode ?? "");
-  formData.append("birth_place", payload.birthPlace);
-  formData.append("birth_date", payload.birthDate);
-
-  if (payload.profileImage?.uri) {
-    formData.append("profile_image", {
-      uri: payload.profileImage.uri,
-      name: payload.profileImage.name ?? "profile.jpg",
-      type: payload.profileImage.type ?? "image/jpeg",
-    } as never);
-  }
-
-  const response = await axios.post(apiConstants.updateProfile, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-    timeout: 60000,
+  const data = await ApiService(apiConstants.updateProfile, {
+    customData: {
+      token: payload.verifyToken,
+      company_login: payload.companyLogin,
+      username: `${payload.firstName}${payload.lastName}`,
+      user_id: String(payload.userId),
+      aanhef: payload.salutation,
+      voornaam: payload.firstName,
+      voorvoegsel: payload.middleName,
+      achternaam: payload.lastName,
+      email: payload.email,
+      address: payload.address,
+      google_maps: payload.address,
+      department: "",
+      category_id: String(payload.categoryId ?? 2),
+      whatsapp_number: payload.whatsappNumber ?? "",
+      country_code: payload.countryCode ?? "",
+      birth_place: payload.birthPlace,
+      birth_date: payload.birthDate,
+      ...(localImage ? { profile_image: localImage } : {}),
+    },
   });
 
-  const data = response.data;
   if (data?.status) {
     await storeData("USERDATA", data);
     await storeData("LOGIN", true);

@@ -251,7 +251,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
       applyLocalScanInfo(selected, closing ? 1 : 0);
       setToast({
         top: 45,
-        text: closing ? t("Close") : t("Unclose"),
+        text: closing ? "INCHECKEN" : t("Unclose"),
         type: "success",
         visible: true,
       });
@@ -467,7 +467,7 @@ export default function EventPeopleListScreen({ mode }: Props) {
                   <ActivityIndicator color={AppColors.white} />
                 ) : (
                   <Text style={styles.actionBtnText}>
-                    {selectedScanned ? t("Unclose") : t("Close")}
+                    {selectedScanned ? t("Unclose") : "INCHECKEN"}
                   </Text>
                 )}
               </Pressable>

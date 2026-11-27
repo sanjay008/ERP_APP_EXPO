@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   BackHandler,
   FlatList,
   Image,
@@ -41,6 +40,7 @@ import {
 import { LIST_UI } from "../../utils/connectionTheme";
 import { LIST_CARD_SHADOW } from "../../utils/listScreenStyles";
 import EmployeeCheckInOutModal from "../../Components/EmployeeCheckInOutModal";
+import ExitAppConfirmModal from "../../Components/ExitAppConfirmModal";
 import {
   fetchCheckInOutState,
   getTodayFormats,
@@ -63,6 +63,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const [exitVisible, setExitVisible] = useState(false);
   const [employeeModalMode, setEmployeeModalMode] = useState<"check-in" | "check-out" | null>(null);
   const menuItems = homeData.filter((item) => {
     const link = item.link_to?.trim();
@@ -144,14 +145,11 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-        Alert.alert(t("Hold on!"), t("Are you sure you want to exit?"), [
-          { text: t("Cancel"), style: "cancel" },
-          { text: t("YES"), onPress: () => BackHandler.exitApp() },
-        ]);
+        setExitVisible(true);
         return true;
       });
       return () => subscription.remove();
-    }, [t])
+    }, [])
   );
 
   const handleItemPress = async (item: HomeItem) => {
@@ -320,6 +318,15 @@ export default function HomeScreen() {
         mode={employeeModalMode ?? "check-in"}
         onClose={() => setEmployeeModalMode(null)}
         onComplete={refreshCheckInOutStatus}
+      />
+
+      <ExitAppConfirmModal
+        visible={exitVisible}
+        onCancel={() => setExitVisible(false)}
+        onConfirm={() => {
+          setExitVisible(false);
+          BackHandler.exitApp();
+        }}
       />
     </View>
   );

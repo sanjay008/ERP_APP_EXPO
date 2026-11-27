@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { RegisterBackContext } from "../../constants/GoBackContext";
 import { verifyEventBooking } from "../../services/eventService";
+import { setPendingEventVerification } from "../../services/eventScanSession";
 import { getApiErrorMessage } from "../../utils/validation";
 import { useScreenInsets } from "../../utils/screenInsets";
 import { AppColors } from "../../utils/theme";
@@ -39,8 +40,17 @@ export default function EventScannerScreen() {
       Vibration.vibrate(300);
 
       try {
-        const parsed = JSON.parse(result.data) as { code_id?: string | number; qr_id?: string | number };
-        const uniqueId = parsed.code_id ?? parsed.qr_id;
+        let uniqueId: string | number | undefined;
+        try {
+          const parsed = JSON.parse(result.data) as {
+            code_id?: string | number;
+            qr_id?: string | number;
+            qr_code_id?: string | number;
+          };
+          uniqueId = parsed.code_id ?? parsed.qr_id ?? parsed.qr_code_id;
+        } catch {
+          uniqueId = result.data?.trim() || undefined;
+        }
 
         if (!uniqueId) {
           setToast({
@@ -55,13 +65,13 @@ export default function EventScannerScreen() {
 
         setLoading(true);
         const verification = await verifyEventBooking({ eventId, uniqueId });
+        setPendingEventVerification(verification);
 
         router.replace({
           pathname: "/(app)/events/[id]/confirm",
           params: {
             id: eventId,
             color: params.color || "",
-            payload: JSON.stringify(verification),
           },
         });
       } catch (error) {

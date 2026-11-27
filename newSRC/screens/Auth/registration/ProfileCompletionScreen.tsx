@@ -78,6 +78,7 @@ export default function ProfileCompletionScreen() {
   const [birthDate, setBirthDate] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [existingImageUri, setExistingImageUri] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<ProfileImageAsset | null>(null);
 
   const [salutationSheetOpen, setSalutationSheetOpen] = useState(false);
@@ -135,11 +136,7 @@ export default function ProfileCompletionScreen() {
       setEmail(userEmail.includes("@dummy.com") ? "" : userEmail);
 
       if (user.profile_image) {
-        setProfileImage({
-          uri: user.profile_image,
-          type: "image/jpeg",
-          name: "profile.jpg",
-        });
+        setExistingImageUri(user.profile_image);
       }
     } catch (error) {
       setToastMessage(getApiErrorMessage(error, t("Something went wrong")));
@@ -180,7 +177,9 @@ export default function ProfileCompletionScreen() {
 
   const validateStep3 = () => {
     const errors: FieldErrors = {};
-    if (!profileImage?.uri) errors.profileImage = t("Select profile photo");
+    if (!profileImage?.uri && !existingImageUri) {
+      errors.profileImage = t("Select profile photo");
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -414,8 +413,11 @@ export default function ProfileCompletionScreen() {
       {step === 3 ? (
         <>
           <Pressable style={styles.photoWrap} onPress={() => setImageSheetOpen(true)}>
-            {profileImage?.uri ? (
-              <Image source={{ uri: profileImage.uri }} style={styles.photo} />
+            {profileImage?.uri || existingImageUri ? (
+              <Image
+                source={{ uri: profileImage?.uri || existingImageUri || undefined }}
+                style={styles.photo}
+              />
             ) : (
               <Image source={Images.DefaultImage} style={styles.photo} />
             )}
